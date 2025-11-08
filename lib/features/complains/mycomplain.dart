@@ -106,11 +106,9 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
   }
 
   bool _isAgentOrAdmin(String? role) {
-    return role == 'agent' ||
-        role == 'admin' ||
-        role == 'truckowner' ||
-        role == 'company';
-  }
+  final r = role?.toLowerCase() ?? '';
+  return r == 'admin';
+}
 
   List<Map<String, dynamic>> _applyFilters(
       List<Map<String, dynamic>> complaints,
@@ -489,9 +487,11 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
             fontSize: 14,
           ),
           tabs: [
-            Tab(text: 'complaints_made'.tr()),
-            Tab(text: 'complaints_against'.tr()),
-            if (_isAgentOrAdmin(_currentUserRole) == 'admin')
+            if (!_isAgentOrAdmin(_currentUserRole))...[
+               Tab(text: 'complaints_made'.tr()),
+               Tab(text: 'complaints_against'.tr()),
+             ],
+            if (_isAgentOrAdmin(_currentUserRole))
               Tab(text: 'all_complaints'.tr()),
           ],
         ),
