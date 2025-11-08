@@ -1,5 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:logistics_toolkit/features/complains/complain_detail.dart';
+import 'package:logistics_toolkit/features/complains/mycomplain.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
@@ -301,7 +303,17 @@ void initState() {
           color: Colors.blueGrey,
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageTrucksPage())),
         ),
-      ],
+        FeatureCard(
+          title: 'All Complaints'.tr(),
+          subtitle: 'view all complains'.tr(),
+          icon: Icons.report_gmailerrorred,
+          color: const Color.fromARGB(255, 139, 139, 96),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>ComplaintHistoryPage(),
+          ),
+          ),
+        ),
+      
+          ],
     );
   }
 

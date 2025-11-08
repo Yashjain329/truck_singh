@@ -491,7 +491,7 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
           tabs: [
             Tab(text: 'complaints_made'.tr()),
             Tab(text: 'complaints_against'.tr()),
-            if (_isAgentOrAdmin(_currentUserRole))
+            if (_isAgentOrAdmin(_currentUserRole) == 'admin')
               Tab(text: 'all_complaints'.tr()),
           ],
         ),
