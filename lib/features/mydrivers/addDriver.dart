@@ -112,6 +112,13 @@ class _AddDriverPageState extends State<AddDriverPage> {
         setState(() => _actionIsLoading = false);
         return;
       }
+      if (!driverCustomId.startsWith('DRV')) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('cannot_add_non_driver'.tr())));
+        setState(() => _actionIsLoading = false);
+        return;
+      }
 
       final alreadyRelated = await supabase
           .from('driver_relation')

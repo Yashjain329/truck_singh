@@ -8,12 +8,8 @@ class AppVersionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final double width = size.width;
-
-    // Breakpoints
     final bool isTablet = width > 600 && width <= 1000;
     final bool isDesktop = width > 1000;
-
-    // Adaptive font sizes
     final double titleSize = isDesktop
         ? 32
         : isTablet
@@ -25,7 +21,6 @@ class AppVersionPage extends StatelessWidget {
         ? 15
         : 14.5;
 
-    // Max width for content (same for all cards)
     const double maxContentWidth = 600;
 
     return Scaffold(
@@ -58,8 +53,6 @@ class AppVersionPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 24),
-
-                  // Cards (fixed width, dynamic height)
                   _buildCard(
                     title: "about_the_app".tr(),
                     description:
@@ -89,7 +82,6 @@ class AppVersionPage extends StatelessWidget {
     );
   }
 
-  /// Reusable Card Widget (fixed width, auto height)
   Widget _buildCard({
     required String title,
     required String description,
@@ -97,7 +89,7 @@ class AppVersionPage extends StatelessWidget {
     required double fontSize,
   }) {
     return Container(
-      width: double.infinity, // makes all cards same width
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,

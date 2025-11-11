@@ -5,7 +5,7 @@ class ShipmentService {
   static final _supabase = Supabase.instance.client;
 
   static Future<List<Map<String, dynamic>>>
-      getAvailableMarketplaceShipments() async {
+  getAvailableMarketplaceShipments() async {
     try {
       final response = await _supabase
           .from('shipment')
@@ -28,9 +28,10 @@ class ShipmentService {
         throw Exception("Could not find company ID for the current user.");
       }
 
+      final updateField = companyId.startsWith('TRUK') ? 'assigned_truckowner' : 'assigned_agent';
       await _supabase.from('shipment').update({
         'booking_status': 'Accepted',
-        'assigned_agent': companyId
+        updateField: companyId,
       }).eq('shipment_id', shipmentId);
     } catch (e) {
       print("Error accepting marketplace shipment: $e");
@@ -39,15 +40,19 @@ class ShipmentService {
   }
   static Future<List<Map<String, dynamic>>> getAllMyShipments() async {
     try {
+      UserDataService.clearCache();
       final customUserId = await UserDataService.getCustomUserId();
+      print(customUserId);
       if (customUserId == null) {
         throw Exception("User not logged in or has no custom ID");
       }
 
+      final updateField = customUserId.startsWith('TRUK') ? 'assigned_truckowner' : 'assigned_agent';
+
       final shipmentsRes = await _supabase
           .from('shipment')
           .select('*, shipper:user_profiles!fk_shipper_custom_id(name)')
-          .eq('assigned_agent', customUserId);
+          .eq(updateField, customUserId);
 
       return List<Map<String, dynamic>>.from(shipmentsRes);
     } catch (e) {
@@ -103,6 +108,7 @@ class ShipmentService {
     required String truckNumber,
   }) async {
     try {
+      print(truckNumber);
       await _supabase.from('shipment').update(
           {'assigned_truck': truckNumber}).eq('shipment_id', shipmentId);
     } catch (e) {

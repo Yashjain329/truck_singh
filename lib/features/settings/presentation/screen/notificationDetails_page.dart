@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
-class notificationDetails_page extends StatelessWidget {
-  const notificationDetails_page({super.key});
+class NotificationDetailsPage extends StatelessWidget {
+  const NotificationDetailsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final double width = size.width;
-
-    // Breakpoints
     final bool isTablet = width > 600 && width <= 1000;
     final bool isDesktop = width > 1000;
-
-    // Font sizes
     final double titleSize = isDesktop
         ? 32
         : isTablet
@@ -31,9 +28,9 @@ class notificationDetails_page extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          "Notification Details",
-          style: TextStyle(
+        title: Text(
+          'notificationDetailsTitle'.tr(),
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -60,35 +57,23 @@ class notificationDetails_page extends StatelessWidget {
                 children: [
                   const SizedBox(height: 24),
 
-                  // Shipment Section
                   _buildCard(
-                    title: "Shipment Notifications",
-                    description:
-                    "Stay updated on your shipment progress in real-time. "
-                        "You will receive alerts when a shipment is created, picked up, loading, dispatched, dropped, unloading, delayed, or successfully delivered. "
-                        "These notifications help you monitor logistics and ensure timely operations.",
+                    title: 'shipmentNotificationsTitle'.tr(),
+                    description: 'shipmentNotificationsDescription'.tr(),
                     context: context,
                     fontSize: bodyFontSize,
                   ),
 
-                  // Driver SOS Alerts
                   _buildCard(
-                    title: "Driver SOS Alerts",
-                    description:
-                    "This section handles emergency alerts from drivers. "
-                        "When a driver presses the SOS button, agents and nearby response teams are instantly notified. "
-                        "You can track driver safety and take quick action during critical situations.",
+                    title: 'driverSOSAlertsTitle'.tr(),
+                    description: 'driverSOSAlertsDescription'.tr(),
                     context: context,
                     fontSize: bodyFontSize,
                   ),
 
-                  // Admin Account Enable / Disable
                   _buildCard(
-                    title: "Admin Account Enable / Disable",
-                    description:
-                    "Admins can manage user accounts directly from the Admin panel. "
-                        "Receive alerts when any account is enabled, suspended, or reactivated. "
-                        "This ensures better control and security over platform access.",
+                    title: 'adminAccountTitle'.tr(),
+                    description: 'adminAccountDescription'.tr(),
                     context: context,
                     fontSize: bodyFontSize,
                   ),
@@ -101,7 +86,6 @@ class notificationDetails_page extends StatelessWidget {
     );
   }
 
-  /// Reusable Card Widget
   Widget _buildCard({
     required String title,
     required String description,

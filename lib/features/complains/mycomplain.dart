@@ -83,7 +83,7 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
           .order('created_at', ascending: false);
 
       List<Map<String, dynamic>> allRes = [];
-      if (_isAgentOrAdmin(_currentUserRole)) {
+      if (_isAdminOnly(_currentUserRole)) {
         final all = await supabase
             .from('complaints')
             .select()
@@ -105,11 +105,9 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
     }
   }
 
-  bool _isAgentOrAdmin(String? role) {
-    return role == 'agent' ||
-        role == 'admin' ||
-        role == 'truckowner' ||
-        role == 'company';
+  bool _isAdminOnly(String? role) {
+    final r = role?.toLowerCase() ?? '';
+    return r == 'admin';
   }
 
   List<Map<String, dynamic>> _applyFilters(
@@ -489,9 +487,11 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
             fontSize: 14,
           ),
           tabs: [
-            Tab(text: 'complaints_made'.tr()),
-            Tab(text: 'complaints_against'.tr()),
-            if (_isAgentOrAdmin(_currentUserRole))
+            if (!_isAdminOnly(_currentUserRole))...[
+              Tab(text: 'complaints_made'.tr()),
+              Tab(text: 'complaints_against'.tr()),
+            ],
+            if (_isAdminOnly(_currentUserRole))
               Tab(text: 'all_complaints'.tr()),
           ],
         ),
@@ -509,7 +509,7 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
               children: [
                 _buildComplaintList(complaintsMade),
                 _buildComplaintList(complaintsAgainst),
-                if (_isAgentOrAdmin(_currentUserRole))
+                if (_isAdminOnly(_currentUserRole))
                   _buildComplaintList(allComplaints,
                       showParties: true),
               ],

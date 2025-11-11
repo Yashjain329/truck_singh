@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
+import '../features/complains/mycomplain.dart';
 import '../widgets/common/app_bar.dart';
 import 'widgets/feature_card.dart';
-
 import '../features/admin/manage_shipments_page.dart';
 import '../features/admin/manage_trucks_page.dart';
 import '../features/admin/manage_users_page.dart';
@@ -73,16 +73,13 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final AdminService _adminService = AdminService();
-  //AdminDashboardState _state = AdminDashboardState();
-
   AdminDashboardState _state = AdminDashboardState(isLoading: true);
 
-@override
-void initState() {
-  super.initState();
-  _loadData();
-  // Remove listener code completely
-}
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
 
   void _onLocaleChanged() {
@@ -97,7 +94,6 @@ void initState() {
   Future<void> _loadData() async {
     setState(() => _state = _state.copyWith(isLoading: true));
     try {
-      // fetch both stats and profile
       final stats = await _adminService.getDashboardStats();
       final profile = await _adminService.getAdminProfile();
 
@@ -135,7 +131,6 @@ void initState() {
         onRefresh: _loadData,
         child: _buildBody(),
       ),
-     // bottomNavigationBar: _buildBottomAppBar(),
     );
   }
 
@@ -295,11 +290,11 @@ void initState() {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageShipmentsPage())),
         ),
         FeatureCard(
-          title: 'trucks'.tr(),
-          subtitle: 'viewallvehicles'.tr(),
-          icon: Icons.directions_bus_filled_outlined,
-          color: Colors.blueGrey,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageTrucksPage())),
+          title: 'all_complaints'.tr(),
+          subtitle: 'view_history'.tr(),
+          icon: Icons.feedback_outlined,
+          color: Colors.red,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ComplaintHistoryPage())),
         ),
       ],
     );

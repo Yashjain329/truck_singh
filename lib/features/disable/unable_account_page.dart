@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'dart:async';
 import '../../config/theme.dart';
 import 'otp_activation_service.dart';

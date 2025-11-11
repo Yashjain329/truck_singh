@@ -792,25 +792,25 @@ class _SettingsPageState extends State<SettingsPage> {
     final bool? confirmDisable = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Disable Account'),
-        content: const Text(
-          'Are you sure you want to disable your account?\n\n'
-              '⚠️ You will not be able to log in until your account is reactivated.\n\n'
-              'Note: If you have active shipments, you cannot disable your account.',
+        title: Text('disable_account_title'.tr()),
+        content: Text(
+          'disable_account_message'.tr(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('cancel'.tr()),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Disable Account'),
+            child: Text('disable_account_button'.tr()),
           ),
         ],
       ),
     );
+
+
 
     if (confirmDisable != true) return;
 
@@ -1022,12 +1022,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showThemeDialog(BuildContext context) {
-    // Comment out theme functionality for now
-
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
-    ThemeMode currentMode = themeNotifier.isDarkMode
-        ? ThemeMode.dark
-        : ThemeMode.light;
+    ThemeMode currentMode =
+    themeNotifier.isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
     showDialog(
       context: context,
@@ -1042,7 +1039,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   RadioListTile<ThemeMode>(
-                    title: const Text('Light'),
+                    title: Text('light_mode'.tr()),
                     value: ThemeMode.light,
                     groupValue: selectedMode,
                     onChanged: (value) {
@@ -1052,7 +1049,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   ),
                   RadioListTile<ThemeMode>(
-                    title: const Text('Dark Mode'),
+                    title: Text('dark_mode'.tr()),
                     value: ThemeMode.dark,
                     groupValue: selectedMode,
                     onChanged: (value) {
@@ -1082,6 +1079,7 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
   }
+
 
   Future<void> _uploadProfilePicture() async {
     final userId = user?.id;
@@ -1550,11 +1548,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Block Account"),
-        content: const Text(
-          "Are you sure you want to block your account?\n\n"
-              "⚠ You will not be able to log in again.",
-        ),
+        title: Text("block_account_title".tr()),
+        content: Text("block_account_message".tr()),
         actions: [
           TextButton(
             child: Text("cancel".tr()),
@@ -1562,12 +1557,14 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text("delete".tr()),
+            child: Text("block_account_button".tr()),
             onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
       ),
     );
+
+
 
     if (confirm != true) return;
 
@@ -2103,7 +2100,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const notificationDetails_page(),
+                  builder: (context) => const NotificationDetailsPage(),
                 ),
               );
             },

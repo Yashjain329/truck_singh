@@ -4,10 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:uuid/uuid.dart';
 
-
-//address models
 class BillingAddress {
   String flatNo, streetName, cityName, district, zipCode;
   BillingAddress({
@@ -455,7 +452,7 @@ class _AddressBookPageState extends State<AddressBookPage> {
                     addressPreview,
                     style: const TextStyle(
                       fontSize: 14,
-                     // color: Colors.black54,
+                      // color: Colors.black54,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
