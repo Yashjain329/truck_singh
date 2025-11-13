@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:logistics_toolkit/features/blank.dart';
 import 'package:logistics_toolkit/features/settings/presentation/screen/settings_page.dart';
 import 'package:logistics_toolkit/widgets/common/app_bar.dart';
 import 'package:permission_handler/permission_handler.dart' as handler;
@@ -450,17 +451,29 @@ class _CompanyDriverDbState extends State<CompanyDriverDb> {
                               },
                             ),
                             _buildFeatureCard(
-                               title: 'My Chats',
-                               subtitle: 'View your Chats',
-                               icon: Icons.chat_bubble_outline,
-                               color: Colors.blue,
-                               onTap: () => Navigator.push(
-                                 context,
-                                 MaterialPageRoute(
-                                     builder: (context) =>
-                                         const DriverChatListPage()),
-                               ),
-                             ),
+                              title: 'My Chats',
+                              subtitle: 'View your Chats',
+                              icon: Icons.chat_bubble_outline,
+                              color: Colors.blue,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                    const DriverChatListPage()),
+                              ),
+                            ),
+                            _buildFeatureCard(
+                              title: 'My Ratings',
+                              subtitle: 'View Ratings',
+                              icon: Icons.star_border_outlined,
+                              color: Colors.orange,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                    const BlankPage()),
+                              ),
+                            ),
                           ],
                         ),
                       ],
