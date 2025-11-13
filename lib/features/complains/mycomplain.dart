@@ -466,12 +466,12 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
         title:  Text('complaint_history'.tr()),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: fetchCurrentUserRoleAndComplaints,
-          ),
-        ],
+        //  actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.refresh),
+        //     onPressed: fetchCurrentUserRoleAndComplaints,
+        //   ),
+        // ],
         bottom: TabBar(
           controller: _tabController,
           // properties to make white when clicked

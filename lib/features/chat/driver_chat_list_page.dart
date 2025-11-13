@@ -30,7 +30,7 @@ class _DriverChatListPageState extends State<DriverChatListPage> {
     // 2. Fetch data using that ID
     final results = await Future.wait([
       _driverService.getActiveShipmentsForDriver(driverId), // <-- Pass ID here
-      _driverService.getAssociatedOwners(driverId),       // <-- Pass ID here
+      _driverService.getAssociatedOwners(driverId), // <-- Pass ID here
     ]);
 
     return {
@@ -54,7 +54,7 @@ class _DriverChatListPageState extends State<DriverChatListPage> {
     try {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar( SnackBar(content: Text('opening_chat'.tr())));
+      ).showSnackBar(SnackBar(content: Text('opening_chat'.tr())));
       final roomId = await getRoomId();
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -82,15 +82,22 @@ class _DriverChatListPageState extends State<DriverChatListPage> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title:  Text('my_chats'.tr()),
+          title: Text('my_chats'.tr()),
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          bottom:  TabBar(
-            indicatorColor: Theme.of(context).colorScheme.secondary, // Indicator color for selected tab
-            labelColor: Theme.of(context).colorScheme.onPrimary,      // Text color for selected tab
+          bottom: TabBar(
+            indicatorColor: Theme.of(
+              context,
+            ).colorScheme.secondary, // Indicator color for selected tab
+            labelColor: Theme.of(
+              context,
+            ).colorScheme.onPrimary, // Text color for selected tab
             unselectedLabelColor: Colors.white70,
             tabs: [
-              Tab(icon: Icon(Icons.local_shipping), text: 'shipment_chats'.tr()),
+              Tab(
+                icon: Icon(Icons.local_shipping),
+                text: 'shipment_chats'.tr(),
+              ),
               Tab(icon: Icon(Icons.person), text: 'direct_chat'.tr()),
             ],
           ),
@@ -107,18 +114,33 @@ class _DriverChatListPageState extends State<DriverChatListPage> {
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
               if (!snapshot.hasData) {
-                return  Center(child: Text('no_data'.tr()));
+                return RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.6,
+                      child: Center(child: Text('no_messages'.tr())),
+                    ),
+                  ),
+                );
               }
 
               final shipments =
-              snapshot.data!['shipments'] as List<Map<String, dynamic>>;
-             // final owner = snapshot.data!['owner'] as Map<String, dynamic>?;
-              final owners = snapshot.data!['owners'] as List<Map<String, dynamic>>; // <-- CHANGED
-              final driverId = snapshot.data!['driverId'] as String?; // <-- Get the driverId
+                  snapshot.data!['shipments'] as List<Map<String, dynamic>>;
+              // final owner = snapshot.data!['owner'] as Map<String, dynamic>?;
+              final owners =
+                  snapshot.data!['owners']
+                      as List<Map<String, dynamic>>; // <-- CHANGED
+              final driverId =
+                  snapshot.data!['driverId'] as String?; // <-- Get the driverId
               return TabBarView(
                 children: [
                   _buildShipmentList(shipments),
-                  _buildDirectChatView(owners, driverId), // <-- Call the function directly
+                  _buildDirectChatView(
+                    owners,
+                    driverId,
+                  ), // <-- Call the function directly
                 ],
               );
             },
@@ -130,41 +152,41 @@ class _DriverChatListPageState extends State<DriverChatListPage> {
 
   Widget _buildShipmentList(List<Map<String, dynamic>> shipments) {
     if (shipments.isEmpty) {
-      return  Center(child: Text('no_active_shipments'.tr()));
+      return Center(child: Text('no_active_shipments'.tr()));
     }
-    return ListView.builder(
-      itemCount: shipments.length,
-      itemBuilder: (context, index) {
-        final shipment = shipments[index];
-        final shipmentId = shipment['shipment_id'] ?? 'N/A';
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.group)),
-            title: Text(
-              shipmentId,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: ListView.builder(
+        itemCount: shipments.length,
+        itemBuilder: (context, index) {
+          final shipment = shipments[index];
+          final shipmentId = shipment['shipment_id'] ?? 'N/A';
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.group)),
+              title: Text(
+                shipmentId,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text('group_chat_shipment'.tr()),
+              onTap: () => _navigateToChat(
+                chatTitle: '#$shipmentId',
+                getRoomId: () => _chatService.getShipmentChatRoom(shipmentId),
+              ),
             ),
-            subtitle:  Text('group_chat_shipment'.tr()),
-            onTap: () => _navigateToChat(
-              chatTitle: '#$shipmentId',
-              getRoomId: () => _chatService.getShipmentChatRoom(shipmentId),
-            ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-
   Widget _buildDirectChatView(
-      List<Map<String, dynamic>> owners,
-      String? driverId
-      ) {
+    List<Map<String, dynamic>> owners,
+    String? driverId,
+  ) {
     if (owners.isEmpty) {
-      return Center(
-        child: Text('not_assigned_owner'.tr()),
-      );
+      return Center(child: Text('not_assigned_owner'.tr()));
     }
 
     if (driverId == null) {
@@ -180,9 +202,7 @@ class _DriverChatListPageState extends State<DriverChatListPage> {
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
-            leading: const CircleAvatar(
-              child: Icon(Icons.person),
-            ),
+            leading: const CircleAvatar(child: Icon(Icons.person)),
             title: Text(
               ownerName,
               style: const TextStyle(fontWeight: FontWeight.bold),

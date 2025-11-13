@@ -134,7 +134,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() => _dashboardState = _dashboardState.copyWith(isLoading: true));
+    setState(() => _dashboardState = _dashboardState.copyWith(isLoading: true, error: null));
 
     try {
       final profile = await _userService.getUserProfile();

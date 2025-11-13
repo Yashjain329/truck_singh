@@ -147,15 +147,15 @@ class _MyShipmentsPageState extends State<MyShipments> {
     filteredShipments = shipments.where((s) {
       final matchQuery =
           searchQuery.isEmpty ||
-              s.values.any(
-                    (val) => val.toString().toLowerCase().contains(
-                  searchQuery.toLowerCase(),
-                ),
-              );
+          s.values.any(
+            (val) => val.toString().toLowerCase().contains(
+              searchQuery.toLowerCase(),
+            ),
+          );
       final matchStatus =
           statusFilter == 'All' ||
-              s['booking_status'].toString().toLowerCase() ==
-                  statusFilter.toLowerCase();
+          s['booking_status'].toString().toLowerCase() ==
+              statusFilter.toLowerCase();
       return matchQuery && matchStatus;
     }).toList();
 
@@ -184,32 +184,33 @@ class _MyShipmentsPageState extends State<MyShipments> {
         title: Text('filterByStatus'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            'All',
-            'Pending',
-            'Accepted',
-            'En Route to Pickup',
-            'Arrived at Pickup',
-            'Loading',
-            'Picked Up',
-            'In Transit',
-            'Arrived at Drop',
-            'Unloading',
-            'Delivered',
-            'Completed',
-          ].map((status) {
-            return RadioListTile<String>(
-              value: status,
-              groupValue: statusFilter,
-              title: Text(status.tr()),
-              onChanged: (val) {
-                if (val != null) {
-                  Navigator.pop(context);
-                  filterByStatus(val);
-                }
-              },
-            );
-          }).toList(),
+          children:
+              [
+                'All',
+                'Pending',
+                'Accepted',
+                'En Route to Pickup',
+                'Arrived at Pickup',
+                'Loading',
+                'Picked Up',
+                'In Transit',
+                'Arrived at Drop',
+                'Unloading',
+                'Delivered',
+                'Completed',
+              ].map((status) {
+                return RadioListTile<String>(
+                  value: status,
+                  groupValue: statusFilter,
+                  title: Text(status.tr()),
+                  onChanged: (val) {
+                    if (val != null) {
+                      Navigator.pop(context);
+                      filterByStatus(val);
+                    }
+                  },
+                );
+              }).toList(),
         ),
       ),
     );
@@ -324,10 +325,7 @@ class _MyShipmentsPageState extends State<MyShipments> {
           ),
           child: Text(
             label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ),
         Positioned(
@@ -396,12 +394,12 @@ class _MyShipmentsPageState extends State<MyShipments> {
     // Remove common redundant words
     String cleaned = address
         .replaceAll(
-      RegExp(
-        r'\b(At Post|Post|Tal|Taluka|Dist|District|Po)\b',
-        caseSensitive: false,
-      ),
-      '',
-    )
+          RegExp(
+            r'\b(At Post|Post|Tal|Taluka|Dist|District|Po)\b',
+            caseSensitive: false,
+          ),
+          '',
+        )
         .replaceAll(RegExp(r'\s+'), ' ') // normalize spaces
         .trim();
 
@@ -468,10 +466,7 @@ class _MyShipmentsPageState extends State<MyShipments> {
           const SizedBox(height: 16),
           Text(
             'noShipments'.tr(),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
@@ -523,183 +518,184 @@ class _MyShipmentsPageState extends State<MyShipments> {
             : filteredShipments.isEmpty
             ? buildEmptyState()
             : ListView.builder(
-          itemCount: filteredShipments.length > 10
-              ? 10
-              : filteredShipments.length,
-          itemBuilder: (_, i) {
-            final s = filteredShipments[i];
-            // Newly Moved date formatting to getFormattedDate
-            return InkWell(
-              // In myTrips.dart, inside the onTap for a list item
-              onTap: () async {
-                final newEditCount = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ShipmentDetailsPage(
-                      shipment: s,
-                      isHistoryPage: false,
-                    ),
-                  ),
-                );
+                itemCount: filteredShipments.length > 10
+                    ? 10
+                    : filteredShipments.length,
+                itemBuilder: (_, i) {
+                  final s = filteredShipments[i];
+                  // Newly Moved date formatting to getFormattedDate
+                  return InkWell(
+                    // In myTrips.dart, inside the onTap for a list item
+                    onTap: () async {
+                      final newEditCount = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ShipmentDetailsPage(
+                            shipment: s,
+                            isHistoryPage: false,
+                          ),
+                        ),
+                      );
 
-                // Check if a valid edit count was returned
-                if (newEditCount != null && newEditCount is int) {
-                  // Find the item in the list and update its edit count
-                  final index = filteredShipments.indexWhere(
-                        (shipment) =>
-                    shipment['shipment_id'] == s['shipment_id'],
-                  );
-                  if (index != -1) {
-                    setState(() {
-                      filteredShipments[index]['edit_count'] =
-                          newEditCount;
-                    });
-                  }
-                }
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Card(
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                elevation: 0.5,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadiusGeometry.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start, // Align top of the card
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      // Check if a valid edit count was returned
+                      if (newEditCount != null && newEditCount is int) {
+                        // Find the item in the list and update its edit count
+                        final index = filteredShipments.indexWhere(
+                          (shipment) =>
+                              shipment['shipment_id'] == s['shipment_id'],
+                        );
+                        if (index != -1) {
+                          setState(() {
+                            filteredShipments[index]['edit_count'] =
+                                newEditCount;
+                          });
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      elevation: 0.5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadiusGeometry.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start, // Align top of the card
                           children: [
-                            // Pickup Address Row
-                            Row(
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Pickup Address Row
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.location_on,
+                                        color: Colors.red,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          '${trimAddress(s['pickup'] ?? '')}', // pickup trimmed address as company name and city name
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 5),
+                                  // Drop Address Row
+                                  Row(
+                                    children: [
+                                      Icon(Icons.pin_drop, color: Colors.teal),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          '${trimAddress(s['drop'] ?? '')}', // drop trimmed address as company name and city name
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${s['shipment_id']}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${'pickup'.tr()}: ${getFormattedDate(s['created_at'])}',
+                                  ),
+                                  Text(
+                                    '${'drop'.tr()}: ${getFormattedDate(s['delivery_date'])}',
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        getStatusIcon(s['booking_status']),
+                                        size: 20,
+                                        color: getStatusColor(
+                                          s['booking_status'],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      // Place the status text here (localized if key exists)
+                                      Text(s['booking_status'].toString().tr()),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // "TRACK" button column on the right side
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Icon(
-                                  Icons.location_on,
-                                  color: Colors.red,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    '${trimAddress(s['pickup'] ?? '')}', // pickup trimmed address as company name and city name
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                if (getShipmentBadge(s) != null)
+                                  getShipmentBadge(s)!,
+                                const SizedBox(height: 50),
+                                if (s['booking_status'] != 'Completed')
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      height: 80,
+                                      width: 80,
+                                      decoration: BoxDecoration(
+                                        color: Colors.teal.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.teal.shade100,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.location_pin,
+                                            size: 40,
+                                            color: Colors.teal[700],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'track'.tr(),
+                                            style: TextStyle(
+                                              color: Colors.teal[800],
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            // Drop Address Row
-                            Row(
-                              children: [
-                                Icon(Icons.pin_drop, color: Colors.teal),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    '${trimAddress(s['drop'] ?? '')}', // drop trimmed address as company name and city name
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${s['shipment_id']}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${'pickup'.tr()}: ${getFormattedDate(s['created_at'])}',
-                            ),
-                            Text(
-                              '${'drop'.tr()}: ${getFormattedDate(s['delivery_date'])}',
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  getStatusIcon(s['booking_status']),
-                                  size: 20,
-                                  color: getStatusColor(
-                                    s['booking_status'],
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                // Place the status text here (localized if key exists)
-                                Text(s['booking_status'].toString().tr()),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // "TRACK" button column on the right side
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          if (getShipmentBadge(s) != null) getShipmentBadge(s)!,
-                          const SizedBox(height: 50),
-                          if (s['booking_status'] != 'Completed')
-                            InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                height: 80,
-                                width: 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.teal.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.teal.shade100,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.location_pin,
-                                      size: 40,
-                                      color: Colors.teal[700],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'track'.tr(),
-                                      style: TextStyle(
-                                        color: Colors.teal[800],
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
       ),
     );
   }
@@ -729,8 +725,8 @@ class ShipmentSearchDelegate extends SearchDelegate<String> {
         .where(
           (s) => s.values.any(
             (val) => val.toString().toLowerCase().contains(query.toLowerCase()),
-      ),
-    )
+          ),
+        )
         .toList();
 
     return ListView.builder(
@@ -739,8 +735,7 @@ class ShipmentSearchDelegate extends SearchDelegate<String> {
         final s = results[i];
         return ListTile(
           title: Text('${s['pickup']} → ${s['drop']}'),
-          subtitle:
-          Text('${'status'.tr()}: ${s['booking_status'] ?? ''}'),
+          subtitle: Text('${'status'.tr()}: ${s['booking_status'] ?? ''}'),
           onTap: () => close(context, query),
         );
       },

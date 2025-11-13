@@ -45,7 +45,7 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
     try {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar( SnackBar(content: Text('opening_chat'.tr())));
+      ).showSnackBar(SnackBar(content: Text('opening_chat'.tr())));
 
       final roomId = await getRoomId();
 
@@ -71,22 +71,22 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
 
   // New: Confirmation dialog before creating a room
   Future<void> _confirmAndNavigateToDriverChat(
-      String driverId,
-      String driverName,
-      ) async {
+    String driverId,
+    String driverName,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title:  Text('start_chat'.tr()),
+        title: Text('start_chat'.tr()),
         content: Text('confirm_start_chat $driverName?'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child:  Text('cancel'.tr()),
+            child: Text('cancel'.tr()),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child:  Text('start'.tr()),
+            child: Text('start'.tr()),
           ),
         ],
       ),
@@ -95,9 +95,9 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
     if (confirm == true) {
       final agentId = await _chatService.getCurrentCustomUserId();
       if (agentId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('user_not_identified'.tr())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('user_not_identified'.tr())));
         return;
       }
       _navigateToChat(
@@ -113,46 +113,74 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
       length: 2, // Two tabs: Shipments and Direct
       child: Scaffold(
         appBar: AppBar(
-          title:  Text('my_chats'.tr()),
+          title: Text('my_chats'.tr()),
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           bottom: TabBar(
-            indicatorColor: Theme.of(context).colorScheme.secondary, // Indicator color for selected tab
-            labelColor: Theme.of(context).colorScheme.onPrimary,      // Text color for selected tab
-            unselectedLabelColor: Colors.white70,                     // Text color for unselected tab
+            indicatorColor: Theme.of(
+              context,
+            ).colorScheme.secondary, // Indicator color for selected tab
+            labelColor: Theme.of(
+              context,
+            ).colorScheme.onPrimary, // Text color for selected tab
+            unselectedLabelColor:
+                Colors.white70, // Text color for unselected tab
             tabs: [
-              Tab(icon: Icon(Icons.local_shipping), text: 'shipment_chats'.tr()),
+              Tab(
+                icon: Icon(Icons.local_shipping),
+                text: 'shipment_chats'.tr(),
+              ),
               Tab(icon: Icon(Icons.person), text: 'direct_chats'.tr()),
             ],
           ),
-
         ),
-        body: RefreshIndicator(
-          onRefresh: _refreshData,
-          child: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
-            future: _dataFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              }
-              if (!snapshot.hasData) {
-                return  Center(child: Text('no_data_found'.tr()));
-              }
+        body: TabBarView(
+          children: [
+            RefreshIndicator(
+              onRefresh: _refreshData,
+              child: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
+                future: _dataFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  //  This error shows when you have network problem 
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Check Internet conection\n',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            TextSpan(text: '${snapshot.error}'),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  // if (snapshot.hasError) {
+                  // return Center(child: Text(' Check Internet conection \n${snapshot.error}'));
+                  // }
+                  if (!snapshot.hasData) {
+                    return Center(child: Text('no_data_found'.tr()));
+                  }
 
-              final shipments = snapshot.data!['shipments'] ?? [];
-              final drivers = snapshot.data!['drivers'] ?? [];
+                  final shipments = snapshot.data!['shipments'] ?? [];
+                  final drivers = snapshot.data!['drivers'] ?? [];
 
-              return TabBarView(
-                children: [
-                  _buildShipmentList(shipments),
-                  _buildDriverList(drivers),
-                ],
-              );
-            },
-          ),
+                  return TabBarView(
+                    children: [
+                      _buildShipmentList(shipments),
+                      _buildDriverList(drivers),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -161,7 +189,7 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
   // Widget for the list of shipment chats
   Widget _buildShipmentList(List<Map<String, dynamic>> shipments) {
     if (shipments.isEmpty) {
-      return  Center(child: Text('no_active_shipments'.tr()));
+      return Center(child: Text('no_active_shipments'.tr()));
     }
     return ListView.builder(
       itemCount: shipments.length,
@@ -176,7 +204,7 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
               shipmentId,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle:  Text('group_chat_shipment'.tr()),
+            subtitle: Text('group_chat_shipment'.tr()),
             onTap: () => _navigateToChat(
               chatTitle: '#$shipmentId',
               getRoomId: () => _chatService.getShipmentChatRoom(shipmentId),
@@ -190,7 +218,7 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
   // Widget for the list of direct driver chats
   Widget _buildDriverList(List<Map<String, dynamic>> drivers) {
     if (drivers.isEmpty) {
-      return  Center(child: Text('no_drivers_added'.tr()));
+      return Center(child: Text('no_drivers_added'.tr()));
     }
     return ListView.builder(
       itemCount: drivers.length,
