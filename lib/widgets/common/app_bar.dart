@@ -1,13 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:logistics_toolkit/features/notifications/presentation/screen/notification_center.dart';
-import 'package:logistics_toolkit/features/notifications/real_time_notification_service.dart';
 import 'package:logistics_toolkit/features/settings/presentation/screen/settings_page.dart';
-import 'package:logistics_toolkit/services/chat_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../features/auth/services/supabase_service.dart';
-import '../../features/chat/agent_chat_list_page.dart';
-import '../../features/chat/driver_chat_list_page.dart';
+import '../../features/notifications/notification_service.dart';
 
 class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String? pageTitle;
@@ -41,57 +37,6 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _CustomAppBarState extends State<CustomAppBar> {
-  final RealTimeNotificationService _notificationService =
-  RealTimeNotificationService();
-  // final ChatService _chatService = ChatService();
-  StreamSubscription? _notificationSubscription;
-  int _unreadNotifications = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.showNotifications) {
-      _initializeNotifications();
-    }
-  }
-
-  @override
-  void dispose() {
-    _notificationSubscription?.cancel();
-    _notificationService.dispose();
-    // _chatService.dispose();
-    super.dispose();
-  }
-
-  Future<void> _initializeNotifications() async {
-    await _notificationService.initialize();
-    final user = SupabaseService.getCurrentUser();
-    if (user != null) {
-      _notificationService.startListening(user.id);
-      _notificationSubscription = _notificationService.notificationStream
-          .listen((_) {
-        _fetchUnreadCount();
-      });
-      _fetchUnreadCount();
-    }
-  }
-
-  Future<void> _fetchUnreadCount() async {
-    try {
-      final user = SupabaseService.getCurrentUser();
-      if (user == null) return;
-      final count = await SupabaseService.client
-          .from('notifications')
-          .count(CountOption.exact)
-          .eq('user_id', user.id)
-          .eq('read', false);
-      if (mounted) {
-        setState(() => _unreadNotifications = count);
-      }
-    } catch (e) {
-      print("Error fetching unread count: $e");
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -241,38 +186,47 @@ class _CustomAppBarState extends State<CustomAppBar> {
   }
 
   Widget _buildNotificationButton() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationCenterPage()),
-            );
-            _fetchUnreadCount();
-          },
-        ),
-        if (_unreadNotifications > 0)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              child: Text(
-                '$_unreadNotifications',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-                textAlign: TextAlign.center,
-              ),
+    return StreamBuilder<int>(
+      stream: NotificationService.getUnreadCountStream(),
+      builder: (context, snapshot) {
+        int unreadCount = 0;
+        if (snapshot.hasData) {
+          unreadCount = snapshot.data!;
+        }
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationCenterPage()),
+                );
+              },
             ),
-          ),
-      ],
+            if (unreadCount > 0)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

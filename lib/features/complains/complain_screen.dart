@@ -6,7 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class ComplaintPage extends StatefulWidget {
-  // Add final fields to hold the passed-in data
   final bool editMode;
   final String? preFilledShipmentId;
   final Map<String, dynamic> complaintData;
@@ -14,7 +13,7 @@ class ComplaintPage extends StatefulWidget {
   const ComplaintPage({
     super.key,
     required this.editMode,
-    this.preFilledShipmentId, // Make it nullable
+    this.preFilledShipmentId,
     required this.complaintData,
   });
 
@@ -30,10 +29,10 @@ class _ComplaintPageState extends State<ComplaintPage> {
 
   Map<String, dynamic>? _senderProfile;
   Map<String, dynamic>? _recipientProfile;
-  // Holds the fetched shipment data for autofill
   Map<String, dynamic>? _shipmentDetails;
-  // Cached assigned user IDs from shipment
   Map<String, String?> _cachedAssignedUsers = {};
+  String? _shipmentCreatorRole;
+  String? _shipmentCreatorId;
 
   String? _selectedRecipientRole;
   final List<String> _recipientRoles = [
@@ -41,34 +40,52 @@ class _ComplaintPageState extends State<ComplaintPage> {
     'Shipper',
     'Agent',
     'Truck Owner',
-    'Company',
   ];
-
-  // Get filtered recipient roles excluding current user's role
   List<String> get _filteredRecipientRoles {
     if (_senderProfile == null) return _recipientRoles;
 
     final senderRole = _senderProfile!['role'] as String?;
-    if (senderRole == null) return _recipientRoles;
+    final senderCustomId = _senderProfile!['custom_user_id'] as String?;
+    final rolesWithAssignee = _recipientRoles.where((role) {
+      final id = _cachedAssignedUsers[role];
+      return id != null && id.isNotEmpty;
+    }).toList();
 
-    // Map database role values to display values
-    String senderDisplayRole;
-    if (senderRole.toLowerCase().contains('driver')) {
-      senderDisplayRole = 'Driver';
-    } else if (senderRole.toLowerCase().contains('shipper')) {
-      senderDisplayRole = 'Shipper';
-    } else if (senderRole.toLowerCase().contains('agent')) {
-      senderDisplayRole = 'Agent';
-    } else if (senderRole.toLowerCase().contains('truckowner')) {
-      senderDisplayRole = 'Truck Owner';
-    } else if (senderRole.toLowerCase().contains('company')) {
-      senderDisplayRole = 'Company';
-    } else {
-      return _recipientRoles; // If role doesn't match, show all options
+    if (rolesWithAssignee.isEmpty) {
+      return _recipientRoles;
     }
+    String? senderDisplayRole;
+    if (senderRole != null) {
+      final lower = senderRole.toLowerCase();
+      if (lower.contains('driver')) {
+        senderDisplayRole = 'Driver';
+      } else if (lower.contains('shipper')) {
+        senderDisplayRole = 'Shipper';
+      } else if (lower.contains('agent')) {
+        senderDisplayRole = 'Agent';
+      } else if (lower.contains('truckowner')) {
+        senderDisplayRole = 'Truck Owner';
+      }
+    }
+    List<String> baseFiltered = rolesWithAssignee;
+    if (senderDisplayRole != null) {
+      baseFiltered =
+          baseFiltered.where((role) => role != senderDisplayRole).toList();
+    }
+    final creatorRole = _shipmentCreatorRole;
+    final creatorId = _shipmentCreatorId;
 
-    // Return all roles except sender's role
-    return _recipientRoles.where((role) => role != senderDisplayRole).toList();
+    final isCreator =
+        creatorId != null && senderCustomId != null && creatorId == senderCustomId;
+
+    final isCreatorAgent = creatorRole != null && creatorRole.contains('agent');
+    final isCreatorTruckOwner =
+        creatorRole != null && creatorRole.contains('truckowner');
+
+    if (isCreator && (isCreatorAgent || isCreatorTruckOwner)) {
+      return baseFiltered.where((r) => r == 'Driver').toList();
+    }
+    return baseFiltered;
   }
 
   final List<String> _preBuiltSubjects = [
@@ -87,17 +104,17 @@ class _ComplaintPageState extends State<ComplaintPage> {
   bool _isLoading = false;
   bool _isFetchingSender = true;
   bool _isVerifyingRecipient = false;
-  // New: Loading state for the shipment fetch
+  // Loading state for the shipment fetch
   bool _isFetchingShipment = false;
 
   @override
   void initState() {
     super.initState();
     _fetchSenderProfile();
-    // Use pre-filled data if available, otherwise fetch shipment details
     if (widget.complaintData.isNotEmpty) {
       _shipmentDetails = widget.complaintData;
       _cacheAssignedUsers();
+      _determineShipmentCreator();
     } else {
       _fetchShipmentDetails();
     }
@@ -125,16 +142,15 @@ class _ComplaintPageState extends State<ComplaintPage> {
   // Check network connectivity before making API calls
   Future<bool> _checkConnectivity() async {
     try {
-      final result = await InternetAddress.lookup(
-        'google.com',
-      ).timeout(const Duration(seconds: 3));
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 3));
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (e) {
       return false;
     }
   }
 
-  // New: Fetches shipment data for autofill
+  // Fetches shipment data for autofill
   Future<void> _fetchShipmentDetails() async {
     if (widget.preFilledShipmentId == null) return;
 
@@ -144,7 +160,7 @@ class _ComplaintPageState extends State<ComplaintPage> {
       final data = await Supabase.instance.client
           .from('shipment')
           .select(
-        'assigned_driver, assigned_agent, shipper_id, assigned_company, assigned_truckowner',
+        'assigned_driver, assigned_agent, shipper_id, assigned_truckowner',
       )
           .eq('shipment_id', widget.preFilledShipmentId!)
           .single()
@@ -157,6 +173,7 @@ class _ComplaintPageState extends State<ComplaintPage> {
           _shipmentDetails = data;
         });
         _cacheAssignedUsers();
+        _determineShipmentCreator();
       }
     } catch (e) {
       print('ERROR in _fetchShipmentDetails: $e');
@@ -186,6 +203,37 @@ class _ComplaintPageState extends State<ComplaintPage> {
     }
   }
 
+  // NEW: Determine who actually created the shipment based on shipper_id
+  Future<void> _determineShipmentCreator() async {
+    if (_shipmentDetails == null) return;
+
+    final shipperId = _shipmentDetails!['shipper_id']?.toString();
+    if (shipperId == null || shipperId.isEmpty) return;
+
+    try {
+      final profile = await Supabase.instance.client
+          .from('user_profiles')
+          .select('role, custom_user_id')
+          .eq('custom_user_id', shipperId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 10));
+
+      if (profile != null && mounted) {
+        setState(() {
+          _shipmentCreatorRole =
+              (profile['role'] as String?)?.toLowerCase().trim();
+          _shipmentCreatorId = profile['custom_user_id']?.toString() ?? shipperId;
+        });
+
+        print(
+          'Shipment created by role: $_shipmentCreatorRole, id: $_shipmentCreatorId',
+        );
+      }
+    } catch (e) {
+      print('Error determining shipment creator: $e');
+    }
+  }
+
   // Cache assigned user IDs from shipment details
   void _cacheAssignedUsers() {
     if (_shipmentDetails == null) return;
@@ -195,7 +243,6 @@ class _ComplaintPageState extends State<ComplaintPage> {
     _cachedAssignedUsers = {
       'Driver': _shipmentDetails!['assigned_driver']?.toString(),
       'Agent': _shipmentDetails!['assigned_agent']?.toString(),
-      'Company': _shipmentDetails!['assigned_company']?.toString(),
       'Truck Owner': _shipmentDetails!['assigned_truckowner']?.toString(),
       'Shipper': _shipmentDetails!['shipper_id']?.toString(),
     };
@@ -225,7 +272,8 @@ class _ComplaintPageState extends State<ComplaintPage> {
             _recipientIdController.text = cachedUserId;
             _recipientProfile = response;
             print(
-              'Auto-filled recipient: ${response['name']} (${response['custom_user_id']})',
+              'Auto-filled recipient: ${response['name']} '
+                  '(${response['custom_user_id']})',
             );
           });
         }
@@ -240,11 +288,9 @@ class _ComplaintPageState extends State<ComplaintPage> {
       }
     } catch (e) {
       print('Error auto-filling recipient ID for role $role: $e');
-      // Log detailed error for debugging
       if (e is PostgrestException) {
         print('Supabase error: ${e.message}, Details: ${e.details}');
       }
-      // Don't show error to user, just clear the field
       if (mounted) {
         setState(() {
           _recipientIdController.clear();
@@ -262,13 +308,10 @@ class _ComplaintPageState extends State<ComplaintPage> {
         setState(() => _isFetchingSender = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'no_internet'.tr(),
-            ),
+            content: Text('no_internet'.tr()),
             backgroundColor: Colors.red,
             action: SnackBarAction(
               label: 'retry'.tr(),
-              //textColor: Colors.white,
               onPressed: () => _fetchSenderProfile(),
             ),
           ),
@@ -358,7 +401,7 @@ class _ComplaintPageState extends State<ComplaintPage> {
       List<String> dbRoles = [];
       switch (_selectedRecipientRole) {
         case 'Driver':
-          dbRoles = ['driver_individual', 'driver_company'];
+          dbRoles = ['driver'];
           break;
         case 'Shipper':
           dbRoles = ['shipper'];
@@ -395,11 +438,9 @@ class _ComplaintPageState extends State<ComplaintPage> {
         if (e.toString().contains('TimeoutException')) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                'network_timeout'.tr(),
-              ),
+              content: Text('network_timeout'.tr()),
               backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
+              duration: const Duration(seconds: 3),
             ),
           );
         }
@@ -418,8 +459,6 @@ class _ComplaintPageState extends State<ComplaintPage> {
       );
       return;
     }
-
-    // Additional validation to prevent self-complaints
     if (_senderProfile != null && _recipientProfile != null) {
       if (_senderProfile!['custom_user_id'] ==
           _recipientProfile!['custom_user_id']) {
@@ -466,7 +505,7 @@ class _ComplaintPageState extends State<ComplaintPage> {
         'complaint': _complaintController.text.trim(),
         'status': 'Open',
         'attachment_url': attachmentUrl,
-        'shipment_id': widget.preFilledShipmentId, // Also log the shipment ID
+        'shipment_id': widget.preFilledShipmentId,
       };
 
       await Supabase.instance.client
@@ -528,7 +567,7 @@ class _ComplaintPageState extends State<ComplaintPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:  Text('file_complaint'.tr()),
+        title: Text('file_complaint'.tr()),
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
       ),
@@ -569,21 +608,23 @@ class _ComplaintPageState extends State<ComplaintPage> {
             if (profile == null)
               Text(
                 'could_not_load_profile_info'.tr(),
-                style: TextStyle(color: Colors.red),
+                style: const TextStyle(color: Colors.red),
               )
             else ...[
               Text(
                 profile['name'] ?? 'N/A',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
                 'ID: ${profile['custom_user_id'] ?? 'N/A'}',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.grey.shade600),
               ),
             ],
           ],
@@ -607,16 +648,16 @@ class _ComplaintPageState extends State<ComplaintPage> {
             const Divider(height: 20),
             DropdownButtonFormField<String>(
               value: _selectedRecipientRole,
-              decoration:  InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'select_recipient_role'.tr(),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
               items: _filteredRecipientRoles
                   .map(
-                    (role) => DropdownMenuItem(value: role, child: Text(role)),
+                    (role) =>
+                    DropdownMenuItem(value: role, child: Text(role)),
               )
                   .toList(),
-              // Updated: onChanged now triggers the autofill
               onChanged: (value) {
                 if (value == null) return;
                 setState(() {
@@ -628,29 +669,22 @@ class _ComplaintPageState extends State<ComplaintPage> {
               },
               validator: (value) {
                 if (value == null) return 'Please select a role';
-
-                // Additional validation to prevent selecting same role as sender
                 if (_senderProfile != null) {
                   final senderRole = _senderProfile!['role'] as String?;
                   if (senderRole != null) {
-                    String senderDisplayRole;
-                    if (senderRole.toLowerCase().contains('driver')) {
+                    String? senderDisplayRole;
+                    final lower = senderRole.toLowerCase();
+                    if (lower.contains('driver')) {
                       senderDisplayRole = 'Driver';
-                    } else if (senderRole.toLowerCase().contains('shipper')) {
+                    } else if (lower.contains('shipper')) {
                       senderDisplayRole = 'Shipper';
-                    } else if (senderRole.toLowerCase().contains('agent')) {
+                    } else if (lower.contains('agent')) {
                       senderDisplayRole = 'Agent';
-                    } else if (senderRole.toLowerCase().contains(
-                      'truckowner',
-                    )) {
+                    } else if (lower.contains('truckowner')) {
                       senderDisplayRole = 'Truck Owner';
-                    } else if (senderRole.toLowerCase().contains('company')) {
-                      senderDisplayRole = 'Company';
-                    } else {
-                      return null; // Unknown role, allow selection
                     }
 
-                    if (value == senderDisplayRole) {
+                    if (senderDisplayRole != null && value == senderDisplayRole) {
                       return 'You cannot file a complaint against yourself';
                     }
                   }
@@ -684,9 +718,8 @@ class _ComplaintPageState extends State<ComplaintPage> {
                       ? const Icon(Icons.error, color: Colors.red)
                       : null)),
                 ),
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Recipient ID is required'
-                    : null,
+                validator: (value) =>
+                value == null || value.isEmpty ? 'Recipient ID is required' : null,
               ),
               if (_recipientProfile != null)
                 Padding(
@@ -702,10 +735,10 @@ class _ComplaintPageState extends State<ComplaintPage> {
               else if (_recipientIdController.text.isNotEmpty &&
                   !_isVerifyingRecipient)
                 Padding(
-                  padding: EdgeInsets.only(top: 8.0),
+                  padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     'user_not_found_with_role'.tr(),
-                    style: TextStyle(color: Colors.red),
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
             ],
@@ -730,9 +763,9 @@ class _ComplaintPageState extends State<ComplaintPage> {
             const Divider(height: 20),
             DropdownButtonFormField<String>(
               value: _selectedSubject,
-              decoration:  InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'subject_label'.tr(),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
               items: _preBuiltSubjects
                   .map(
@@ -751,9 +784,9 @@ class _ComplaintPageState extends State<ComplaintPage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _subjectController,
-                decoration:  InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'custom_subject'.tr(),
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Custom subject is required'
@@ -763,18 +796,20 @@ class _ComplaintPageState extends State<ComplaintPage> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _complaintController,
-              decoration:  InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'complaint_label'.tr(),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 alignLabelWithHint: true,
               ),
               maxLines: 5,
               maxLength: 1000,
               validator: (value) {
-                if (value == null || value.trim().isEmpty)
+                if (value == null || value.trim().isEmpty) {
                   return 'Complaint details cannot be empty';
-                if (value.trim().length < 20)
+                }
+                if (value.trim().length < 20) {
                   return 'Please provide more detail (min 20 characters)';
+                }
                 return null;
               },
             ),
@@ -826,7 +861,7 @@ class _ComplaintPageState extends State<ComplaintPage> {
         ),
       )
           : const Icon(Icons.send),
-      label:  Text('submit_complaint'.tr()),
+      label: Text('submit_complaint'.tr()),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,

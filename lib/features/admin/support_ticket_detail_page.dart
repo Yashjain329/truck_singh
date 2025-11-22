@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../notifications/notification_service.dart';
 
 class EnhancedSupportTicketDetailPage extends StatefulWidget {
   final Map<String, dynamic> ticket;
@@ -15,6 +16,7 @@ class EnhancedSupportTicketDetailPage extends StatefulWidget {
 
 class _EnhancedSupportTicketDetailPageState
     extends State<EnhancedSupportTicketDetailPage> {
+  late Map<String, dynamic> _ticketData; // Store local copy of ticket data to update UI instantly
   late String _currentStatus;
   bool _isUpdating = false;
   final _responseController = TextEditingController();
@@ -22,14 +24,20 @@ class _EnhancedSupportTicketDetailPageState
   List<Map<String, dynamic>> _responses = [];
   bool _isLoadingResponses = true;
   String _currentUserRole = '';
-  bool _canChangeStatus = false;
+  String? _currentUserId;
+  String? _currentUserProfileName;
+
+  // Permissions
+  bool _isAdmin = false;
+  bool _isTicketCreator = false;
 
   @override
   void initState() {
     super.initState();
-    _currentStatus = widget.ticket['status'];
+    _ticketData = widget.ticket; // Initialize with passed data
+    _currentStatus = _ticketData['status'];
     _loadResponses();
-    _checkUserRole();
+    _checkUserRoleAndProfile();
   }
 
   @override
@@ -38,25 +46,47 @@ class _EnhancedSupportTicketDetailPageState
     super.dispose();
   }
 
-  Future<void> _checkUserRole() async {
+  Future<void> _checkUserRoleAndProfile() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
+        _currentUserId = user.id;
+        _isTicketCreator = _currentUserId == _ticketData['user_id'];
+
         final userProfile = await Supabase.instance.client
             .from('user_profiles')
-            .select('role')
+            .select('role, name')
             .eq('user_id', user.id)
             .single();
 
         setState(() {
           _currentUserRole = userProfile['role'] ?? '';
-          _canChangeStatus = _currentUserRole == 'Admin';
+          _currentUserProfileName = userProfile['name'] ?? 'User';
+          _isAdmin = _currentUserRole == 'Admin';
         });
+
+        // Refresh ticket data to get latest assignment status
+        _refreshTicketData();
       }
     } catch (e) {
+      debugPrint('Error checking role: $e');
+    }
+  }
+
+  Future<void> _refreshTicketData() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('support_tickets')
+          .select()
+          .eq('id', widget.ticket['id'])
+          .single();
+
       setState(() {
-        _canChangeStatus = false;
+        _ticketData = data;
+        _currentStatus = data['status'];
       });
+    } catch (e) {
+      debugPrint('Error refreshing ticket: $e');
     }
   }
 
@@ -83,6 +113,27 @@ class _EnhancedSupportTicketDetailPageState
     }
   }
 
+  Future<void> _acceptTicket() async {
+    if (!_isAdmin) return;
+
+    setState(() => _isUpdating = true);
+    try {
+      await Supabase.instance.client.from('support_tickets').update({
+        'assigned_admin_id': _currentUserId,
+        'assigned_admin_name': _currentUserProfileName,
+        'status': 'In Progress', // Auto-move to In Progress
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', _ticketData['id']);
+
+      await _refreshTicketData();
+      _showSnackBar('You have accepted this ticket.', Colors.green);
+    } catch (e) {
+      _showSnackBar('Failed to accept ticket: $e', Colors.red);
+    } finally {
+      setState(() => _isUpdating = false);
+    }
+  }
+
   Future<void> _updateStatus(String newStatus) async {
     setState(() => _isUpdating = true);
     try {
@@ -90,6 +141,17 @@ class _EnhancedSupportTicketDetailPageState
         'status': newStatus,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', widget.ticket['id']);
+
+      // Notify Ticket Creator if needed
+      final ticketCreatorUuid = _ticketData['user_id'];
+      if (ticketCreatorUuid != _currentUserId) {
+        await NotificationService.sendNotification(
+          recipientUserId: ticketCreatorUuid,
+          title: 'Ticket #${widget.ticket['id']} Updated',
+          message: 'The status of your ticket has been changed to "$newStatus".',
+          data: {'type': 'support_ticket', 'ticket_id': widget.ticket['id'].toString()},
+        );
+      }
 
       setState(() => _currentStatus = newStatus);
       _showSnackBar('Status updated successfully!', Colors.green);
@@ -108,35 +170,53 @@ class _EnhancedSupportTicketDetailPageState
 
     setState(() => _isSubmittingResponse = true);
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) {
-        _showSnackBar('Authentication error', Colors.red);
-        return;
-      }
-
-      // Get admin user info
-      final adminProfile = await Supabase.instance.client
-          .from('user_profiles')
-          .select('name, custom_user_id')
-          .eq('user_id', user.id)
-          .single();
+      final responderType = _isAdmin ? 'admin' : 'user';
 
       // Add message using the JSON chat function
       await Supabase.instance.client.rpc(
         'add_chat_message',
         params: {
           'ticket_id_param': widget.ticket['id'],
-          'responder_id_param': user.id,
-          'responder_name_param': adminProfile['name'] ?? 'Admin',
-          'responder_type_param': 'admin',
+          'responder_id_param': _currentUserId,
+          'responder_name_param': _currentUserProfileName ?? 'Unknown',
+          'responder_type_param': responderType,
           'message_text': _responseController.text.trim(),
         },
       );
 
-      // Update ticket status to In Progress if it's Pending
-      if (_currentStatus == 'Pending') {
-        await _updateStatus('In Progress');
+      // --- NOTIFICATION LOGIC ---
+      final ticketId = widget.ticket['id'].toString();
+      final messageSnippet = _responseController.text.trim();
+      final shortMessage = messageSnippet.length > 50 ? '${messageSnippet.substring(0, 50)}...' : messageSnippet;
+
+      if (_isAdmin) {
+        // Case 1: Admin replies -> Notify ONLY the Ticket Creator (User)
+        await NotificationService.sendNotification(
+          recipientUserId: _ticketData['user_id'],
+          title: 'New Reply on Ticket #$ticketId',
+          message: 'Admin: $shortMessage',
+          data: {'type': 'support_ticket', 'ticket_id': ticketId},
+        );
+      } else {
+        // Case 2: User replies
+        if (_ticketData['assigned_admin_id'] != null) {
+          // Sub-case 2a: Ticket IS Assigned -> Notify ONLY the Assigned Admin
+          await NotificationService.sendNotification(
+            recipientUserId: _ticketData['assigned_admin_id'],
+            title: 'New Reply on Ticket #$ticketId',
+            message: '${_currentUserProfileName}: $shortMessage',
+            data: {'type': 'support_ticket', 'ticket_id': ticketId},
+          );
+        } else {
+          // Sub-case 2b: Ticket IS NOT Assigned -> Notify ALL Admins (Fallback)
+          await NotificationService.notifyAdmins(
+            title: 'New Reply on Ticket #$ticketId',
+            message: '${_currentUserProfileName}: $shortMessage',
+            data: {'type': 'support_ticket', 'ticket_id': ticketId},
+          );
+        }
       }
+      // --- END NOTIFICATION LOGIC ---
 
       _responseController.clear();
       _loadResponses();
@@ -158,6 +238,25 @@ class _EnhancedSupportTicketDetailPageState
     );
   }
 
+  // --- Logic to determine if current user can edit/chat ---
+  bool get _canInteract {
+    // 1. If Ticket Creator (User) -> Always YES
+    if (_isTicketCreator) return true;
+
+    // 2. If Admin:
+    //    - If Unassigned -> NO (Must accept first)
+    //    - If Assigned to ME -> YES
+    //    - If Assigned to OTHERS -> NO
+    if (_isAdmin) {
+      final assignedId = _ticketData['assigned_admin_id'];
+      if (assignedId == null) return false; // Must accept
+      if (assignedId == _currentUserId) return true; // My ticket
+      return false; // Someone else's ticket
+    }
+
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -167,7 +266,10 @@ class _EnhancedSupportTicketDetailPageState
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadResponses,
+            onPressed: () {
+              _refreshTicketData();
+              _loadResponses();
+            },
           ),
         ],
       ),
@@ -191,7 +293,55 @@ class _EnhancedSupportTicketDetailPageState
               ),
             ),
           ),
-          _buildResponseInputSection(),
+          // Only show input if interaction is allowed
+          if (_canInteract) _buildResponseInputSection(),
+          // If Admin and Unassigned, show Accept Button
+          if (_isAdmin && _ticketData['assigned_admin_id'] == null)
+            _buildAcceptButton(),
+          // If Admin and Assigned to Someone Else, show Warning
+          if (_isAdmin && _ticketData['assigned_admin_id'] != null && _ticketData['assigned_admin_id'] != _currentUserId)
+            _buildLockedWarning(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAcceptButton() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))],
+      ),
+      child: ElevatedButton.icon(
+        onPressed: _isUpdating ? null : _acceptTicket,
+        icon: const Icon(Icons.check_circle),
+        label: _isUpdating ? const Text('Accepting...') : const Text('Accept Ticket to Start Work'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLockedWarning() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      color: Colors.grey[200],
+      child: Row(
+        children: [
+          Icon(Icons.lock, color: Colors.grey),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "This ticket is being handled by ${_ticketData['assigned_admin_name'] ?? 'another admin'}.",
+              style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
     );
@@ -201,6 +351,8 @@ class _EnhancedSupportTicketDetailPageState
     final createdAt = DateFormat(
       'dd MMM yyyy, hh:mm a',
     ).format(DateTime.parse(widget.ticket['created_at']));
+
+    bool canChangeStatus = _isAdmin && _ticketData['assigned_admin_id'] == _currentUserId;
 
     return Card(
       color: Theme.of(context).cardColor,
@@ -259,26 +411,14 @@ class _EnhancedSupportTicketDetailPageState
               ],
             ),
             const Divider(height: 24),
-            _buildInfoRow(
-              Icons.person,
-              "user".tr(),
-              widget.ticket['user_name'] ?? 'N/A',
-            ),
-            _buildInfoRow(
-              Icons.badge,
-              "user_id".tr(),
-              widget.ticket['user_custom_id'] ?? 'N/A',
-            ),
-            _buildInfoRow(
-              Icons.email,
-              "email".tr(),
-              widget.ticket['user_email'] ?? 'N/A',
-            ),
-            _buildInfoRow(
-              Icons.work,
-              "role".tr(),
-              widget.ticket['user_role'] ?? 'N/A',
-            ),
+            // Show assignment info
+            if (_ticketData['assigned_admin_name'] != null)
+              _buildInfoRow(Icons.assignment_ind, "Assigned To", _ticketData['assigned_admin_name']),
+
+            _buildInfoRow(Icons.person, "user".tr(), widget.ticket['user_name'] ?? 'N/A'),
+            _buildInfoRow(Icons.badge, "user_id".tr(), widget.ticket['user_custom_id'] ?? 'N/A'),
+            _buildInfoRow(Icons.email, "email".tr(), widget.ticket['user_email'] ?? 'N/A'),
+            _buildInfoRow(Icons.work, "role".tr(), widget.ticket['user_role'] ?? 'N/A'),
             _buildInfoRow(Icons.access_time, "Created".tr(), createdAt),
             const SizedBox(height: 16),
             Row(
@@ -291,12 +431,12 @@ class _EnhancedSupportTicketDetailPageState
                 Expanded(
                   child: _isUpdating
                       ? const LinearProgressIndicator()
-                      : _canChangeStatus
+                      : canChangeStatus
                       ? DropdownButton<String>(
                     value: _currentStatus,
                     isExpanded: true,
                     items:
-                    ['pending'.tr(), 'in_progress'.tr(), 'resolved'.tr()].map((
+                    ['Pending', 'In Progress', 'Resolved'].map((
                         String value,
                         ) {
                       return DropdownMenuItem<String>(
@@ -317,7 +457,6 @@ class _EnhancedSupportTicketDetailPageState
                       vertical: 16,
                     ),
                     decoration: BoxDecoration(
-                      //color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.orange.shade300),
                     ),
@@ -325,7 +464,6 @@ class _EnhancedSupportTicketDetailPageState
                       _currentStatus,
                       style: const TextStyle(
                         fontSize: 16,
-                        //color: Colors.black87,
                       ),
                     ),
                   ),
@@ -496,7 +634,6 @@ class _EnhancedSupportTicketDetailPageState
             child: Icon(
               isAdmin ? Icons.admin_panel_settings : Icons.person,
               size: 16,
-              //color: Colors.white,
             ),
           ),
           const SizedBox(width: 12),

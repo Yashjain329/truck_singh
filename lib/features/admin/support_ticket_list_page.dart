@@ -15,10 +15,12 @@ class _SupportTicketListPageState extends State<SupportTicketListPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _tabs = ['Pending', 'In Progress', 'Resolved'];
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _currentUserId = Supabase.instance.client.auth.currentUser?.id;
     _tabController = TabController(length: _tabs.length, vsync: this);
     setState(() {});
   }
@@ -36,15 +38,14 @@ class _SupportTicketListPageState extends State<SupportTicketListPage>
         title:  Text("support_tickets".tr()),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white, // color for selected tab text
-          //unselectedLabelColor: Colors.grey,
+          labelColor: Colors.white,
           tabs: _tabs.map((key) => Tab(text: key.tr())).toList(),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: _tabs.map((String status) {
-          return TicketList(status: status);
+          return TicketList(status: status, currentUserId: _currentUserId);
         }).toList(),
       ),
     );
@@ -53,8 +54,8 @@ class _SupportTicketListPageState extends State<SupportTicketListPage>
 
 class TicketList extends StatefulWidget {
   final String status;
-  const TicketList({Key? key, required this.status}) : super(key: key);
-
+  final String? currentUserId;
+  const TicketList({Key? key, required this.status, this.currentUserId}) : super(key: key);
   @override
   State<TicketList> createState() => _TicketListState();
 }
@@ -111,6 +112,26 @@ class _TicketListState extends State<TicketList> {
             itemBuilder: (context, index) {
               final ticket = tickets[index];
               final createdAt = DateTime.parse(ticket['created_at']);
+              final assignedId = ticket['assigned_admin_id'];
+              final assignedName = ticket['assigned_admin_name'];
+
+              String assignmentText = '';
+              Color assignmentColor = Colors.grey;
+              IconData assignmentIcon = Icons.person_outline;
+
+              if (assignedId == null) {
+                assignmentText = 'Unassigned';
+                assignmentColor = Colors.orange;
+                assignmentIcon = Icons.assignment_late_outlined;
+              } else if (assignedId == widget.currentUserId) {
+                assignmentText = 'Assigned to Me';
+                assignmentColor = Colors.green;
+                assignmentIcon = Icons.assignment_ind;
+              } else {
+                assignmentText = 'Worked on by ${assignedName ?? 'Admin'}';
+                assignmentColor = Colors.blue;
+                assignmentIcon = Icons.lock_outline;
+              }
 
               return Card(
                 color: Theme.of(context).cardColor,
@@ -121,16 +142,40 @@ class _TicketListState extends State<TicketList> {
                     ticket['user_name'] ?? 'N/A',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(
-                    ticket['message'],
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ticket['message'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(assignmentIcon, size: 12, color: assignmentColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              assignmentText,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: assignmentColor,
+                                  fontWeight: FontWeight.w500
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
                   ),
                   trailing: Text(
                     DateFormat('dd MMM, hh:mm a').format(createdAt),
+                    style: const TextStyle(fontSize: 12),
                   ),
                   onTap: () async {
-                    // Navigate to detail page and wait for a result
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -138,7 +183,6 @@ class _TicketListState extends State<TicketList> {
                             EnhancedSupportTicketDetailPage(ticket: ticket),
                       ),
                     );
-                    // If the status was updated on the detail page, refresh the list
                     if (result == true) {
                       _refresh();
                     }

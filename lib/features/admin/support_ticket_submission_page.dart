@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
+import '../notifications/notification_service.dart';
 
 class SupportTicketSubmissionPage extends StatefulWidget {
   const SupportTicketSubmissionPage({super.key});
@@ -190,10 +191,7 @@ class _SupportTicketSubmissionPageState
           .select('name, custom_user_id, role, email')
           .eq('user_id', user.id)
           .single();
-
-      // Insert support ticket without initial message in chat
-      // The description will be visible in the ticket details, not in chat
-      await Supabase.instance.client.from('support_tickets').insert({
+      final ticketData = {
         'user_id': user.id,
         'user_name': userProfile['name'] ?? 'Unknown',
         'user_custom_id': userProfile['custom_user_id'] ?? 'Unknown',
@@ -204,14 +202,34 @@ class _SupportTicketSubmissionPageState
         'priority': _selectedPriority,
         'screenshot_url': screenshotUrl,
         'status': 'Pending',
-        'message': _messageController.text
-            .trim(), // Store description separately
-        'chat_messages': [], // Start with empty chat
+        'message': _messageController.text.trim(),
+        'chat_messages': [],
         'message_count': 0,
         'last_responder_type': 'user',
         'last_message_time': DateTime.now().toIso8601String(),
         'created_at': DateTime.now().toIso8601String(),
-      });
+      };
+
+      final response = await Supabase.instance.client
+          .from('support_tickets')
+          .insert(ticketData)
+          .select()
+          .single();
+
+      final ticketId = response['id'].toString();
+      final ticketSubject = _subjectController.text.trim();
+
+      await NotificationService.sendNotification(
+        recipientUserId: user.id,
+        title: 'Ticket Created #$ticketId',
+        message: 'We received your ticket "$ticketSubject". Our team will review it shortly.',
+        data: {'type': 'support_ticket', 'ticket_id': ticketId},
+      );
+      NotificationService.notifyAdmins(
+        title: 'New Support Ticket #$ticketId',
+        message: '${userProfile['name'] ?? 'A user'} created a new ticket: $ticketSubject',
+        data: {'type': 'support_ticket', 'ticket_id': ticketId},
+      ).then((_) => print("Admin notifications sent"));
 
       _showSnackBar('Support ticket submitted successfully!'.tr(), Colors.green);
       Navigator.pop(context);
@@ -314,12 +332,12 @@ class _SupportTicketSubmissionPageState
                             width: 12,
                             height: 12,
                             decoration: BoxDecoration(
-                              color: _getPriorityColor(key), // If your method expects label change to use key
+                              color: _getPriorityColor(key),
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(_priorityLabels[key]!.tr()), // Localized label
+                          Text(_priorityLabels[key]!.tr()),
                         ],
                       ),
                     );
@@ -355,13 +373,10 @@ class _SupportTicketSubmissionPageState
                   },
                 ),
                 const SizedBox(height: 24),
-
-                // Screenshot Section
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    //color: Colors.white,
                     border: Border.all(color: Colors.orange, width: 2),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -393,7 +408,6 @@ class _SupportTicketSubmissionPageState
                           height: 200,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            //color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.grey.shade300),
                             boxShadow: [
