@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'complain_detail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:pull_to_refresh/pull_to_refresh.dart' as ptr;
-
 
 class ComplaintHistoryPage extends StatefulWidget {
   final String? initialComplaintId;
@@ -27,8 +24,6 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
   String _typeFilter = 'All';
   DateTimeRange? _dateRange;
   String _searchQuery = '';
-  final ptr.RefreshController _refreshController =
-  ptr.RefreshController(initialRefresh: false);
 
   @override
   void initState() {
@@ -87,7 +82,7 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
           .order('created_at', ascending: false);
 
       List<Map<String, dynamic>> allRes = [];
-      if (_isAdminOnly(_currentUserRole)) {
+      if (_isAgentOrAdmin(_currentUserRole)) {
         final all = await supabase
             .from('complaints')
             .select()
@@ -106,14 +101,14 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
         error = e.toString();
         loading = false;
       });
-    } finally {
-      _refreshController.refreshCompleted();
     }
   }
 
-  bool _isAdminOnly(String? role) {
-    final r = role?.toLowerCase() ?? '';
-    return r == 'admin';
+  bool _isAgentOrAdmin(String? role) {
+    return role == 'agent' ||
+        role == 'admin' ||
+        role == 'truckowner' ||
+        role == 'company';
   }
 
   List<Map<String, dynamic>> _applyFilters(
@@ -154,13 +149,11 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Use Wrap instead of Row to avoid overflow
           Wrap(
             spacing: 12,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              // Status Dropdown
               DropdownButton<String>(
                 value: _statusFilter,
                 items: [
@@ -472,6 +465,12 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
         title:  Text('complaint_history'.tr()),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: fetchCurrentUserRoleAndComplaints,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -486,11 +485,9 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
             fontSize: 14,
           ),
           tabs: [
-            if (!_isAdminOnly(_currentUserRole))...[
-              Tab(text: 'complaints_made'.tr()),
-              Tab(text: 'complaints_against'.tr()),
-            ],
-            if (_isAdminOnly(_currentUserRole))
+            Tab(text: 'complaints_made'.tr()),
+            Tab(text: 'complaints_against'.tr()),
+            if (_isAgentOrAdmin(_currentUserRole))
               Tab(text: 'all_complaints'.tr()),
           ],
         ),
@@ -503,24 +500,17 @@ class _ComplaintHistoryPageState extends State<ComplaintHistoryPage>
         children: [
           _buildFilters(),
           Expanded(
-            child: ptr.SmartRefresher(
-              controller: _refreshController,
-              onRefresh: fetchCurrentUserRoleAndComplaints,
-              enablePullDown: true,
-              enablePullUp: false,
-              header: const ptr.WaterDropHeader(),
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildComplaintList(complaintsMade),
-                  _buildComplaintList(complaintsAgainst),
-                  if (_isAdminOnly(_currentUserRole))
-                    _buildComplaintList(allComplaints, showParties: true),
-                ],
-              ),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildComplaintList(complaintsMade),
+                _buildComplaintList(complaintsAgainst),
+                if (_isAgentOrAdmin(_currentUserRole))
+                  _buildComplaintList(allComplaints,
+                      showParties: true),
+              ],
             ),
           ),
-
         ],
       ),
     );

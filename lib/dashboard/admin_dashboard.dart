@@ -1,9 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 import '../config/theme.dart';
-import '../features/complains/mycomplain.dart';
 import '../widgets/common/app_bar.dart';
 import 'widgets/feature_card.dart';
 import '../features/admin/manage_shipments_page.dart';
@@ -42,7 +40,6 @@ class AdminDashboardState {
   }
 }
 
-// Service to fetch dashboard stats
 class AdminService {
   final _supabase = Supabase.instance.client;
   Future<Map<String, dynamic>> getAdminProfile() async {
@@ -54,8 +51,6 @@ class AdminService {
         .select('*')
         .eq('user_id', user.id)
         .single();
-
-    if (response == null) throw Exception("Profile not found");
     return response;
   }
 
@@ -83,7 +78,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
 
   void _onLocaleChanged() {
-    if (mounted) setState(() {}); // rebuild to update translations
+    if (mounted) setState(() {});
   }
 
   @override
@@ -205,7 +200,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Text(
             'systemOverview'.tr(),
-            //style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -290,14 +284,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageShipmentsPage())),
         ),
         FeatureCard(
-          title: 'all_complaints'.tr(),
-          subtitle: 'view_history'.tr(),
-          icon: Icons.feedback_outlined,
-          color: Colors.red,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ComplaintHistoryPage())),
+          title: 'trucks'.tr(),
+          subtitle: 'viewallvehicles'.tr(),
+          icon: Icons.directions_bus_filled_outlined,
+          color: Colors.blueGrey,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageTrucksPage())),
         ),
       ],
     );
   }
-
 }

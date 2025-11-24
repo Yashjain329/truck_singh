@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'complain_screen.dart';
@@ -62,7 +61,6 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
         });
       }
     } catch (e) {
-      // Handle error silently
     }
   }
 
@@ -293,30 +291,28 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
       ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-          onRefresh: _refreshComplaint,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildStatusHeader(),
-                const SizedBox(height: 16),
-                _buildBasicInfo(),
-                const SizedBox(height: 16),
-                _buildTimeline(),
-                const SizedBox(height: 16),
-                _buildComplaintDetails(),
-                const SizedBox(height: 16),
-                if (_currentComplaint['attachment_url'] != null)
-                  _buildAttachment(),
-                const SizedBox(height: 16),
-                _buildActions(),
-              ],
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+        onRefresh: _refreshComplaint,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildStatusHeader(),
+              const SizedBox(height: 16),
+              _buildBasicInfo(),
+              const SizedBox(height: 16),
+              _buildTimeline(),
+              const SizedBox(height: 16),
+              _buildComplaintDetails(),
+              const SizedBox(height: 16),
+              if (_currentComplaint['attachment_url'] != null)
+                _buildAttachment(),
+              const SizedBox(height: 16),
+              _buildActions(),
+            ],
           ),
         ),
       ),
