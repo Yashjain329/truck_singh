@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -195,21 +194,21 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           isImage
               ? ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(url),
-          )
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(url),
+                )
               : Row(
-            children: [
-              const Icon(Icons.file_present),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  url.split('/').last,
-                  overflow: TextOverflow.ellipsis,
+                  children: [
+                    const Icon(Icons.file_present),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        url.split('/').last,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
           if ((caption ?? "").isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),

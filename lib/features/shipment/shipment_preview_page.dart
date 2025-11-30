@@ -1,15 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShipmentPreviewPage extends StatefulWidget {
   final String shipmentId;
 
-  const ShipmentPreviewPage({
-    Key? key,
-    required this.shipmentId,
-  }) : super(key: key);
+  const ShipmentPreviewPage({Key? key, required this.shipmentId})
+    : super(key: key);
 
   @override
   State<ShipmentPreviewPage> createState() => _ShipmentPreviewPageState();
@@ -42,12 +39,10 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
       curve: Curves.easeInOut,
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
 
     _animationController.forward();
   }
@@ -78,55 +73,6 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
     }
   }
 
-  Future<void> _updateShipmentStatus() async {
-    try {
-      await Supabase.instance.client
-          .from('shipment')
-          .update({'booking_status': 'Confirmed'})
-          .eq('shipment_id', widget.shipmentId);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle),
-              const SizedBox(width: 8),
-              Text("shipmentConfirmedSuccess".tr()),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error),
-              const SizedBox(width: 8),
-              Text("shipmentUpdateFailed".tr()),
-            ],
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-
-      debugPrint("❌ Update failed: $e");
-    }
-  }
-
   IconData _iconForTitle(String title) {
     switch (title) {
       case 'Shipment Overview':
@@ -143,11 +89,11 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
   }
 
   Widget _buildInfoRow(
-      IconData icon,
-      String label,
-      String value, {
-        bool highlight = false,
-      }) {
+    IconData icon,
+    String label,
+    String value, {
+    bool highlight = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -196,7 +142,7 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 blurRadius: 10,
                 spreadRadius: 2,
                 offset: const Offset(0, 3),
@@ -221,8 +167,11 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
                         color: Colors.orange.shade300,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(_iconForTitle(title),
-                          color: Colors.orange.shade700, size: 20),
+                      child: Icon(
+                        _iconForTitle(title),
+                        color: Colors.orange.shade700,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -264,8 +213,7 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
     }
 
     final status = shipmentData!['booking_status'] ?? 'Unknown';
-    final statusColor =
-    status == 'Confirmed' ? Colors.green : Colors.orange;
+    final statusColor = status == 'Confirmed' ? Colors.green : Colors.orange;
 
     return Column(
       children: [
@@ -277,27 +225,27 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.green.shade400,
-                  Colors.green.shade600,
-                ],
+                colors: [Colors.green.shade400, Colors.green.shade600],
               ),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               children: [
-                const Icon(Icons.check_circle,
-                    color: Colors.white, size: 50),
+                const Icon(Icons.check_circle, color: Colors.white, size: 50),
                 const SizedBox(height: 12),
                 Text(
                   "shipmentCreatedSuccess".tr(),
                   style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
@@ -305,7 +253,9 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
                   child: Text(
                     "ID: ${shipmentData!['shipment_id']}",
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 16),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ],
@@ -315,48 +265,78 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
 
         // Overview Card
         _buildInfoCard("shipmentOverview".tr(), [
-          _buildInfoRow(Icons.tag, "shipmentId".tr(),
-              shipmentData!['shipment_id'],
-              highlight: true),
-          _buildInfoRow(Icons.person, "shipperId".tr(),
-              shipmentData!['shipper_id']),
-          _buildInfoRow(Icons.my_location, "pickup".tr(),
-              shipmentData!['pickup']),
-          _buildInfoRow(Icons.location_on, "destination".tr(),
-              shipmentData!['drop']),
+          _buildInfoRow(
+            Icons.tag,
+            "shipmentId".tr(),
+            shipmentData!['shipment_id'],
+            highlight: true,
+          ),
+          _buildInfoRow(
+            Icons.person,
+            "shipperId".tr(),
+            shipmentData!['shipper_id'],
+          ),
+          _buildInfoRow(
+            Icons.my_location,
+            "pickup".tr(),
+            shipmentData!['pickup'],
+          ),
+          _buildInfoRow(
+            Icons.location_on,
+            "destination".tr(),
+            shipmentData!['drop'],
+          ),
         ]),
 
         // Item Details
         _buildInfoCard("itemDetails".tr(), [
-          _buildInfoRow(Icons.category, "item".tr(),
-              shipmentData!['shipping_item']),
+          _buildInfoRow(
+            Icons.category,
+            "item".tr(),
+            shipmentData!['shipping_item'],
+          ),
           if (shipmentData!['weight'] != null &&
               shipmentData!['weight'].toString().trim().isNotEmpty)
-            _buildInfoRow(Icons.monitor_weight, "weight".tr(),
-                "${shipmentData!['weight']} Ton"),
+            _buildInfoRow(
+              Icons.monitor_weight,
+              "weight".tr(),
+              "${shipmentData!['weight']} Ton",
+            ),
           if (shipmentData!['unit'] != null &&
               shipmentData!['unit'].toString().trim().isNotEmpty)
-            _buildInfoRow(Icons.format_list_numbered, "quantity".tr(),
-                shipmentData!['unit'].toString()),
-          _buildInfoRow(Icons.precision_manufacturing, "material".tr(),
-              shipmentData!['material_inside']),
-          _buildInfoRow(Icons.local_shipping, "truckType".tr(),
-              shipmentData!['truck_type']),
+            _buildInfoRow(
+              Icons.format_list_numbered,
+              "quantity".tr(),
+              shipmentData!['unit'].toString(),
+            ),
+          _buildInfoRow(
+            Icons.precision_manufacturing,
+            "material".tr(),
+            shipmentData!['material_inside'],
+          ),
+          _buildInfoRow(
+            Icons.local_shipping,
+            "truckType".tr(),
+            shipmentData!['truck_type'],
+          ),
         ]),
 
         // Schedule
         _buildInfoCard("schedule".tr(), [
-          _buildInfoRow(Icons.access_time, "pickupTime".tr(),
-              shipmentData!['pickup_time']),
+          _buildInfoRow(
+            Icons.access_time,
+            "pickupTime".tr(),
+            shipmentData!['pickup_time'],
+          ),
           _buildInfoRow(
             Icons.calendar_today,
             "deliveryDate".tr(),
-            DateFormat('MMM dd, yyyy')
-                .format(DateTime.parse(shipmentData!['delivery_date'])),
+            DateFormat(
+              'MMM dd, yyyy',
+            ).format(DateTime.parse(shipmentData!['delivery_date'])),
           ),
           if ((shipmentData!['notes'] ?? '').toString().isNotEmpty)
-            _buildInfoRow(Icons.note_alt, "notes".tr(),
-                shipmentData!['notes']),
+            _buildInfoRow(Icons.note_alt, "notes".tr(), shipmentData!['notes']),
         ]),
 
         // Status
@@ -369,8 +349,11 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(Icons.info_outline,
-                    size: 16, color: Colors.grey.shade700),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: Colors.grey.shade700,
+                ),
               ),
               const SizedBox(width: 12),
               SizedBox(
@@ -382,11 +365,13 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: statusColor.withOpacity(0.3)),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -419,52 +404,51 @@ class _ShipmentPreviewPageState extends State<ShipmentPreviewPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("shipmentPreview".tr()),
-      ),
+      appBar: AppBar(title: Text("shipmentPreview".tr())),
       body: _loading
           ? Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(color: Colors.orange),
-          const SizedBox(height: 16),
-          Text("loadingShipmentDetails".tr(),
-              style: const TextStyle(color: Colors.grey)),
-        ],
-      )
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: Colors.orange),
+                const SizedBox(height: 16),
+                Text(
+                  "loadingShipmentDetails".tr(),
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            )
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildShipmentInfo(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildShipmentInfo(),
 
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context)
-                        .popUntil((route) => route.isFirst);
-                  },
-                  icon: const Icon(Icons.home),
-                  label: Text("backToHome".tr()),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange.shade600,
-                    side: BorderSide(
-                        color: Colors.orange.shade600),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(
+                            context,
+                          ).popUntil((route) => route.isFirst);
+                        },
+                        icon: const Icon(Icons.home),
+                        label: Text("backToHome".tr()),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange.shade600,
+                          side: BorderSide(color: Colors.orange.shade600),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -24,8 +24,9 @@ class AppLocalizations {
   }
 
   static Future<AppLocalizations> load(String languageCode) async {
-    final jsonString =
-    await rootBundle.loadString('assets/translations/$languageCode.json');
+    final jsonString = await rootBundle.loadString(
+      'assets/translations/$languageCode.json',
+    );
     final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
     return AppLocalizations(jsonMap);
   }
@@ -45,6 +46,7 @@ class _MapPickerPageState extends State<MapPickerPage> {
   );
 
   LatLng _selectedPosition = _initialCameraPosition.target;
+  // ignore: unused_field
   GoogleMapController? _mapController;
   bool _isGeocoding = false;
 
@@ -66,7 +68,7 @@ class _MapPickerPageState extends State<MapPickerPage> {
     try {
       final uri = Uri.https('maps.googleapis.com', '/maps/api/geocode/json', {
         'latlng':
-        '${_selectedPosition.latitude},${_selectedPosition.longitude}',
+            '${_selectedPosition.latitude},${_selectedPosition.longitude}',
         'key': GOOGLE_MAPS_API_KEY,
       });
 
@@ -85,7 +87,8 @@ class _MapPickerPageState extends State<MapPickerPage> {
       }
     } catch (e) {
       debugPrint(
-          loc?.translate('reverse_geocode_error', {'error': e.toString()}));
+        loc?.translate('reverse_geocode_error', {'error': e.toString()}),
+      );
     } finally {
       if (mounted) setState(() => _isGeocoding = false);
     }
@@ -94,9 +97,7 @@ class _MapPickerPageState extends State<MapPickerPage> {
   @override
   Widget build(BuildContext context) {
     if (loc == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -127,7 +128,7 @@ class _MapPickerPageState extends State<MapPickerPage> {
                 borderRadius: BorderRadius.circular(50),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     spreadRadius: 2,
                     blurRadius: 8,
                     offset: const Offset(0, 3),
@@ -149,7 +150,7 @@ class _MapPickerPageState extends State<MapPickerPage> {
               decoration: BoxDecoration(
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     spreadRadius: 2,
                     blurRadius: 10,
                     offset: const Offset(0, 3),
@@ -159,13 +160,13 @@ class _MapPickerPageState extends State<MapPickerPage> {
               child: ElevatedButton.icon(
                 icon: _isGeocoding
                     ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Icon(Icons.check),
                 label: Text(
                   _isGeocoding

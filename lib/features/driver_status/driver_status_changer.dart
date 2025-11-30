@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:logistics_toolkit/config/theme.dart';
 import 'package:logistics_toolkit/features/tracking/driver_route_tracking.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart' as ptr;
 
@@ -75,9 +74,9 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
       await supabase
           .from('shipment')
           .update({
-        'booking_status': status,
-        'updated_at': DateTime.now().toIso8601String(),
-      })
+            'booking_status': status,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('shipment_id', currentShipment!['shipment_id']);
 
       if (status.toLowerCase() == 'completed') {
@@ -113,8 +112,8 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
   int get currentStatusIndex => currentShipment == null
       ? -1
       : statusFlow.indexWhere(
-        (s) => s['status'] == currentShipment!['booking_status'],
-  );
+          (s) => s['status'] == currentShipment!['booking_status'],
+        );
 
   @override
   Widget build(BuildContext context) {

@@ -359,9 +359,7 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get manageDriverRecords => "ड्राइवर रिकॉर्ड प्रबंधित करें";
 
-  @override
   String get selectTruckType => "ट्रक प्रकार चुनें";
 
-  @override
   String get name => "नाम";
 }

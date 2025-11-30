@@ -1,8 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:logistics_toolkit/features/disable/otp_activation_service.dart';
-import '../notifications/notification_service.dart';
+import 'package:logistics_toolkit/features/notifications/notification_service.dart';
 
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
@@ -103,15 +102,15 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                         /// ----- Push Notification Logic -----
                         final targetUser = user['custom_user_id'] ?? '';
                         final adminId =
-                        await NotificationService.getCurrentCustomUserId();
+                            await NotificationService.getCurrentCustomUserId();
 
                         if (!isDisabled) {
                           NotificationService.sendPushNotificationToUser(
                             recipientId: targetUser,
                             title: 'Account Disabled'.tr(),
                             message:
-                            'Your account has been disabled by an administrator.'
-                                .tr(),
+                                'Your account has been disabled by an administrator.'
+                                    .tr(),
                           );
                         } else {
                           NotificationService.sendPushNotificationToUser(
@@ -126,7 +125,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                             recipientId: adminId,
                             title: 'Action Saved'.tr(),
                             message:
-                            'You updated the status for ${user['name']}.',
+                                'You updated the status for ${user['name']}.',
                           );
                         }
 
@@ -206,8 +205,8 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                     items: roles
                         .map(
                           (role) =>
-                          DropdownMenuItem(value: role, child: Text(role)),
-                    )
+                              DropdownMenuItem(value: role, child: Text(role)),
+                        )
                         .toList(),
                     onChanged: (value) =>
                         setDialogState(() => selectedRole = value ?? ''),
@@ -439,9 +438,9 @@ Future<void> toggleAccountStatusRpc({
   await _supabase
       .from('user_profiles')
       .update({
-    'account_disable': disabled,
-    'updated_at': DateTime.now().toIso8601String(),
-  })
+        'account_disable': disabled,
+        'updated_at': DateTime.now().toIso8601String(),
+      })
       .eq('custom_user_id', customUserId);
 
   try {

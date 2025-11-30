@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class ShipmentUtils {
@@ -49,10 +48,7 @@ class ShipmentListItem extends StatelessWidget {
         color: statusColor.withValues(alpha: 0.12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: statusColor,
-            radius: 8,
-          ),
+          leading: CircleAvatar(backgroundColor: statusColor, radius: 8),
           title: Row(
             children: [
               Expanded(
@@ -92,7 +88,6 @@ class ShipmentListItem extends StatelessWidget {
     );
   }
 }
-
 
 class ReportAnalysisPage extends StatefulWidget {
   const ReportAnalysisPage({super.key});
@@ -163,7 +158,6 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
     super.dispose();
   }
 
-
   Future<void> fetchAgentShipment({bool loadMore = false}) async {
     setState(() {
       isLoading = true;
@@ -211,12 +205,15 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
       final raw = await supabase
           .from('shipment')
           .select(
-          'shipment_id, pickup, drop, booking_status, assigned_driver, updated_at, delivery_date')
+            'shipment_id, pickup, drop, booking_status, assigned_driver, updated_at, delivery_date',
+          )
           .eq('assigned_agent', customUserId)
           .order('updated_at', ascending: false)
           .range(start, end);
 
-      final List<Map<String, dynamic>> newItems = raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final List<Map<String, dynamic>> newItems = raw
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
 
       setState(() {
         if (loadMore) {
@@ -233,22 +230,21 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error loading shipments: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error loading shipments: $e")));
       }
     }
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels ==
-        _scrollController.position.maxScrollExtent &&
+            _scrollController.position.maxScrollExtent &&
         !isLoading &&
         shipments.length >= shipmentLimit) {
       fetchAgentShipment(loadMore: true);
     }
   }
-
 
   List<String> get months {
     final set = <String>{};
@@ -271,30 +267,34 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
 
   List<Map<String, dynamic>> _filterShipments() {
     return shipments.where((shipment) {
-      final byStatus = selectedStatus == 'All' ||
+      final byStatus =
+          selectedStatus == 'All' ||
           shipment['booking_status'] == selectedStatus;
 
-      final byMonth = selectedMonth == 'All' ||
+      final byMonth =
+          selectedMonth == 'All' ||
           (shipment['updated_at'] != null &&
-              ShipmentUtils.monthName(shipment['updated_at']) ==
-                  selectedMonth);
+              ShipmentUtils.monthName(shipment['updated_at']) == selectedMonth);
 
-      final byLocation = selectedLocation == 'All' ||
+      final byLocation =
+          selectedLocation == 'All' ||
           ShipmentUtils.extractCity(shipment['drop']) == selectedLocation;
 
       final byChart =
           activeChartFilter.isEmpty ||
-              shipment['booking_status'] == activeChartFilter;
+          shipment['booking_status'] == activeChartFilter;
 
-      final bySearch = searchQuery.isEmpty ||
-          shipment.values.any((v) =>
-          v != null &&
-              v.toString().toLowerCase().contains(searchQuery.toLowerCase()));
+      final bySearch =
+          searchQuery.isEmpty ||
+          shipment.values.any(
+            (v) =>
+                v != null &&
+                v.toString().toLowerCase().contains(searchQuery.toLowerCase()),
+          );
 
       return byStatus && byMonth && byLocation && byChart && bySearch;
     }).toList();
   }
-
 
   Widget _buildFilterChips() {
     return Wrap(
@@ -335,7 +335,6 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
       ],
     );
   }
-
 
   Future<void> _selectStatus() async {
     final result = await showDialog<String>(
@@ -391,11 +390,8 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
     if (result != null) setState(() => selectedLocation = result);
   }
 
-
   Widget _buildPieChart(List<Map<String, dynamic>> filteredShipments) {
-    final statusCounts = <String, int>{
-      for (final s in shipmentStatuses) s: 0
-    };
+    final statusCounts = <String, int>{for (final s in shipmentStatuses) s: 0};
 
     for (var s in filteredShipments) {
       final st = s['booking_status'];
@@ -422,7 +418,9 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
                           ? '${(e.value / total * 100).toStringAsFixed(1)}%'
                           : '0%',
                       titleStyle: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                       radius: activeChartFilter == e.key ? 80 : 65,
                     ),
               ],
@@ -437,8 +435,7 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
                     final key = statusCounts.keys.elementAt(index);
 
                     setState(() {
-                      activeChartFilter =
-                      (activeChartFilter == key) ? '' : key;
+                      activeChartFilter = (activeChartFilter == key) ? '' : key;
                     });
                   }
                 },
@@ -457,13 +454,13 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
                 FilterChip(
                   label: Text('${e.key} (${e.value})'),
                   selected: activeChartFilter == e.key,
-                  backgroundColor:
-                  statusColors[e.key]!.withValues(alpha: 0.18),
+                  backgroundColor: statusColors[e.key]!.withValues(alpha: 0.18),
                   selectedColor: statusColors[e.key],
                   onSelected: (_) {
                     setState(() {
-                      activeChartFilter =
-                      (activeChartFilter == e.key) ? '' : e.key;
+                      activeChartFilter = (activeChartFilter == e.key)
+                          ? ''
+                          : e.key;
                     });
                   },
                 ),
@@ -560,8 +557,7 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
         final s = list[i];
         return ShipmentListItem(
           shipment: s,
-          statusColor: statusColors[s['booking_status']] ??
-              Colors.grey,
+          statusColor: statusColors[s['booking_status']] ?? Colors.grey,
         );
       },
     );
@@ -593,17 +589,15 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               _buildFilterChips(),
 
               const SizedBox(height: 20),
 
               Text(
                 'shipment_summary'.tr(),
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 20),
@@ -617,12 +611,12 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
                         : _buildPieChart(data),
                   ),
                   IconButton(
-                    icon: Icon(showBarChart
-                        ? Icons.pie_chart
-                        : Icons.bar_chart),
+                    icon: Icon(
+                      showBarChart ? Icons.pie_chart : Icons.bar_chart,
+                    ),
                     onPressed: () =>
                         setState(() => showBarChart = !showBarChart),
-                  )
+                  ),
                 ],
               ),
 
@@ -647,8 +641,7 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
                         labelText: 'search'.tr(),
                         prefixIcon: const Icon(Icons.search),
                       ),
-                      onChanged: (v) =>
-                          setState(() => searchQuery = v),
+                      onChanged: (v) => setState(() => searchQuery = v),
                     ),
                   ),
                 ],

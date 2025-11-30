@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../utils/user_role.dart';
-import 'login_screen.dart';
+import 'package:logistics_toolkit/features/auth/utils/user_role.dart';
 import 'register_screen.dart';
 import 'profile_setup_page.dart';
 
@@ -19,10 +18,10 @@ class RoleSelectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final shadow = theme.shadowColor.withOpacity(0.1);
+    final shadow = theme.shadowColor.withValues(alpha: .1);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         leading: BackButton(color: Colors.teal.shade800),
         title: Text('choose_your_role'.tr()),
@@ -32,10 +31,7 @@ class RoleSelectionPage extends StatelessWidget {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.background,
-              theme.colorScheme.surface,
-            ],
+            colors: [theme.colorScheme.surface, theme.colorScheme.surface],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -71,11 +67,16 @@ class RoleSelectionPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: shadow, blurRadius: 20, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(color: shadow, blurRadius: 20, offset: const Offset(0, 4)),
+        ],
       ),
       child: Row(
         children: [
-          _iconBox([Colors.blue[400]!, Colors.blue[600]!], Icons.person_outline),
+          _iconBox([
+            Colors.blue[400]!,
+            Colors.blue[600]!,
+          ], Icons.person_outline),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -90,7 +91,9 @@ class RoleSelectionPage extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'determine_dashboard'.tr(),
-                  style: theme.textTheme.labelLarge?.copyWith(color: Colors.grey[600]),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: Colors.grey[600],
+                  ),
                 ),
               ],
             ),
@@ -102,7 +105,7 @@ class RoleSelectionPage extends StatelessWidget {
 
   Widget _roleCard(BuildContext context, UserRole role, int index) {
     final theme = Theme.of(context);
-    final shadow = theme.shadowColor.withOpacity(0.1);
+    final shadow = theme.shadowColor.withValues(alpha: .1);
 
     return AnimatedContainer(
       duration: Duration(milliseconds: 150 + index * 60),
@@ -117,12 +120,21 @@ class RoleSelectionPage extends StatelessWidget {
             decoration: BoxDecoration(
               color: theme.cardColor,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: shadow, blurRadius: 10, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: shadow,
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 _iconBox(
-                  [Colors.blue[400]!.withOpacity(0.1), Colors.blue[600]!.withOpacity(0.2)],
+                  [
+                    Colors.blue[400]!.withValues(alpha: .1),
+                    Colors.blue[600]!.withValues(alpha: .2),
+                  ],
                   role.icon,
                   size: 28,
                 ),
@@ -140,12 +152,18 @@ class RoleSelectionPage extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         _roleDescription(role),
-                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[600]),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: Colors.grey[600],
+                ),
               ],
             ),
           ),
@@ -172,7 +190,10 @@ class RoleSelectionPage extends StatelessWidget {
       children: [
         Icon(Icons.security, size: 16, color: Colors.grey[500]),
         const SizedBox(width: 8),
-        Text('info_secure'.tr(), style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+        Text(
+          'info_secure'.tr(),
+          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+        ),
       ],
     ),
   );

@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:logistics_toolkit/services/user_data_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../notifications/notification_service.dart';
@@ -68,7 +66,7 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   String _getDriverName(String driverId) {
     try {
       final driver = _drivers.firstWhere(
-            (d) => d['custom_user_id'] == driverId,
+        (d) => d['custom_user_id'] == driverId,
       );
       return driver['name'] ?? 'Your Driver';
     } catch (e) {
@@ -145,48 +143,49 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       final uploadedDocs = await supabase
           .from('driver_documents')
           .select(
-        'driver_custom_id, document_type, updated_at, file_url, status, file_path',
-      )
+            'driver_custom_id, document_type, updated_at, file_url, status, file_path',
+          )
           .eq('owner_custom_id', _loggedInOwnerId!)
           .inFilter('driver_custom_id', driverIds);
 
       final driversWithStatus = driverProfiles
           .map((driver) {
-        final driverId = driver['custom_user_id'];
-        if (driverId == null || driverId.isEmpty) return null;
+            final driverId = driver['custom_user_id'];
+            if (driverId == null || driverId.isEmpty) return null;
 
-        final docsForThisDriver = uploadedDocs
-            .where((doc) => doc['driver_custom_id'] == driverId)
-            .toList();
+            final docsForThisDriver = uploadedDocs
+                .where((doc) => doc['driver_custom_id'] == driverId)
+                .toList();
 
-        final docStatus = <String, Map<String, dynamic>>{};
-        for (var type in _documentTypes.keys) {
-          final doc = docsForThisDriver.firstWhere(
+            final docStatus = <String, Map<String, dynamic>>{};
+            for (var type in _documentTypes.keys) {
+              final doc = docsForThisDriver.firstWhere(
                 (d) => d['document_type'] == type,
-            orElse: () => {},
-          );
+                orElse: () => {},
+              );
 
-          docStatus[type] = {
-            'uploaded': doc.isNotEmpty,
-            'status': doc['status'] ?? 'Not Uploaded',
-            'uploadedAt': doc['updated_at'],
-            'file_path': doc['file_path'],
-            'file_url': doc['file_url'],
-          };
-        }
+              docStatus[type] = {
+                'uploaded': doc.isNotEmpty,
+                'status': doc['status'] ?? 'Not Uploaded',
+                'uploadedAt': doc['updated_at'],
+                'file_path': doc['file_path'],
+                'file_url': doc['file_url'],
+              };
+            }
 
-        return {
-          ...driver,
-          'doc_status': docStatus,
-          'total_docs':
-          docStatus.values.where((doc) => doc['uploaded']).length,
-          'completion_percentage':
-          (docStatus.values.where((doc) => doc['uploaded']).length /
-              _documentTypes.length *
-              100)
-              .round(),
-        };
-      })
+            return {
+              ...driver,
+              'doc_status': docStatus,
+              'total_docs': docStatus.values
+                  .where((doc) => doc['uploaded'])
+                  .length,
+              'completion_percentage':
+                  (docStatus.values.where((doc) => doc['uploaded']).length /
+                          _documentTypes.length *
+                          100)
+                      .round(),
+            };
+          })
           .where((driver) => driver != null)
           .cast<Map<String, dynamic>>()
           .toList();
@@ -224,11 +223,13 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
 
       final sanitizedDocType = docType.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
       final folderPath = '$driverId/$sanitizedDocType';
-      final existingFiles =
-      await supabase.storage.from('driver-documents').list(path: folderPath);
+      final existingFiles = await supabase.storage
+          .from('driver-documents')
+          .list(path: folderPath);
       if (existingFiles.isNotEmpty) {
-        final filesToDelete =
-        existingFiles.map((file) => '$folderPath/${file.name}').toList();
+        final filesToDelete = existingFiles
+            .map((file) => '$folderPath/${file.name}')
+            .toList();
         await supabase.storage.from('driver-documents').remove(filesToDelete);
       }
 
@@ -238,8 +239,9 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
 
       await supabase.storage.from('driver-documents').upload(filePath, file);
 
-      final fileUrl =
-      supabase.storage.from('driver-documents').getPublicUrl(filePath);
+      final fileUrl = supabase.storage
+          .from('driver-documents')
+          .getPublicUrl(filePath);
 
       await supabase.from('driver_documents').upsert({
         'owner_custom_id': _loggedInOwnerId!,
@@ -258,8 +260,8 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       NotificationService.sendPushNotificationToUser(
         recipientId: driverId,
         title: 'Document Uploaded'.tr(),
-        message:
-        '$agentName has uploaded a new document for you: $docType'.tr(),
+        message: '$agentName has uploaded a new document for you: $docType'
+            .tr(),
         data: {'type': 'document_upload', 'doc_type': docType},
       );
 
@@ -269,8 +271,8 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         recipientId: _loggedInOwnerId!,
         title: 'Upload Successful'.tr(),
         message:
-        'You have successfully uploaded $docType for $driverNameForSelf.'
-            .tr(),
+            'You have successfully uploaded $docType for $driverNameForSelf.'
+                .tr(),
         data: {'type': 'document_upload_self', 'driver_id': driverId},
       );
       // --- END NOTIFICATION LOGIC ---
@@ -290,12 +292,12 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   }
 
   Future<bool> _updateDocumentStatus(
-      String driverId,
-      String docType,
-      String newStatus,
-      String? filePath,
-      String? fileUrl,
-      ) async {
+    String driverId,
+    String docType,
+    String newStatus,
+    String? filePath,
+    String? fileUrl,
+  ) async {
     try {
       final updateData = <String, dynamic>{
         'status': newStatus,
@@ -336,10 +338,10 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   }
 
   Future<void> _deleteDocument(
-      String driverId,
-      String docType,
-      String? filePath,
-      ) async {
+    String driverId,
+    String docType,
+    String? filePath,
+  ) async {
     final confirmed = await _showDeleteConfirmationDialog();
     if (!confirmed) return;
 
@@ -355,8 +357,9 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       doc['file_url'] = null;
 
       final docStatusMap = driver['doc_status'] as Map<String, dynamic>;
-      driver['total_docs'] =
-          docStatusMap.values.where((d) => d['uploaded'] == true).length;
+      driver['total_docs'] = docStatusMap.values
+          .where((d) => d['uploaded'] == true)
+          .length;
       driver['completion_percentage'] =
           (driver['total_docs'] / _documentTypes.length * 100).round();
     });
@@ -378,8 +381,9 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
           driver['doc_status'][docType] = originalDocData;
 
           final docStatusMap = driver['doc_status'] as Map<String, dynamic>;
-          driver['total_docs'] =
-              docStatusMap.values.where((d) => d['uploaded'] == true).length;
+          driver['total_docs'] = docStatusMap.values
+              .where((d) => d['uploaded'] == true)
+              .length;
           driver['completion_percentage'] =
               (driver['total_docs'] / _documentTypes.length * 100).round();
         });
@@ -388,12 +392,12 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   }
 
   Future<void> _handleStatusUpdate(
-      String driverId,
-      String docType,
-      String newStatus,
-      String? filePath,
-      String? fileUrl,
-      ) async {
+    String driverId,
+    String docType,
+    String newStatus,
+    String? filePath,
+    String? fileUrl,
+  ) async {
     final driver = _drivers.firstWhere((d) => d['custom_user_id'] == driverId);
     final doc = driver['doc_status'][docType];
     final originalStatus = doc['status'];
@@ -416,8 +420,8 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         NotificationService.sendPushNotificationToUser(
           recipientId: driverId,
           title: 'Document Approved'.tr(),
-          message:
-          'Your document ($docType) has been approved by $agentName.'.tr(),
+          message: 'Your document ($docType) has been approved by $agentName.'
+              .tr(),
           data: {
             'type': 'document_status',
             'doc_type': docType,
@@ -428,8 +432,7 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         NotificationService.sendPushNotificationToUser(
           recipientId: driverId,
           title: 'Document Rejected'.tr(),
-          message:
-          'Your document ($docType) was rejected by $agentName.'.tr(),
+          message: 'Your document ($docType) was rejected by $agentName.'.tr(),
           data: {
             'type': 'document_status',
             'doc_type': docType,
@@ -450,31 +453,29 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
 
   Future<bool> _showDeleteConfirmationDialog() async {
     return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('confirm_deletion'.tr()),
-          content: Text(
-            'delete_doc_warning'.tr(),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('cancel'.tr()),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            TextButton(
-              child: Text('delete'.tr()),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
-    ) ??
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('confirm_deletion'.tr()),
+              content: Text('delete_doc_warning'.tr()),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('cancel'.tr()),
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                  },
+                ),
+                TextButton(
+                  child: Text('delete'.tr()),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                  },
+                ),
+              ],
+            );
+          },
+        ) ??
         false;
   }
 
@@ -527,18 +528,18 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-        onRefresh: _fetchDriversWithDocStatus,
-        child: _drivers.isEmpty
-            ? _buildEmptyState()
-            : ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: _drivers.length,
-          itemBuilder: (context, index) {
-            final driver = _drivers[index];
-            return _buildDriverCard(driver);
-          },
-        ),
-      ),
+              onRefresh: _fetchDriversWithDocStatus,
+              child: _drivers.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _drivers.length,
+                      itemBuilder: (context, index) {
+                        final driver = _drivers[index];
+                        return _buildDriverCard(driver);
+                      },
+                    ),
+            ),
     );
   }
 
@@ -558,7 +559,7 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
@@ -690,11 +691,11 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   }
 
   Widget _buildDocumentRow(
-      String driverId,
-      String docType,
-      Map<String, dynamic> docInfo,
-      bool isUploading,
-      ) {
+    String driverId,
+    String docType,
+    Map<String, dynamic> docInfo,
+    bool isUploading,
+  ) {
     final status = docInfo['status'] ?? 'Not Uploaded';
     final docTypeInfo = _documentTypes[docType]!;
     final isThisDocUploading = isUploading && _uploadingDocType == docType;
@@ -769,10 +770,10 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   }
 
   Widget _buildActionButtons(
-      String driverId,
-      String docType,
-      Map<String, dynamic> docInfo,
-      ) {
+    String driverId,
+    String docType,
+    Map<String, dynamic> docInfo,
+  ) {
     final status = docInfo['status'] ?? 'Not Uploaded';
     final filePath = docInfo['file_path'];
     final fileUrl = docInfo['file_url'];

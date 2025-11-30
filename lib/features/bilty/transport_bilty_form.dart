@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:signature/signature.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../config/theme.dart';
+import 'package:logistics_toolkit/config/theme.dart';
 import 'models/bilty_model.dart';
 import 'models/bilty_template.dart';
 import 'transport_bilty_preview.dart';
@@ -27,8 +27,6 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
   // Template
   late BiltyTemplate _template;
 
-  List<String> _addresses = [];
-  String? _selectedAddress;
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, dynamic> _values = {};
   final Map<String, bool> _checkboxValues = {};

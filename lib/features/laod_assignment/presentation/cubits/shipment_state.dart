@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:easy_localization/easy_localization.dart';
 
 enum ShipmentStatus { initial, loading, success, failure }
 
@@ -23,8 +22,9 @@ class ShipmentState extends Equatable {
     return ShipmentState(
       status: status ?? this.status,
       shipments: shipments ?? this.shipments,
-      errorMessage:
-      clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
     );
   }
 

@@ -34,7 +34,6 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
 
   double _distanceRemainingKm = 0.0;
   double _fuelCostRemaining = 0.0;
-  String _targetLabel = "Loading...";
 
   @override
   void initState() {
@@ -71,8 +70,8 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
     final response = await Supabase.instance.client
         .from('shipment')
         .select(
-      'booking_status, pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude',
-    )
+          'booking_status, pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude',
+        )
         .eq('assigned_driver', widget.driverId)
         .neq('booking_status', 'Completed')
         .maybeSingle();
@@ -125,10 +124,8 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
 
     if (_shipmentStatus == "Assigned" || _shipmentStatus == "Accepted") {
       target = _pickupLocation!;
-      _targetLabel = "To Pickup";
     } else {
       target = _dropLocation!;
-      _targetLabel = "To Dropoff";
     }
 
     if (_currentDriverPos != null) {
@@ -156,20 +153,18 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
       distanceFilter: 10,
     );
 
-    _positionStream =
-        Geolocator.getPositionStream(locationSettings: settings).listen(
-              (Position pos) {
-            LatLng newPos = LatLng(pos.latitude, pos.longitude);
+    _positionStream = Geolocator.getPositionStream(locationSettings: settings)
+        .listen((Position pos) {
+          LatLng newPos = LatLng(pos.latitude, pos.longitude);
 
-            if (!mounted) return;
+          if (!mounted) return;
 
-            setState(() {
-              _currentDriverPos = newPos;
-            });
+          setState(() {
+            _currentDriverPos = newPos;
+          });
 
-            _mapController?.animateCamera(CameraUpdate.newLatLng(newPos));
-          },
-        );
+          _mapController?.animateCamera(CameraUpdate.newLatLng(newPos));
+        });
   }
 
   void _updateStatsFromRouteOption(RouteOption route) {
@@ -189,8 +184,8 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
         title: const Text("⛽ Fuel Cost Estimation"),
         content: Text(
           "Fuel cost is an estimate:\n\n"
-              "• Mileage: ${_routeService.truckKPL.toStringAsFixed(1)} km/l\n"
-              "• Fuel Price: ₹${_routeService.fuelPricePerLiter.toStringAsFixed(2)}\n",
+          "• Mileage: ${_routeService.truckKPL.toStringAsFixed(1)} km/l\n"
+          "• Fuel Price: ₹${_routeService.fuelPricePerLiter.toStringAsFixed(2)}\n",
         ),
         actions: [
           TextButton(
@@ -238,7 +233,9 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
           markerId: const MarkerId("driver"),
           position: _currentDriverPos!,
           infoWindow: const InfoWindow(title: "You (Driver)"),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
         ),
       );
     }
@@ -249,7 +246,9 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
           markerId: const MarkerId("pickup"),
           position: _pickupLocation!,
           infoWindow: const InfoWindow(title: "Pickup"),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          ),
         ),
       );
     }
@@ -283,10 +282,7 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.redAccent,
-      ),
+      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
     );
   }
 
@@ -295,10 +291,7 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
     if (_errorMessage.isNotEmpty) {
       return Scaffold(
         body: Center(
-          child: Text(
-            _errorMessage,
-            style: const TextStyle(color: Colors.red),
-          ),
+          child: Text(_errorMessage, style: const TextStyle(color: Colors.red)),
         ),
       );
     }
@@ -316,157 +309,148 @@ class _DriverRouteTrackingPageState extends State<DriverRouteTrackingPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _currentDriverPos ?? _pickupLocation!,
-              zoom: 12,
-            ),
-            markers: _createMarkers(),
-            polylines: _createPolylines(),
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            padding: const EdgeInsets.only(bottom: 120),
-            onMapCreated: (controller) => _mapController = controller,
-          ),
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _currentDriverPos ?? _pickupLocation!,
+                    zoom: 12,
+                  ),
+                  markers: _createMarkers(),
+                  polylines: _createPolylines(),
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  padding: const EdgeInsets.only(bottom: 120),
+                  onMapCreated: (controller) => _mapController = controller,
+                ),
 
-          /// Route Options Chips
-          if (_routeOptions.isNotEmpty)
-            Positioned(
-              top: 10,
-              left: 10,
-              right: 10,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children:
-                  _routeOptions.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    bool selected =
-                        index == _selectedRouteIndex;
+                /// Route Options Chips
+                if (_routeOptions.isNotEmpty)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    right: 10,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _routeOptions.asMap().entries.map((entry) {
+                          int index = entry.key;
+                          bool selected = index == _selectedRouteIndex;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ActionChip(
-                        backgroundColor:
-                        selected ? Colors.indigo : Colors.white,
-                        label: Text(
-                          "${entry.value.durationFormatted} • ${(entry.value.distanceMeters / 1000).toStringAsFixed(1)} km",
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : Colors.black,
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ActionChip(
+                              backgroundColor: selected
+                                  ? Colors.indigo
+                                  : Colors.white,
+                              label: Text(
+                                "${entry.value.durationFormatted} • ${(entry.value.distanceMeters / 1000).toStringAsFixed(1)} km",
+                                style: TextStyle(
+                                  color: selected ? Colors.white : Colors.black,
+                                ),
+                              ),
+                              onPressed: () {
+                                if (!mounted) return;
+                                setState(() {
+                                  _selectedRouteIndex = index;
+                                  _updateStatsFromRouteOption(entry.value);
+                                });
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+
+                /// Info Panel
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: Card(
+                    elevation: 8,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _infoCol(
+                            "Remaining",
+                            "${_distanceRemainingKm.toStringAsFixed(1)} km",
                           ),
-                        ),
-                        onPressed: () {
-                          if (!mounted) return;
-                          setState(() {
-                            _selectedRouteIndex = index;
-                            _updateStatsFromRouteOption(
-                                entry.value);
-                          });
-                        },
+                          _infoCol(
+                            "Fuel Cost",
+                            "₹${_fuelCostRemaining.toStringAsFixed(2)}",
+                          ),
+                          _infoCol("Status", _shipmentStatus ?? "-"),
+                        ],
                       ),
-                    );
-                  }).toList(),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+                Positioned(
+                  bottom: 100,
+                  left: 20,
+                  child: ElevatedButton(
+                    child: const Icon(Icons.zoom_out_map),
+                    onPressed: () {
+                      if (_currentDriverPos != null &&
+                          _pickupLocation != null &&
+                          _dropLocation != null) {
+                        LatLngBounds bounds = LatLngBounds(
+                          southwest: LatLng(
+                            min(
+                              min(
+                                _pickupLocation!.latitude,
+                                _dropLocation!.latitude,
+                              ),
+                              _currentDriverPos!.latitude,
+                            ),
+                            min(
+                              min(
+                                _pickupLocation!.longitude,
+                                _dropLocation!.longitude,
+                              ),
+                              _currentDriverPos!.longitude,
+                            ),
+                          ),
+                          northeast: LatLng(
+                            max(
+                              max(
+                                _pickupLocation!.latitude,
+                                _dropLocation!.latitude,
+                              ),
+                              _currentDriverPos!.latitude,
+                            ),
+                            max(
+                              max(
+                                _pickupLocation!.longitude,
+                                _dropLocation!.longitude,
+                              ),
+                              _currentDriverPos!.longitude,
+                            ),
+                          ),
+                        );
 
-          /// Info Panel
-          Positioned(
-            bottom: 20,
-            left: 20,
-            right: 20,
-            child: Card(
-              elevation: 8,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
-                  children: [
-                    _infoCol(
-                      "Remaining",
-                      "${_distanceRemainingKm.toStringAsFixed(1)} km",
-                    ),
-                    _infoCol(
-                      "Fuel Cost",
-                      "₹${_fuelCostRemaining.toStringAsFixed(2)}",
-                    ),
-                    _infoCol(
-                      "Status",
-                      _shipmentStatus ?? "-",
-                    ),
-                  ],
+                        _mapController?.animateCamera(
+                          CameraUpdate.newLatLngBounds(bounds, 60),
+                        );
+                      }
+                    },
+                  ),
                 ),
-              ),
+              ],
             ),
-          ),
-          Positioned(
-            bottom: 100,
-            left: 20,
-            child: ElevatedButton(
-              child: const Icon(Icons.zoom_out_map),
-              onPressed: () {
-                if (_currentDriverPos != null &&
-                    _pickupLocation != null &&
-                    _dropLocation != null) {
-                  LatLngBounds bounds = LatLngBounds(
-                    southwest: LatLng(
-                      min(
-                        min(
-                            _pickupLocation!.latitude,
-                            _dropLocation!.latitude),
-                        _currentDriverPos!.latitude,
-                      ),
-                      min(
-                        min(
-                            _pickupLocation!.longitude,
-                            _dropLocation!.longitude),
-                        _currentDriverPos!.longitude,
-                      ),
-                    ),
-                    northeast: LatLng(
-                      max(
-                        max(
-                            _pickupLocation!.latitude,
-                            _dropLocation!.latitude),
-                        _currentDriverPos!.latitude,
-                      ),
-                      max(
-                        max(
-                            _pickupLocation!.longitude,
-                            _dropLocation!.longitude),
-                        _currentDriverPos!.longitude,
-                      ),
-                    ),
-                  );
-
-                  _mapController?.animateCamera(
-                    CameraUpdate.newLatLngBounds(bounds, 60),
-                  );
-                }
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _infoCol(String label, String value) {
     return Column(
       children: [
-        Text(label,
-            style:
-            const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ],
     );

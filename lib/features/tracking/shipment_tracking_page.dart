@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -61,14 +60,13 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
     final ByteData data = await rootBundle.load('assets/cargo-truck.png');
     final codec = await ui.instantiateImageCodec(
       data.buffer.asUint8List(),
-      targetWidth: 128,
+      targetWidth: 48,
     );
     final frame = await codec.getNextFrame();
     final resized = await frame.image.toByteData(
       format: ui.ImageByteFormat.png,
     );
-
-    _truckIcon = BitmapDescriptor.fromBytes(resized!.buffer.asUint8List());
+    _truckIcon = BitmapDescriptor.bytes(resized!.buffer.asUint8List());
   }
 
   Future<void> _fetchShipmentData() async {
@@ -151,7 +149,8 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
     final dLat = (p2.latitude - p1.latitude) * pi / 180;
     final dLng = (p2.longitude - p1.longitude) * pi / 180;
 
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
@@ -168,8 +167,7 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
           .eq('custom_user_id', _driverId!)
           .single();
 
-      if (driverData != null &&
-          driverData['last_latitude'] != null &&
+      if (driverData['last_latitude'] != null &&
           driverData['last_longitude'] != null) {
         _truckLocation = LatLng(
           (driverData['last_latitude'] as num).toDouble(),
@@ -195,32 +193,34 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
 
     _realtimeChannel!
         .onPostgresChanges(
-      event: PostgresChangeEvent.update,
-      schema: 'public',
-      table: 'driver_locations',
-      callback: (payload) {
-        final lat = (payload.newRecord['last_latitude'] as num?)?.toDouble();
-        final lng = (payload.newRecord['last_longitude'] as num?)?.toDouble();
-        final updatedAt = payload.newRecord['updated_at'];
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'driver_locations',
+          callback: (payload) {
+            final lat = (payload.newRecord['last_latitude'] as num?)
+                ?.toDouble();
+            final lng = (payload.newRecord['last_longitude'] as num?)
+                ?.toDouble();
+            final updatedAt = payload.newRecord['updated_at'];
 
-        _heading =
-            (payload.newRecord['heading'] as num?)?.toDouble() ?? _heading;
+            _heading =
+                (payload.newRecord['heading'] as num?)?.toDouble() ?? _heading;
 
-        if (lat == null || lng == null) return;
+            if (lat == null || lng == null) return;
 
-        setState(() {
-          _truckLocation = LatLng(lat, lng);
-          _lastUpdated = DateTime.tryParse(updatedAt ?? '');
-          _updateMarkers();
+            setState(() {
+              _truckLocation = LatLng(lat, lng);
+              _lastUpdated = DateTime.tryParse(updatedAt ?? '');
+              _updateMarkers();
 
-          if (_followTruck && _mapController != null) {
-            _mapController!.animateCamera(
-              CameraUpdate.newLatLng(_truckLocation!),
-            );
-          }
-        });
-      },
-    )
+              if (_followTruck && _mapController != null) {
+                _mapController!.animateCamera(
+                  CameraUpdate.newLatLng(_truckLocation!),
+                );
+              }
+            });
+          },
+        )
         .subscribe();
   }
 
@@ -232,7 +232,9 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
         Marker(
           markerId: const MarkerId("pickup"),
           position: _pickupLocation!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          ),
           infoWindow: const InfoWindow(title: "Pickup"),
         ),
       );
@@ -271,27 +273,37 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
       final nearest = _findNearestPointOnRoute(_truckLocation!, routePoints);
 
       if (nearest != null) {
-        final polylinePoints =
-        PolylinePoints(apiKey: AppConfig.googleMapsApiKey);
+        final polylinePoints = PolylinePoints(
+          apiKey: AppConfig.googleMapsApiKey,
+        );
 
-        final result = await polylinePoints.getRouteBetweenCoordinates(
-          request: PolylineRequest(
+        final routesResponse = await polylinePoints.getRouteBetweenCoordinatesV2(
+          request: RoutesApiRequest(
             origin: PointLatLng(
               _truckLocation!.latitude,
               _truckLocation!.longitude,
             ),
-            destination: PointLatLng(nearest.latitude, nearest.longitude),
-            mode: TravelMode.driving,
+            destination: PointLatLng(
+              nearest.latitude,
+              nearest.longitude,
+            ),
+            travelMode: TravelMode.driving,
+            routingPreference: RoutingPreference.trafficAware,
           ),
         );
 
-        if (result.points.isNotEmpty && mounted) {
-          final points =
-          result.points.map((p) => LatLng(p.latitude, p.longitude)).toList();
+        if (routesResponse.routes.isNotEmpty && mounted) {
+          final route = routesResponse.routes.first;
+
+          final rawPoints = route.polylinePoints ?? [];
+          final points = rawPoints
+              .map((p) => LatLng(p.latitude, p.longitude))
+              .toList();
 
           setState(() {
             _bluePolylines.removeWhere(
-                    (p) => p.polylineId.value == "deviation_red");
+                  (p) => p.polylineId.value == "deviation_red",
+            );
 
             _bluePolylines.add(
               Polyline(
@@ -299,7 +311,10 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
                 color: Colors.red,
                 width: 4,
                 points: points,
-                patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+                patterns: [
+                  PatternItem.dash(20),
+                  PatternItem.gap(10),
+                ],
               ),
             );
 
@@ -308,7 +323,8 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
                 markerId: const MarkerId("rejoin_point"),
                 position: nearest,
                 icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueOrange),
+                  BitmapDescriptor.hueOrange,
+                ),
               ),
             );
           });
@@ -317,13 +333,14 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
     }
   }
 
+
   Future<void> _drawRoute() async {
     if (_pickupLocation == null || _dropLocation == null) return;
 
     final polylinePoints = PolylinePoints(apiKey: AppConfig.googleMapsApiKey);
 
-    final result = await polylinePoints.getRouteBetweenCoordinates(
-      request: PolylineRequest(
+    final routesResponse = await polylinePoints.getRouteBetweenCoordinatesV2(
+      request: RoutesApiRequest(
         origin: PointLatLng(
           _pickupLocation!.latitude,
           _pickupLocation!.longitude,
@@ -332,13 +349,17 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
           _dropLocation!.latitude,
           _dropLocation!.longitude,
         ),
-        mode: TravelMode.driving,
+        travelMode: TravelMode.driving,
+        routingPreference: RoutingPreference.trafficAware, // optional
       ),
     );
 
-    if (result.points.isNotEmpty) {
-      final points =
-      result.points.map((p) => LatLng(p.latitude, p.longitude)).toList();
+    if (routesResponse.routes.isNotEmpty) {
+      final route = routesResponse.routes.first;
+      final List<PointLatLng> rawPoints = route.polylinePoints ?? [];
+      final points = rawPoints
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
 
       if (mounted) {
         setState(() {
@@ -415,7 +436,7 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
               left: 16,
               bottom: 16,
               child: Card(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Padding(
                   padding: const EdgeInsets.all(8),
                   child: Text(

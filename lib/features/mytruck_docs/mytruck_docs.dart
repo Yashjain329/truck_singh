@@ -59,7 +59,7 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
       duration: const Duration(milliseconds: 300),
     );
     searchCtrl.addListener(
-          () => setState(() => search = searchCtrl.text.toLowerCase()),
+      () => setState(() => search = searchCtrl.text.toLowerCase()),
     );
     fetchTrucks();
   }
@@ -123,7 +123,7 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
       final map = <String, Map<String, dynamic>>{};
       for (var type in docTypes.keys) {
         final doc = list.firstWhere(
-              (d) => d['doc_type'] == type,
+          (d) => d['doc_type'] == type,
           orElse: () => {},
         );
         map[type] = {
@@ -212,11 +212,14 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
       if (result == null) return;
       file = File(result.files.single.path!);
       name =
-      '${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}';
+          '${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}';
     }
 
     final path = '${userId ?? custom}/$id/$name';
-    setState(() => {uploadingTruck = "$id", uploadingType = type});
+    setState(() {
+      uploadingTruck = "$id";
+      uploadingType = type;
+    });
 
     try {
       await supabase.storage.from('truck-docs').upload(path, file);
@@ -265,7 +268,7 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
         ),
       );
     } finally {
-      setState(() => {uploadingTruck = null, uploadingType = null});
+      setState(() {uploadingTruck = null; uploadingType = null;});
     }
   }
 
@@ -276,7 +279,7 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
       final count = docs.values.where((d) => d['uploaded'] == true).length;
       final matchesText =
           search.isEmpty ||
-              t['truck_number'].toString().toLowerCase().contains(search);
+          t['truck_number'].toString().toLowerCase().contains(search);
       final matchesPending = !showPending || count < docTypes.length;
       return matchesText && matchesPending;
     }).toList();
@@ -316,9 +319,9 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
           uploading
               ? const CircularProgressIndicator(strokeWidth: 2)
               : ElevatedButton(
-            onPressed: () => pickUpload(id, type),
-            child: Text(uploaded ? 'Update' : 'Upload'),
-          ),
+                  onPressed: () => pickUpload(id, type),
+                  child: Text(uploaded ? 'Update' : 'Upload'),
+                ),
         ],
       ),
     );
@@ -332,36 +335,36 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
       appBar: AppBar(
         title: searching
             ? TextField(
-          controller: searchCtrl,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Search...'),
-        )
+                controller: searchCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(hintText: 'Search...'),
+              )
             : const Text('Truck Documents'),
         actions: [
           searching
               ? IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => setState(() {
-              searching = false;
-              searchCtrl.clear();
-            }),
-          )
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() {
+                    searching = false;
+                    searchCtrl.clear();
+                  }),
+                )
               : Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () => setState(() => searching = true),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.filter_list,
-                  color: showPending ? Colors.blue : null,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () => setState(() => searching = true),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.filter_list,
+                        color: showPending ? Colors.blue : null,
+                      ),
+                      onPressed: () =>
+                          setState(() => showPending = !showPending),
+                    ),
+                  ],
                 ),
-                onPressed: () =>
-                    setState(() => showPending = !showPending),
-              ),
-            ],
-          ),
         ],
       ),
       body: SmartRefresher(
@@ -373,91 +376,91 @@ class _TruckDocsScreenState extends State<TruckDocsScreen>
             : list.isEmpty
             ? const Center(child: Text('No trucks found'))
             : ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: list.length,
-          itemBuilder: (_, i) {
-            final t = list[i];
-            final id = t['id'];
-            final docs = truckDocs[id] ?? {};
-            final uploadedCount = docs.values
-                .where((d) => d['uploaded'] == true)
-                .length;
-            final isOpen = expanded[id] ?? true;
+                padding: const EdgeInsets.all(16),
+                itemCount: list.length,
+                itemBuilder: (_, i) {
+                  final t = list[i];
+                  final id = t['id'];
+                  final docs = truckDocs[id] ?? {};
+                  final uploadedCount = docs.values
+                      .where((d) => d['uploaded'] == true)
+                      .length;
+                  final isOpen = expanded[id] ?? true;
 
-            return AnimatedBuilder(
-              animation: anim,
-              builder: (_, child) => SlideTransition(
-                position:
-                Tween(
-                  begin: const Offset(1, 0),
-                  end: Offset.zero,
-                ).animate(
-                  CurvedAnimation(
-                    parent: anim,
-                    curve: Interval(
-                      i * .1,
-                      1,
-                      curve: Curves.easeOutBack,
-                    ),
-                  ),
-                ),
-                child: child!,
-              ),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.local_shipping),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              t['truck_number'],
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                  return AnimatedBuilder(
+                    animation: anim,
+                    builder: (_, child) => SlideTransition(
+                      position:
+                          Tween(
+                            begin: const Offset(1, 0),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: anim,
+                              curve: Interval(
+                                i * .1,
+                                1,
+                                curve: Curves.easeOutBack,
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(
-                              isOpen
-                                  ? Icons.expand_less
-                                  : Icons.expand_more,
+                      child: child!,
+                    ),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.local_shipping),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    t['truck_number'],
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    isOpen
+                                        ? Icons.expand_less
+                                        : Icons.expand_more,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => expanded[id] = !isOpen),
+                                ),
+                              ],
                             ),
-                            onPressed: () =>
-                                setState(() => expanded[id] = !isOpen),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$uploadedCount / ${docTypes.length} uploaded',
-                        style: TextStyle(
-                          color: uploadedCount == docTypes.length
-                              ? Colors.green
-                              : Colors.orange,
+                            const SizedBox(height: 8),
+                            Text(
+                              '$uploadedCount / ${docTypes.length} uploaded',
+                              style: TextStyle(
+                                color: uploadedCount == docTypes.length
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
+                            ),
+                            if (isOpen) const SizedBox(height: 12),
+                            if (isOpen)
+                              ...docTypes.keys.map(
+                                (type) => buildDoc(
+                                  id,
+                                  type,
+                                  docs[type] ?? {'uploaded': false},
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (isOpen) const SizedBox(height: 12),
-                      if (isOpen)
-                        ...docTypes.keys.map(
-                              (type) => buildDoc(
-                            id,
-                            type,
-                            docs[type] ?? {'uploaded': false},
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
       ),
     );
   }

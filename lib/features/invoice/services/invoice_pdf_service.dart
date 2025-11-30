@@ -1,10 +1,9 @@
-import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../auth/model/address_model.dart';
+import 'package:logistics_toolkit/features/auth/model/address_model.dart';
 
 enum PdfState { notGenerated, uploaded, downloaded }
 
@@ -298,10 +297,10 @@ Future<String> generateInvoicePDF({
   await Supabase.instance.client.storage
       .from('invoices')
       .uploadBinary(
-    filePath,
-    pdfBytes,
-    fileOptions: const FileOptions(upsert: true),
-  );
+        filePath,
+        pdfBytes,
+        fileOptions: const FileOptions(upsert: true),
+      );
 
   final url = Supabase.instance.client.storage
       .from('invoices')

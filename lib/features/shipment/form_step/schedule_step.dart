@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class ScheduleStep extends StatelessWidget {
@@ -34,10 +33,10 @@ class ScheduleStep extends StatelessWidget {
 
   /// Required Text Field (Material 3 compliant)
   Widget _requiredTextField(
-      TextEditingController controller,
-      String label, {
-        bool isNumeric = false,
-      }) {
+    TextEditingController controller,
+    String label, {
+    bool isNumeric = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -60,7 +59,7 @@ class ScheduleStep extends StatelessWidget {
             ),
           ),
           validator: (val) =>
-          val == null || val.trim().isEmpty ? 'Enter $label' : null,
+              val == null || val.trim().isEmpty ? 'Enter $label' : null,
           onChanged: (_) => onChanged(),
         ),
       ],
@@ -100,16 +99,20 @@ class ScheduleStep extends StatelessWidget {
             title: Text(
               selectedDate == null
                   ? 'selectDeliveryDate'.tr()
-                  : 'deliveryPrefix'.tr(namedArgs: {
-                "date": DateFormat('MMM dd, yyyy').format(selectedDate!)
-              }),
+                  : 'deliveryPrefix'.tr(
+                      namedArgs: {
+                        "date": DateFormat(
+                          'MMM dd, yyyy',
+                        ).format(selectedDate!),
+                      },
+                    ),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: selectedDate == null
                 ? Text('tapChooseDate'.tr())
                 : Text(
-              '${selectedDate!.difference(DateTime.now()).inDays + 1} days from now',
-            ),
+                    '${selectedDate!.difference(DateTime.now()).inDays + 1} days from now',
+                  ),
             onTap: onDatePick,
           ),
 
@@ -124,14 +127,18 @@ class ScheduleStep extends StatelessWidget {
             title: Text(
               pickupDate == null
                   ? 'selectPickupDate'.tr()
-                  : 'pickupPrefix'.tr(namedArgs: {
-                "date": DateFormat('MMM dd, yyyy').format(pickupDate!)
-              }),
+                  : 'pickupPrefix'.tr(
+                      namedArgs: {
+                        "date": DateFormat('MMM dd, yyyy').format(pickupDate!),
+                      },
+                    ),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: pickupDate == null
                 ? Text('tapChoosePickupDate'.tr())
-                : Text('${pickupDate!.difference(DateTime.now()).inDays} days from now'),
+                : Text(
+                    '${pickupDate!.difference(DateTime.now()).inDays} days from now',
+                  ),
             onTap: onPickupDatePick,
           ),
 

@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:logistics_toolkit/features/notifications/presentation/screen/notification_center.dart';
 import 'package:logistics_toolkit/features/settings/presentation/screen/settings_page.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../features/notifications/notification_service.dart';
+import 'package:logistics_toolkit/features/notifications/notification_service.dart';
 
 class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String? pageTitle;
@@ -43,14 +41,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
     return AppBar(
       elevation: 0,
       backgroundColor:
-      theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+          theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
       foregroundColor:
-      theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface,
+          theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface,
       leading: widget.pageTitle != null
           ? IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () => Navigator.of(context).pop(),
-      )
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
+            )
           : null,
       title: widget.showProfile
           ? _buildProfileTitle(context)
@@ -58,6 +56,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
       actions: _buildActions(context),
     );
   }
+
   Widget _buildProfileTitle(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
@@ -81,9 +80,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
     final profile = widget.userProfile!;
     return GestureDetector(
-      onTap: widget.onProfileTap ??
-              () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const SettingsPage())),
+      onTap:
+          widget.onProfileTap ??
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsPage()),
+          ),
       child: Row(
         children: [
           _buildProfilePicture(profile, colors),
@@ -108,13 +110,16 @@ class _CustomAppBarState extends State<CustomAppBar> {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildProfilePicture(Map<String, dynamic> profile, ColorScheme colors) {
+  Widget _buildProfilePicture(
+    Map<String, dynamic> profile,
+    ColorScheme colors,
+  ) {
     final imageUrl = profile['profile_picture'];
     final hasImage = imageUrl != null && imageUrl.toString().isNotEmpty;
 
@@ -127,12 +132,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
           : null,
     );
   }
+
   Widget _buildPageTitle() {
     return Text(
       widget.pageTitle ?? '',
       style: Theme.of(context).textTheme.titleLarge,
     );
   }
+
   Widget _buildLoadingTitle() {
     return Row(
       children: [
@@ -160,10 +167,11 @@ class _CustomAppBarState extends State<CustomAppBar> {
               ),
             ),
           ],
-        )
+        ),
       ],
     );
   }
+
   List<Widget> _buildActions(BuildContext context) {
     final List<Widget> actions = [];
 

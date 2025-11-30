@@ -1,11 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'notification_manager.dart';
 
 class ShipmentNotificationService {
   static final ShipmentNotificationService _instance =
-  ShipmentNotificationService._internal();
+      ShipmentNotificationService._internal();
   factory ShipmentNotificationService() => _instance;
   ShipmentNotificationService._internal();
 
@@ -20,11 +19,15 @@ class ShipmentNotificationService {
     String? location,
   }) async {
     try {
-      final shipment = await _supabase
-          .from('shipment')
-          .select('shipper_id, assigned_driver, assigned_agent, pickup, drop')
-          .eq('shipment_id', shipmentId)
-          .single() as Map<String, dynamic>?;
+      final shipment =
+          await _supabase
+                  .from('shipment')
+                  .select(
+                    'shipper_id, assigned_driver, assigned_agent, pickup, drop',
+                  )
+                  .eq('shipment_id', shipmentId)
+                  .single()
+              as Map<String, dynamic>?;
 
       if (shipment == null) {
         debugPrint("❌ Shipment not found: $shipmentId");
@@ -39,7 +42,7 @@ class ShipmentNotificationService {
 
       debugPrint(
         ">>> Inserting shipment update. Driver ID from fetched data: "
-            "${shipment['assigned_driver']}",
+        "${shipment['assigned_driver']}",
       );
 
       // Insert update log
@@ -54,11 +57,7 @@ class ShipmentNotificationService {
       });
 
       // Notify involved users
-      await _createShipmentStatusNotifications(
-        shipment,
-        newStatus,
-        shipmentId,
-      );
+      await _createShipmentStatusNotifications(shipment, newStatus, shipmentId);
 
       debugPrint('✅ Shipment status updated: $shipmentId -> $newStatus');
     } catch (e) {
@@ -69,10 +68,10 @@ class ShipmentNotificationService {
 
   // Notify all users associated with this shipment
   Future<void> _createShipmentStatusNotifications(
-      Map<String, dynamic> shipment,
-      String newStatus,
-      String shipmentId,
-      ) async {
+    Map<String, dynamic> shipment,
+    String newStatus,
+    String shipmentId,
+  ) async {
     try {
       final pickup = shipment['pickup'] ?? 'origin';
       final drop = shipment['drop'] ?? 'destination';
@@ -123,12 +122,13 @@ class ShipmentNotificationService {
           .update({'assigned_driver': driverCustomId})
           .eq('shipment_id', shipmentId);
 
-      final shipment = await _supabase
-          .from('shipment')
-          .select('assigned_agent, pickup, drop')
-          .eq('shipment_id', shipmentId)
-          .single()
-      as Map<String, dynamic>?;
+      final shipment =
+          await _supabase
+                  .from('shipment')
+                  .select('assigned_agent, pickup, drop')
+                  .eq('shipment_id', shipmentId)
+                  .single()
+              as Map<String, dynamic>?;
       if (shipment == null) {
         debugPrint("❌ Shipment not found for assignment");
         return;
@@ -149,10 +149,10 @@ class ShipmentNotificationService {
 
   // Notify driver + agent after assignment
   Future<void> _createDriverAssignmentNotifications(
-      Map<String, dynamic> shipment,
-      String driverCustomId,
-      String shipmentId,
-      ) async {
+    Map<String, dynamic> shipment,
+    String driverCustomId,
+    String shipmentId,
+  ) async {
     try {
       final pickup = shipment['pickup'] ?? 'origin';
       final drop = shipment['drop'] ?? 'destination';
@@ -161,13 +161,13 @@ class ShipmentNotificationService {
           .from('user_profiles')
           .select('user_id, name, custom_user_id')
           .inFilter('custom_user_id', [
-        driverCustomId,
-        shipment['assigned_agent'],
-      ]);
+            driverCustomId,
+            shipment['assigned_agent'],
+          ]);
 
       // DRIVER NOTIFICATION
       final driverProfile = profiles.firstWhere(
-            (p) => p['custom_user_id'] == driverCustomId,
+        (p) => p['custom_user_id'] == driverCustomId,
         orElse: () => {},
       );
       String driverName = driverCustomId;
@@ -177,7 +177,7 @@ class ShipmentNotificationService {
           userId: driverProfile['user_id'],
           title: 'New Shipment Assignment',
           message:
-          'You have been assigned to shipment $shipmentId from $pickup to $drop.',
+              'You have been assigned to shipment $shipmentId from $pickup to $drop.',
           type: 'shipment',
           sourceId: shipmentId,
         );
@@ -185,14 +185,15 @@ class ShipmentNotificationService {
 
       // AGENT NOTIFICATION
       final agentProfile = profiles.firstWhere(
-            (p) => p['custom_user_id'] == shipment['assigned_agent'],
+        (p) => p['custom_user_id'] == shipment['assigned_agent'],
         orElse: () => {},
       );
       if (agentProfile.isNotEmpty) {
         await _notificationManager.createNotification(
           userId: agentProfile['user_id'],
           title: 'Driver Assigned to Shipment',
-          message: 'Driver $driverName has been assigned to shipment $shipmentId.',
+          message:
+              'Driver $driverName has been assigned to shipment $shipmentId.',
           type: 'shipment',
           sourceId: shipmentId,
         );

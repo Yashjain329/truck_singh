@@ -27,30 +27,27 @@ class TruckTypeStep extends StatelessWidget {
         children: [
           isLoadingShipper
               ? const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Center(child: CircularProgressIndicator()),
-          )
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10.0),
-            child: Text(
-              shipperName != null
-                  ? "hiName".tr(namedArgs: {"name": shipperName!})
-                  : "hiThere".tr(),
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Text(
+                    shipperName != null
+                        ? "hiName".tr(namedArgs: {"name": shipperName!})
+                        : "hiThere".tr(),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
           progressBar,
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
               "selectTruckType".tr(),
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
           GridView.builder(
@@ -76,14 +73,12 @@ class TruckTypeStep extends StatelessWidget {
                         : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(
-                      color:
-                      isSelected ? Colors.orange : Colors.grey.shade300,
+                      color: isSelected ? Colors.orange : Colors.grey.shade300,
                       width: isSelected ? 3 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color:
-                        Theme.of(context).shadowColor.withOpacity(0.08),
+                        color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
                         spreadRadius: 1,
                         blurRadius: 5,
                         offset: const Offset(0, 3),

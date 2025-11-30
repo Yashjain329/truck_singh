@@ -51,8 +51,9 @@ class Driver {
   }
 
   factory Driver.fromMap(Map<String, dynamic> map) {
-    final bookingStatus =
-    (map['booking_status'] ?? 'no_shipment').toString().toLowerCase();
+    final bookingStatus = (map['booking_status'] ?? 'no_shipment')
+        .toString()
+        .toLowerCase();
 
     String driverStatus;
 
@@ -96,8 +97,9 @@ class MyDriverPage extends StatefulWidget {
 class _MyDriverPageState extends State<MyDriverPage>
     with SingleTickerProviderStateMixin {
   final SupabaseClient supabase = Supabase.instance.client;
-  final ptr.RefreshController _refreshController =
-  ptr.RefreshController(initialRefresh: false);
+  final ptr.RefreshController _refreshController = ptr.RefreshController(
+    initialRefresh: false,
+  );
 
   List<Driver> drivers = [];
   bool isLoading = true;
@@ -227,7 +229,7 @@ class _MyDriverPageState extends State<MyDriverPage>
         final driverData = Map<String, dynamic>.from(profileResponse);
         if (shipmentResponse.isNotEmpty) {
           driverData['booking_status'] =
-          shipmentResponse.first['booking_status'];
+              shipmentResponse.first['booking_status'];
         } else {
           driverData['booking_status'] = 'no_shipment';
         }
@@ -242,12 +244,15 @@ class _MyDriverPageState extends State<MyDriverPage>
       setState(() {
         drivers = fetchedDrivers;
         _totalDrivers = drivers.length;
-        availableDrivers =
-            fetchedDrivers.where((d) => d.status == 'Available').length;
-        onTripDrivers =
-            fetchedDrivers.where((d) => d.status == 'On Trip').length;
-        onLeaveDrivers =
-            fetchedDrivers.where((d) => d.status == 'Leave').length;
+        availableDrivers = fetchedDrivers
+            .where((d) => d.status == 'Available')
+            .length;
+        onTripDrivers = fetchedDrivers
+            .where((d) => d.status == 'On Trip')
+            .length;
+        onLeaveDrivers = fetchedDrivers
+            .where((d) => d.status == 'Leave')
+            .length;
         isLoading = false;
       });
       _refreshController.refreshCompleted();
@@ -255,9 +260,9 @@ class _MyDriverPageState extends State<MyDriverPage>
       setState(() => isLoading = false);
       _refreshController.refreshFailed();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching drivers: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error fetching drivers: $e')));
       }
     }
   }
@@ -278,14 +283,11 @@ class _MyDriverPageState extends State<MyDriverPage>
     }).toList();
 
     if (sortByRating) {
-      filtered.sort(
-            (a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0),
-      );
+      filtered.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
     } else if (sortByStatus) {
       final order = {'Available': 0, 'On Trip': 1, 'Leave': 2};
       filtered.sort(
-            (a, b) =>
-            (order[a.status] ?? 99).compareTo(order[b.status] ?? 99),
+        (a, b) => (order[a.status] ?? 99).compareTo(order[b.status] ?? 99),
       );
     }
 
@@ -321,12 +323,7 @@ class _MyDriverPageState extends State<MyDriverPage>
     );
   }
 
-  Widget _buildStatCard(
-      String label,
-      int count,
-      Color color,
-      String filter,
-      ) {
+  Widget _buildStatCard(String label, int count, Color color, String filter) {
     return GestureDetector(
       onTap: () => setState(() => selectedFilter = filter),
       child: Container(
@@ -334,7 +331,7 @@ class _MyDriverPageState extends State<MyDriverPage>
         height: 80,
         decoration: BoxDecoration(
           color: selectedFilter == filter
-              ? color.withOpacity(0.1)
+              ? color.withValues(alpha: 0.1)
               : Colors.blue.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -370,16 +367,14 @@ class _MyDriverPageState extends State<MyDriverPage>
       await launchUrl(uri);
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('could_not_open_dialer'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('could_not_open_dialer'.tr())));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -422,258 +417,237 @@ class _MyDriverPageState extends State<MyDriverPage>
       floatingActionButton: widget.isSelectionMode
           ? null
           : Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isFirstTime)
-            Text(
-              'tap_to_add_driver'.tr(),
-              style: const TextStyle(fontSize: 12),
-            ).animate().fade().slide(),
-          const SizedBox(height: 4),
-          Animate(
-            effects: [
-              ScaleEffect(
-                duration: 600.ms,
-                end: const Offset(1.1, 1.1),
-              ),
-            ],
-            onPlay: (controller) => controller.repeat(reverse: true),
-            child: FloatingActionButton(
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => const AddDriverPage(),
-                  ),
-                );
-                await fetchDriversFromSupabase();
-              },
-              child: const Icon(Icons.add),
-            ),
-          ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-        children: [
-          Padding(
-            padding:
-            const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildStatCard(
-                  'total'.tr(),
-                  _totalDrivers,
-                  Colors.cyan,
-                  'all_drivers'.tr(),
-                ),
-                _buildStatCard(
-                  'available'.tr(),
-                  availableDrivers,
-                  Colors.green,
-                  'available_only'.tr(),
-                ),
-                _buildStatCard(
-                  'on_trip'.tr(),
-                  onTripDrivers,
-                  Colors.blue,
-                  'on_trip'.tr(),
-                ),
-                _buildStatCard(
-                  'on_leave'.tr(),
-                  onLeaveDrivers,
-                  Colors.red,
-                  'on_leave'.tr(),
+                if (isFirstTime)
+                  Text(
+                    'tap_to_add_driver'.tr(),
+                    style: const TextStyle(fontSize: 12),
+                  ).animate().fade().slide(),
+                const SizedBox(height: 4),
+                Animate(
+                  effects: [
+                    ScaleEffect(duration: 600.ms, end: const Offset(1.1, 1.1)),
+                  ],
+                  onPlay: (controller) => controller.repeat(reverse: true),
+                  child: FloatingActionButton(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AddDriverPage(),
+                        ),
+                      );
+                      await fetchDriversFromSupabase();
+                    },
+                    child: const Icon(Icons.add),
+                  ),
                 ),
               ],
             ),
-          ),
-          if (widget.isSelectionMode)
-            Container(
-              width: double.infinity,
-              color: Colors.green.shade50,
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  Text(
-                    'please_select_driver'.tr(),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.green.shade800,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Showing only available drivers (not assigned to other shipments)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.green.shade600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Expanded(
-            child: ptr.SmartRefresher(
-              controller: _refreshController,
-              onRefresh: fetchDriversFromSupabase,
-              enablePullDown: true,
-              enablePullUp: false,
-              header: const ptr.WaterDropHeader(),
-              child: filteredDrivers.isEmpty
-                  ? ListView(
-                physics:
-                const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 200),
-                  Center(
-                    child: Text(
-                      'no_drivers_found'.tr(),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatCard(
+                        'total'.tr(),
+                        _totalDrivers,
+                        Colors.cyan,
+                        'all_drivers'.tr(),
                       ),
-                    ),
+                      _buildStatCard(
+                        'available'.tr(),
+                        availableDrivers,
+                        Colors.green,
+                        'available_only'.tr(),
+                      ),
+                      _buildStatCard(
+                        'on_trip'.tr(),
+                        onTripDrivers,
+                        Colors.blue,
+                        'on_trip'.tr(),
+                      ),
+                      _buildStatCard(
+                        'on_leave'.tr(),
+                        onLeaveDrivers,
+                        Colors.red,
+                        'on_leave'.tr(),
+                      ),
+                    ],
                   ),
-                ],
-              )
-                  : ListView.builder(
-                physics:
-                const AlwaysScrollableScrollPhysics(),
-                itemCount: filteredDrivers.length,
-                itemBuilder: (context, index) {
-                  final driver = filteredDrivers[index];
-                  final isAvailable =
-                      driver.status == 'Available';
-
-                  return Slidable(
-                    key: ValueKey(driver.id),
-                    endActionPane: widget.isSelectionMode
-                        ? null
-                        : ActionPane(
-                      motion:
-                      const ScrollMotion(),
+                ),
+                if (widget.isSelectionMode)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.green.shade50,
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
                       children: [
-                        SlidableAction(
-                          onPressed: (_) =>
-                              _callDriver(
-                                driver.contact,
-                              ),
-                          backgroundColor:
-                          Colors.green,
-                          foregroundColor:
-                          Colors.white,
-                          icon: Icons.call,
-                          label: 'Call',
-                        ),
-                      ],
-                    ),
-                    child: Card(
-                      margin:
-                      const EdgeInsets.symmetric(
-                        vertical: 6,
-                        horizontal: 10,
-                      ),
-                      child: ListTile(
-                        onTap: () {
-                          if (widget.isSelectionMode &&
-                              isAvailable) {
-                            _selectDriver(driver);
-                          }
-                        },
-                        leading: CircleAvatar(
-                          backgroundColor: driver
-                              .statusColor
-                              .withOpacity(0.2),
-                          child: Icon(
-                            driver.statusIcon,
-                            color: driver.statusColor,
-                          ),
-                        ),
-                        title: Text(
-                          '${driver.name} (${driver.id})',
-                          style: const TextStyle(
+                        Text(
+                          'please_select_driver'.tr(),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.green.shade800,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.phone,
-                                    size: 16),
-                                const SizedBox(width: 4),
-                                Text(driver.contact),
-                              ],
-                            ),
-                            if (driver.rating != null)
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.star,
-                                    color: Colors.amber,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    driver.rating!
-                                        .toStringAsFixed(1),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                        trailing: widget.isSelectionMode
-                            ? (isAvailable
-                            ? ElevatedButton(
-                          onPressed: () =>
-                              _selectDriver(
-                                driver,
-                              ),
-                          child: Text(
-                            'select'.tr(),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Showing only available drivers (not assigned to other shipments)',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.green.shade600,
+                            fontSize: 12,
                           ),
-                        )
-                            : Text(
-                          'unavailable'.tr(),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                          ),
-                        ))
-                            : Column(
-                          mainAxisAlignment:
-                          MainAxisAlignment
-                              .center,
-                          children: [
-                            Icon(
-                              driver.statusIcon,
-                              color:
-                              driver.statusColor,
-                            ),
-                            Text(
-                              driver.status,
-                              style: TextStyle(
-                                color: driver
-                                    .statusColor,
-                              ),
-                            ),
-                          ],
                         ),
-                      ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                Expanded(
+                  child: ptr.SmartRefresher(
+                    controller: _refreshController,
+                    onRefresh: fetchDriversFromSupabase,
+                    enablePullDown: true,
+                    enablePullUp: false,
+                    header: const ptr.WaterDropHeader(),
+                    child: filteredDrivers.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              const SizedBox(height: 200),
+                              Center(
+                                child: Text(
+                                  'no_drivers_found'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: filteredDrivers.length,
+                            itemBuilder: (context, index) {
+                              final driver = filteredDrivers[index];
+                              final isAvailable = driver.status == 'Available';
+
+                              return Slidable(
+                                key: ValueKey(driver.id),
+                                endActionPane: widget.isSelectionMode
+                                    ? null
+                                    : ActionPane(
+                                        motion: const ScrollMotion(),
+                                        children: [
+                                          SlidableAction(
+                                            onPressed: (_) =>
+                                                _callDriver(driver.contact),
+                                            backgroundColor: Colors.green,
+                                            foregroundColor: Colors.white,
+                                            icon: Icons.call,
+                                            label: 'Call',
+                                          ),
+                                        ],
+                                      ),
+                                child: Card(
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                    horizontal: 10,
+                                  ),
+                                  child: ListTile(
+                                    onTap: () {
+                                      if (widget.isSelectionMode &&
+                                          isAvailable) {
+                                        _selectDriver(driver);
+                                      }
+                                    },
+                                    leading: CircleAvatar(
+                                      backgroundColor: driver.statusColor
+                                          .withValues(alpha: 0.2),
+                                      child: Icon(
+                                        driver.statusIcon,
+                                        color: driver.statusColor,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      '${driver.name} (${driver.id})',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.phone, size: 16),
+                                            const SizedBox(width: 4),
+                                            Text(driver.contact),
+                                          ],
+                                        ),
+                                        if (driver.rating != null)
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.star,
+                                                color: Colors.amber,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                driver.rating!.toStringAsFixed(
+                                                  1,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                    trailing: widget.isSelectionMode
+                                        ? (isAvailable
+                                              ? ElevatedButton(
+                                                  onPressed: () =>
+                                                      _selectDriver(driver),
+                                                  child: Text('select'.tr()),
+                                                )
+                                              : Text(
+                                                  'unavailable'.tr(),
+                                                  style: const TextStyle(
+                                                    color: Colors.grey,
+                                                  ),
+                                                ))
+                                        : Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                driver.statusIcon,
+                                                color: driver.statusColor,
+                                              ),
+                                              Text(
+                                                driver.status,
+                                                style: TextStyle(
+                                                  color: driver.statusColor,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -682,17 +656,11 @@ class DriverSearchDelegate extends SearchDelegate<String?> {
   final List<Driver> allDrivers;
   final bool isSelectionMode;
 
-  DriverSearchDelegate(
-      this.allDrivers, {
-        required this.isSelectionMode,
-      });
+  DriverSearchDelegate(this.allDrivers, {required this.isSelectionMode});
 
   @override
   List<Widget> buildActions(BuildContext context) => [
-    IconButton(
-      icon: const Icon(Icons.clear),
-      onPressed: () => query = '',
-    ),
+    IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
   ];
 
   @override
@@ -708,8 +676,7 @@ class DriverSearchDelegate extends SearchDelegate<String?> {
   Widget buildSuggestions(BuildContext context) {
     final queryLower = query.toLowerCase();
     final results = allDrivers.where((driver) {
-      final nameMatches =
-      driver.name.toLowerCase().contains(queryLower);
+      final nameMatches = driver.name.toLowerCase().contains(queryLower);
       final contactMatches = driver.contact.contains(queryLower);
       return nameMatches || contactMatches;
     }).toList();

@@ -2,24 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart' as ptr;
-import '../../../admin/support_ticket_detail_page.dart';
-import 'package:logistics_toolkit/features/admin/manage_users_page.dart';
-import '../../../truck_documents/truck_documents_page.dart';
+import 'package:logistics_toolkit/features/admin/support_ticket_detail_page.dart';
+import 'package:logistics_toolkit/features/truck_documents/truck_documents_page.dart';
 
 class NotificationCenterPage extends StatefulWidget {
   const NotificationCenterPage({Key? key}) : super(key: key);
 
   @override
-  State<NotificationCenterPage> createState() =>
-      _NotificationCenterPageState();
+  State<NotificationCenterPage> createState() => _NotificationCenterPageState();
 }
 
 class _NotificationCenterPageState extends State<NotificationCenterPage> {
   final supabase = Supabase.instance.client;
   bool isLoading = false;
   List<Map<String, dynamic>> notifications = [];
-  final ptr.RefreshController _refreshController =
-  ptr.RefreshController(initialRefresh: false);
+  final ptr.RefreshController _refreshController = ptr.RefreshController(
+    initialRefresh: false,
+  );
 
   @override
   void initState() {
@@ -47,7 +46,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
     try {
       final response = await supabase
           .from('notifications')
-          .select('*')     // FIXED
+          .select('*') // FIXED
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
@@ -77,9 +76,9 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
         .toList();
 
     if (unreadIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('all_caught_up'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('all_caught_up'.tr())));
       return;
     }
 
@@ -134,7 +133,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
               tooltip: 'mark_all_as_read'.tr(),
               icon: const Icon(Icons.done_all),
               onPressed: markAllAsRead,
-            )
+            ),
         ],
       ),
       body: ptr.SmartRefresher(
@@ -246,13 +245,11 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
         notification['data'] ?? notification['shipment_details'] ?? {};
     final String type = data is Map ? (data['type'] ?? '') : '';
 
-    if (type == 'support_ticket' &&
-        data is Map &&
-        data['ticket_id'] != null) {
+    if (type == 'support_ticket' && data is Map && data['ticket_id'] != null) {
       try {
         final ticket = await supabase
             .from('support_tickets')
-            .select()          // FIXED
+            .select() // FIXED
             .eq('id', data['ticket_id'])
             .single();
 
@@ -269,16 +266,15 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
         debugPrint("❌ Error opening ticket: $e");
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('error_opening_ticket'.tr())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('error_opening_ticket'.tr())));
         }
       }
       return;
     }
 
-    if (type == 'truck_document_upload' ||
-        type == 'truck_document_update') {
+    if (type == 'truck_document_upload' || type == 'truck_document_update') {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const TruckDocumentsPage()),
@@ -290,8 +286,9 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
   }
 
   void _showNotificationDetails(Map<String, dynamic> n) {
-    final shipmentDetails =
-    (n['shipment_details'] is Map) ? n['shipment_details'] : {};
+    final shipmentDetails = (n['shipment_details'] is Map)
+        ? n['shipment_details']
+        : {};
 
     showDialog(
       context: context,
@@ -318,7 +315,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
             TextButton(
               child: Text('close'.tr()),
               onPressed: () => Navigator.pop(context),
-            )
+            ),
           ],
         );
       },

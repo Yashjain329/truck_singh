@@ -18,10 +18,10 @@ class ShipmentDetailsStep extends StatelessWidget {
   }) : super(key: key);
 
   Widget _requiredTextField(
-      TextEditingController controller,
-      String labelKey, {
-        bool isNumeric = false,
-      }) {
+    TextEditingController controller,
+    String labelKey, {
+    bool isNumeric = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -38,8 +38,10 @@ class ShipmentDetailsStep extends StatelessWidget {
           decoration: InputDecoration(
             hintText: "enter Field".tr(namedArgs: {"field": labelKey.tr()}),
             border: const OutlineInputBorder(),
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14,
+              horizontal: 12,
+            ),
           ),
           validator: (val) => val == null || val.trim().isEmpty
               ? "enter Field".tr(namedArgs: {"field": labelKey.tr()})
@@ -61,39 +63,31 @@ class ShipmentDetailsStep extends StatelessWidget {
             padding: const EdgeInsets.all(8.0),
             child: Text(
               "shipmentDetails".tr(),
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
 
           const SizedBox(height: 10),
           _requiredTextField(itemController, "shippingItem"),
           const SizedBox(height: 16),
-          _requiredTextField(
-            weightController,
-            "quantity",
-            isNumeric: true,
-          ),
+          _requiredTextField(weightController, "quantity", isNumeric: true),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
               "unit".tr(),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
           DropdownButtonFormField<String>(
-            value: unitController.text.isNotEmpty ? unitController.text : null,
+            initialValue: unitController.text.isNotEmpty ? unitController.text : null,
             decoration: InputDecoration(
               hintText: "select Unit".tr(),
               border: const OutlineInputBorder(),
-              contentPadding:
-              const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 14,
+                horizontal: 12,
+              ),
             ),
             items: const [
               DropdownMenuItem(value: "ton", child: Text("ton")),
@@ -108,7 +102,7 @@ class ShipmentDetailsStep extends StatelessWidget {
               }
             },
             validator: (value) =>
-            value == null || value.isEmpty ? "select Unit".tr() : null,
+                value == null || value.isEmpty ? "select Unit".tr() : null,
           ),
           const SizedBox(height: 20),
           Container(
@@ -123,11 +117,7 @@ class ShipmentDetailsStep extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.info,
-                      color: Colors.amber.shade700,
-                      size: 20,
-                    ),
+                    Icon(Icons.info, color: Colors.amber.shade700, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       "weightGuidelines".tr(),
@@ -141,14 +131,11 @@ class ShipmentDetailsStep extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   "weightGuidelinesDesc".tr(),
-                  style: TextStyle(
-                    color: Colors.amber.shade700,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.amber.shade700, fontSize: 14),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

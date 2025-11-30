@@ -35,7 +35,8 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
 
   String get userName => widget.userProfile['name'] ?? 'Unknown User';
   String get customUserId => widget.userProfile['custom_user_id'] ?? '';
-  String get phoneNumber => widget.userProfile['mobile_number'] ?? 'Not provided';
+  String get phoneNumber =>
+      widget.userProfile['mobile_number'] ?? 'Not provided';
   String get email => widget.userProfile['email'] ?? 'Not provided';
   String get role => widget.userProfile['role'] ?? '';
   String? get profilePicture => widget.userProfile['profile_picture'];
@@ -78,14 +79,14 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
       }
 
       final disableInfo =
-      await AccountReactivationService.getAccountDisableInfo(
-        customUserId: customUserId,
-      );
+          await AccountReactivationService.getAccountDisableInfo(
+            customUserId: customUserId,
+          );
 
       final hasPending =
-      await AccountReactivationService.hasPendingReactivationRequest(
-        customUserId: customUserId,
-      );
+          await AccountReactivationService.hasPendingReactivationRequest(
+            customUserId: customUserId,
+          );
 
       if (!mounted) return;
 
@@ -112,8 +113,9 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Icon(Icons.message, color: AppColors.teal),
@@ -148,7 +150,10 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, null),
-              child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -193,11 +198,8 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
           recipientId: disablerId,
           title: 'Account Reactivation Request'.tr(),
           message:
-          '$userName ${"is requesting to reactivate their account.".tr()}\n${"Message:".tr()} $message',
-          data: {
-            'type': 'reactivation_request',
-            'requester_id': customUserId,
-          },
+              '$userName ${"is requesting to reactivate their account.".tr()}\n${"Message:".tr()} $message',
+          data: {'type': 'reactivation_request', 'requester_id': customUserId},
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -221,7 +223,10 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending request: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error sending request: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isRequestingAccess = false);
@@ -287,7 +292,10 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
       Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing out: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error signing out: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -313,8 +321,10 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
-                decoration:
-                BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(Icons.block, size: 60, color: Colors.red.shade700),
               ),
 
@@ -388,9 +398,9 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
           children: [
             CircleAvatar(
               radius: 50,
-              backgroundColor: AppColors.teal.withOpacity(0.1),
+              backgroundColor: AppColors.teal.withValues(alpha: 0.1),
               backgroundImage:
-              (profilePicture != null && profilePicture!.isNotEmpty)
+                  (profilePicture != null && profilePicture!.isNotEmpty)
                   ? NetworkImage(profilePicture!)
                   : null,
               child: (profilePicture == null || profilePicture!.isEmpty)
@@ -431,21 +441,31 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _hasPendingRequest ? Colors.blue.shade50 : Colors.orange.shade50,
+          color: _hasPendingRequest
+              ? Colors.blue.shade50
+              : Colors.orange.shade50,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
             Icon(
-              _hasPendingRequest ? Icons.hourglass_empty : Icons.supervisor_account,
-              color: _hasPendingRequest ? Colors.blue.shade600 : Colors.orange.shade600,
+              _hasPendingRequest
+                  ? Icons.hourglass_empty
+                  : Icons.supervisor_account,
+              color: _hasPendingRequest
+                  ? Colors.blue.shade600
+                  : Colors.orange.shade600,
               size: 32,
             ),
             const SizedBox(height: 12),
             Text(
-              _hasPendingRequest ? 'Request Pending' : 'Request Account Activation',
+              _hasPendingRequest
+                  ? 'Request Pending'
+                  : 'Request Account Activation',
               style: TextStyle(
-                color: _hasPendingRequest ? Colors.blue.shade800 : Colors.orange.shade800,
+                color: _hasPendingRequest
+                    ? Colors.blue.shade800
+                    : Colors.orange.shade800,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -457,28 +477,38 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
                   : 'Your account was disabled by ${_disableInfo?['disabler_name'] ?? 'an admin'}. Send them a request to reactivate your account.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: _hasPendingRequest ? Colors.blue.shade700 : Colors.orange.shade700,
+                color: _hasPendingRequest
+                    ? Colors.blue.shade700
+                    : Colors.orange.shade700,
               ),
             ),
             if (!_hasPendingRequest && _disableInfo != null) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration:
-                BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Disabled by: ${_disableInfo!['disabler_name']}',
-                      style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.grey.shade800,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       'Role: ${_disableInfo!['disabler_role'].toString().toUpperCase()}',
                       style: TextStyle(color: Colors.grey.shade600),
                     ),
                     if (_disableInfo!['reason'] != null)
-                      Text('Reason: ${_disableInfo!['reason']}', style: TextStyle(color: Colors.grey.shade600)),
+                      Text(
+                        'Reason: ${_disableInfo!['reason']}',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
                   ],
                 ),
               ),
@@ -500,7 +530,11 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
           const SizedBox(height: 12),
           Text(
             'Activate Your Account',
-            style: TextStyle(color: Colors.blue.shade800, fontWeight: FontWeight.bold, fontSize: 18),
+            style: TextStyle(
+              color: Colors.blue.shade800,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -525,13 +559,13 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
             : _requestAccessFromOwner,
         icon: _isRequestingAccess
             ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation(Colors.white),
-          ),
-        )
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                ),
+              )
             : Icon(_hasPendingRequest ? Icons.check_circle : Icons.send),
         label: Text(
           _isRequestingAccess
@@ -541,11 +575,14 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
               : 'Request Access',
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-          _hasPendingRequest ? Colors.blue.shade600 : Colors.orange.shade600,
+          backgroundColor: _hasPendingRequest
+              ? Colors.blue.shade600
+              : Colors.orange.shade600,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -554,13 +591,13 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
       onPressed: _isSendingOtp ? null : _sendOtpForSelfActivation,
       icon: _isSendingOtp
           ? const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation(Colors.white),
-        ),
-      )
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(Colors.white),
+              ),
+            )
           : const Icon(Icons.verified_user),
       label: Text(
         _isSendingOtp
@@ -587,10 +624,15 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
             width: 80,
             child: Text(
               '$label:',
-              style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          Expanded(child: Text(value, style: TextStyle(color: Colors.grey.shade800))),
+          Expanded(
+            child: Text(value, style: TextStyle(color: Colors.grey.shade800)),
+          ),
         ],
       ),
     );

@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logistics_toolkit/features/auth/presentation/screens/profile_setup_page.dart';
 import 'package:logistics_toolkit/features/auth/presentation/screens/role_selection_page.dart';
 import 'package:logistics_toolkit/features/auth/utils/user_role.dart';
 import 'login_screen.dart';
-import 'dashboard_router.dart';
 
 class RegisterPage extends StatefulWidget {
   final UserRole selectedRole;
@@ -17,7 +15,8 @@ class RegisterPage extends StatefulWidget {
   State createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMixin {
+class _RegisterPageState extends State<RegisterPage>
+    with TickerProviderStateMixin {
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   final confirmPassCtrl = TextEditingController();
@@ -37,13 +36,21 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     _passFocus = FocusNode()..addListener(_onFocusChange);
     passCtrl.addListener(_refreshOverlay);
 
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeInOut);
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeInOut,
+    );
   }
 
   void _onFocusChange() {
-    if (_passFocus.hasFocus) _showOverlay();
-    else _hideOverlay();
+    if (_passFocus.hasFocus)
+      _showOverlay();
+    else
+      _hideOverlay();
   }
 
   void _refreshOverlay() => _overlay?.markNeedsBuild();
@@ -52,27 +59,29 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
     if (_overlay != null) return;
     final overlayState = Overlay.of(context, rootOverlay: true);
     _animController.forward();
-    _overlay = OverlayEntry(builder: (context) {
-      return Positioned(
-        width: _overlayWidth(),
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 64),
-          child: FadeTransition(
-            opacity: _fadeAnim,
-            child: _ChecklistCard(
-              hasMin: _hasMinLength,
-              hasMax: _hasMaxLength,
-              hasUpper: _hasUpper,
-              hasLower: _hasLower,
-              hasDigit: _hasDigit,
-              hasSymbol: _hasSymbol,
+    _overlay = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          width: _overlayWidth(),
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: const Offset(0, 64),
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: _ChecklistCard(
+                hasMin: _hasMinLength,
+                hasMax: _hasMaxLength,
+                hasUpper: _hasUpper,
+                hasLower: _hasLower,
+                hasDigit: _hasDigit,
+                hasSymbol: _hasSymbol,
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
     overlayState.insert(_overlay!);
   }
 
@@ -90,11 +99,13 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
   }
 
   bool get _hasMinLength => passCtrl.text.length >= 8;
-  bool get _hasMaxLength => passCtrl.text.length <= 16 && passCtrl.text.isNotEmpty;
+  bool get _hasMaxLength =>
+      passCtrl.text.length <= 16 && passCtrl.text.isNotEmpty;
   bool get _hasUpper => passCtrl.text.contains(RegExp(r'[A-Z]'));
   bool get _hasLower => passCtrl.text.contains(RegExp(r'[a-z]'));
   bool get _hasDigit => passCtrl.text.contains(RegExp(r'[0-9]'));
-  bool get _hasSymbol => passCtrl.text.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]'));
+  bool get _hasSymbol =>
+      passCtrl.text.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]'));
 
   String? _validatePassword(String? v) {
     if (!_hasMinLength) return 'password_must_be_at_least_8_characters'.tr();
@@ -131,9 +142,15 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
       labelText: label,
       prefixIcon: Icon(prefix, color: Colors.teal.shade700),
       border: border,
-      focusedBorder: border.copyWith(borderSide: BorderSide(color: Colors.teal.shade700, width: 2)),
-      errorBorder: border.copyWith(borderSide: const BorderSide(color: Colors.redAccent, width: 2)),
-      focusedErrorBorder: border.copyWith(borderSide: const BorderSide(color: Colors.redAccent, width: 2)),
+      focusedBorder: border.copyWith(
+        borderSide: BorderSide(color: Colors.teal.shade700, width: 2),
+      ),
+      errorBorder: border.copyWith(
+        borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+      ),
+      focusedErrorBorder: border.copyWith(
+        borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+      ),
     );
   }
 
@@ -154,13 +171,20 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => ProfileSetupPage(selectedRole: widget.selectedRole)),
+              MaterialPageRoute(
+                builder: (_) =>
+                    ProfileSetupPage(selectedRole: widget.selectedRole),
+              ),
             );
           }
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('confirmation_email_sent ${emailCtrl.text.trim()}'.tr())),
+          SnackBar(
+            content: Text(
+              'confirmation_email_sent ${emailCtrl.text.trim()}'.tr(),
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -180,7 +204,10 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.teal.shade800),
-          onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RoleSelectionPage())),
+          onPressed: () => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+          ),
         ),
       ),
       body: GestureDetector(
@@ -201,81 +228,156 @@ class _RegisterPageState extends State<RegisterPage> with TickerProviderStateMix
                 elevation: 12,
                 borderRadius: BorderRadius.circular(28),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 38),
-                  decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(28)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 38,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
                   child: Form(
                     key: _formKey,
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      const SizedBox(height: 8),
-                      Text("sign_up".tr(), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Color(0xFF00796B))),
-                      const SizedBox(height: 10),
-                      Text("your_journey_awaits".tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400), textAlign: TextAlign.center),
-                      const SizedBox(height: 32),
-                      TextFormField(
-                        controller: emailCtrl,
-                        enabled: !_loading,
-                        style: const TextStyle(fontSize: 16),
-                        decoration: _inputDecoration("email".tr(), Icons.person_outline),
-                        validator: (val) => val == null || !val.contains('@') ? 'enter_valid_email'.tr() : null,
-                      ),
-                      const SizedBox(height: 22),
-                      CompositedTransformTarget(
-                        link: _layerLink,
-                        child: TextFormField(
-                          controller: passCtrl,
-                          focusNode: _passFocus,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 8),
+                        Text(
+                          "sign_up".tr(),
+                          style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF00796B),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          "your_journey_awaits".tr(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        TextFormField(
+                          controller: emailCtrl,
                           enabled: !_loading,
-                          obscureText: _obscure,
                           style: const TextStyle(fontSize: 16),
-                          decoration: _inputDecoration("password".tr(), Icons.lock_outline).copyWith(
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off, color: Colors.teal.shade700),
-                              onPressed: () => setState(() => _obscure = !_obscure),
+                          decoration: _inputDecoration(
+                            "email".tr(),
+                            Icons.person_outline,
+                          ),
+                          validator: (val) => val == null || !val.contains('@')
+                              ? 'enter_valid_email'.tr()
+                              : null,
+                        ),
+                        const SizedBox(height: 22),
+                        CompositedTransformTarget(
+                          link: _layerLink,
+                          child: TextFormField(
+                            controller: passCtrl,
+                            focusNode: _passFocus,
+                            enabled: !_loading,
+                            obscureText: _obscure,
+                            style: const TextStyle(fontSize: 16),
+                            decoration:
+                                _inputDecoration(
+                                  "password".tr(),
+                                  Icons.lock_outline,
+                                ).copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscure
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
+                                      color: Colors.teal.shade700,
+                                    ),
+                                    onPressed: () =>
+                                        setState(() => _obscure = !_obscure),
+                                  ),
+                                ),
+                            validator: _validatePassword,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: confirmPassCtrl,
+                          enabled: !_loading,
+                          obscureText: _obscureConfirm,
+                          style: const TextStyle(fontSize: 16),
+                          decoration:
+                              _inputDecoration(
+                                "confirm_password".tr(),
+                                Icons.lock,
+                              ).copyWith(
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureConfirm
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Colors.teal.shade700,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscureConfirm = !_obscureConfirm,
+                                  ),
+                                ),
+                              ),
+                          validator: _validateConfirm,
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF00796B),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              textStyle: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 6,
+                            ),
+                            onPressed: _loading ? null : _register,
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 3,
+                                    ),
+                                  )
+                                : Text("sign_up".tr()),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextButton(
+                          onPressed: _loading
+                              ? null
+                              : () => Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginPage(),
+                                  ),
+                                ),
+                          child: Text(
+                            "already_have_account".tr(),
+                            style: TextStyle(
+                              color: Colors.teal.shade800,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
                             ),
                           ),
-                          validator: _validatePassword,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: confirmPassCtrl,
-                        enabled: !_loading,
-                        obscureText: _obscureConfirm,
-                        style: const TextStyle(fontSize: 16),
-                        decoration: _inputDecoration("confirm_password".tr(), Icons.lock).copyWith(
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off, color: Colors.teal.shade700),
-                            onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                          ),
-                        ),
-                        validator: _validateConfirm,
-                      ),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF00796B),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 6,
-                          ),
-                          onPressed: _loading ? null : _register,
-                          child: _loading ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : Text("sign_up".tr()),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      TextButton(
-                        onPressed: _loading
-                            ? null
-                            : () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage())),
-                        child: Text("already_have_account".tr(), style: TextStyle(color: Colors.teal.shade800, fontWeight: FontWeight.w600, fontSize: 16)),
-                      ),
-                      const SizedBox(height: 16),
-                      const Divider(thickness: 1),
-                    ]),
+                        const SizedBox(height: 16),
+                        const Divider(thickness: 1),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -303,9 +405,21 @@ class _ChecklistCard extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
       children: [
-        Icon(ok ? Icons.check_circle : Icons.radio_button_unchecked, color: ok ? Colors.teal : Colors.grey.shade500, size: 18),
+        Icon(
+          ok ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: ok ? Colors.teal : Colors.grey.shade500,
+          size: 18,
+        ),
         const SizedBox(width: 10),
-        Expanded(child: Text(text, style: TextStyle(color: ok ? Colors.teal.shade800 : Colors.grey.shade600, fontWeight: FontWeight.w600))),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: ok ? Colors.teal.shade800 : Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     ),
   );
@@ -316,7 +430,11 @@ class _ChecklistCard extends StatelessWidget {
       elevation: 16,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.teal.shade100), color: Colors.white),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.teal.shade100),
+          color: Colors.white,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,

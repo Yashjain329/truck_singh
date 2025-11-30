@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 // --- SERVICE CLASS ---
@@ -45,8 +44,8 @@ class TruckService {
       final activeShipmentResponse = await _supabase
           .from('shipment')
           .select(
-        'booking_status, assigned_driver, user_profiles!shipment_assigned_driver_fkey(name)',
-      )
+            'booking_status, assigned_driver, user_profiles!shipment_assigned_driver_fkey(name)',
+          )
           .eq('assigned_truck', truckNumber)
           .neq('booking_status', 'Completed')
           .limit(1);
@@ -85,9 +84,9 @@ class TruckService {
   }
 
   Future<void> updateTruck(
-      String truckNumber,
-      Map<String, dynamic> truckData,
-      ) async {
+    String truckNumber,
+    Map<String, dynamic> truckData,
+  ) async {
     await _supabase
         .from('trucks')
         .update(truckData)
@@ -228,8 +227,8 @@ class _MytrucksState extends State<Mytrucks> {
     if (_searchText.isNotEmpty) {
       final q = _searchText.toLowerCase();
       filteredTrucks.retainWhere(
-            (truck) =>
-        (truck['truck_number']?.toLowerCase() ?? '').contains(q) ||
+        (truck) =>
+            (truck['truck_number']?.toLowerCase() ?? '').contains(q) ||
             (truck['make']?.toLowerCase() ?? '').contains(q) ||
             (truck['model']?.toLowerCase() ?? '').contains(q),
       );
@@ -252,8 +251,9 @@ class _MytrucksState extends State<Mytrucks> {
     final total = allTrucks.length;
     final available = allTrucks.where((t) => t['status'] == 'available').length;
     final onTrip = allTrucks.where((t) => t['status'] == 'on_trip').length;
-    final maintenance =
-        allTrucks.where((t) => t['status'] == 'maintenance').length;
+    final maintenance = allTrucks
+        .where((t) => t['status'] == 'maintenance')
+        .length;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -291,7 +291,7 @@ class _MytrucksState extends State<Mytrucks> {
         width: 80,
         height: 80,
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : Colors.grey.shade100,
+          color: isSelected ? color.withValues(alpha: 0.1) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? color : Colors.grey.shade300,
@@ -355,7 +355,7 @@ class _MytrucksState extends State<Mytrucks> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: statusColor.withOpacity(0.1),
+          backgroundColor: statusColor.withValues(alpha: 0.1),
           child: Icon(statusIcon, color: statusColor),
         ),
         title: Text(
@@ -376,37 +376,36 @@ class _MytrucksState extends State<Mytrucks> {
         ),
         trailing: widget.selectable
             ? (status == 'available'
-            ? ElevatedButton(
-          onPressed: () => Navigator.pop(context, truck),
-          child: const Text('Select'),
-        )
-            : const Text(
-          'Unavailable',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
-        ))
+                  ? ElevatedButton(
+                      onPressed: () => Navigator.pop(context, truck),
+                      child: const Text('Select'),
+                    )
+                  : const Text(
+                      'Unavailable',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ))
             : const Icon(Icons.edit_outlined, size: 20),
         onTap: widget.selectable
             ? (status == 'available'
-            ? () => Navigator.pop(context, truck)
-            : null)
+                  ? () => Navigator.pop(context, truck)
+                  : null)
             : () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EditTruckPage(truck: truck),
-          ),
-        ).then((_) => _loadTrucks()),
+                context,
+                MaterialPageRoute(builder: (_) => EditTruckPage(truck: truck)),
+              ).then((_) => _loadTrucks()),
       ),
     );
   }
 
   Widget _buildAddTruckButton() {
     return FloatingActionButton(
-      onPressed: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const AddTruckPage()),
-      ).then((value) {
-        if (value == true) _loadTrucks();
-      }),
+      onPressed: () =>
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddTruckPage()),
+          ).then((value) {
+            if (value == true) _loadTrucks();
+          }),
       child: const Icon(Icons.add),
     );
   }
@@ -510,9 +509,9 @@ class _AddTruckPageState extends State<AddTruckPage> {
         if (mounted) Navigator.pop(context, true);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error adding truck: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error adding truck: $e')));
         }
       }
       if (mounted) setState(() => _isSubmitting = false);
@@ -544,25 +543,19 @@ class _AddTruckPageState extends State<AddTruckPage> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _controllers['engine_number'],
-            decoration: InputDecoration(
-              labelText: 'engine_number'.tr(),
-            ),
+            decoration: InputDecoration(labelText: 'engine_number'.tr()),
             validator: (v) => v!.isEmpty ? 'required'.tr() : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _controllers['chassis_number'],
-            decoration: InputDecoration(
-              labelText: 'chassis_number'.tr(),
-            ),
+            decoration: InputDecoration(labelText: 'chassis_number'.tr()),
             validator: (v) => v!.isEmpty ? 'required'.tr() : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _controllers['vehicle_type'],
-            decoration: InputDecoration(
-              labelText: 'vehicle_type'.tr(),
-            ),
+            decoration: InputDecoration(labelText: 'vehicle_type'.tr()),
             validator: (v) => v!.isEmpty ? 'required'.tr() : null,
           ),
           const SizedBox(height: 12),
@@ -598,29 +591,29 @@ class _AddTruckPageState extends State<AddTruckPage> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _fuelType,
+            initialValue: _fuelType,
             decoration: InputDecoration(labelText: 'fuel_type'.tr()),
             items: ['Diesel', 'CNG', 'Electric']
                 .map(
                   (v) => DropdownMenuItem(
-                value: v,
-                child: Text(v.tr()), // Localized dropdown item
-              ),
-            )
+                    value: v,
+                    child: Text(v.tr()), // Localized dropdown item
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _fuelType = v!),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _status,
+            initialValue: _status,
             decoration: InputDecoration(labelText: 'status'.tr()),
             items: ['available', 'on_trip', 'maintenance']
                 .map(
                   (v) => DropdownMenuItem(
-                value: v,
-                child: Text(v.tr()), // Localized dropdown item
-              ),
-            )
+                    value: v,
+                    child: Text(v.tr()), // Localized dropdown item
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _status = v!),
           ),
@@ -640,13 +633,13 @@ class _AddTruckPageState extends State<AddTruckPage> {
           ),
           child: _isSubmitting
               ? const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : Text('add_truck'.tr()),
         ),
       ),
@@ -683,8 +676,7 @@ class _EditTruckPageState extends State<EditTruckPage> {
     super.initState();
     _controllers['truck_number']!.text = widget.truck['truck_number'] ?? '';
     _controllers['engine_number']!.text = widget.truck['engine_number'] ?? '';
-    _controllers['chassis_number']!.text =
-        widget.truck['chassis_number'] ?? '';
+    _controllers['chassis_number']!.text = widget.truck['chassis_number'] ?? '';
     _controllers['vehicle_type']!.text = widget.truck['vehicle_type'] ?? '';
     _controllers['make']!.text = widget.truck['make'] ?? '';
     _controllers['model']!.text = widget.truck['model'] ?? '';
@@ -724,9 +716,9 @@ class _EditTruckPageState extends State<EditTruckPage> {
         if (mounted) Navigator.pop(context, true);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error updating truck: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error updating truck: $e')));
         }
       }
       if (mounted) setState(() => _isSubmitting = false);
@@ -734,26 +726,27 @@ class _EditTruckPageState extends State<EditTruckPage> {
   }
 
   Future<void> _deleteTruck() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('confirm_deletion'.tr()),
-        content: Text('delete_truck_confirmation'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('cancel'.tr()),
+    final confirm =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('confirm_deletion'.tr()),
+            content: Text('delete_truck_confirmation'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('cancel'.tr()),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'delete'.tr(),
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'delete'.tr(),
-              style: const TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
 
     if (!confirm) return;
@@ -764,9 +757,9 @@ class _EditTruckPageState extends State<EditTruckPage> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting truck: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting truck: $e')));
       }
     }
     if (mounted) setState(() => _isSubmitting = false);
@@ -854,29 +847,29 @@ class _EditTruckPageState extends State<EditTruckPage> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _fuelType,
+            initialValue: _fuelType,
             decoration: InputDecoration(labelText: 'fuel_type'.tr()),
             items: ['Diesel', 'CNG', 'Electric']
                 .map(
                   (v) => DropdownMenuItem(
-                value: v,
-                child: Text(v.tr()), // Localized item
-              ),
-            )
+                    value: v,
+                    child: Text(v.tr()), // Localized item
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _fuelType = v!),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _status,
+            initialValue: _status,
             decoration: InputDecoration(labelText: 'status'.tr()),
             items: ['available', 'on_trip', 'maintenance']
                 .map(
                   (v) => DropdownMenuItem(
-                value: v,
-                child: Text(v.tr()), // Localized item
-              ),
-            )
+                    value: v,
+                    child: Text(v.tr()), // Localized item
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _status = v!),
           ),
@@ -896,13 +889,13 @@ class _EditTruckPageState extends State<EditTruckPage> {
           ),
           child: _isSubmitting
               ? const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : Text('update_truck'.tr()),
         ),
       ),

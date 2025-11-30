@@ -24,11 +24,12 @@ class OtpVerificationPage extends StatefulWidget {
 }
 
 class _OtpVerificationPageState extends State<OtpVerificationPage> {
-  final List<TextEditingController> _otpControllers =
-  List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
 
-  final List<FocusNode> _focusNodes =
-  List.generate(6, (_) => FocusNode());
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool _isVerifying = false;
   bool _isResending = false;
@@ -69,8 +70,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     });
   }
 
-  String get _otpCode =>
-      _otpControllers.map((e) => e.text).join();
+  String get _otpCode => _otpControllers.map((e) => e.text).join();
 
   void _onOtpChanged(String value, int index) {
     if (value.isNotEmpty && index < 5) {
@@ -218,7 +218,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.teal.withOpacity(0.1),
+                        color: AppColors.teal.withValues(alpha: .1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -232,13 +232,11 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
                     Text(
                       'Enter Verification Code',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
+                      style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade800,
-                      ),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade800,
+                          ),
                     ),
 
                     const SizedBox(height: 16),
@@ -276,7 +274,9 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                             keyboardType: TextInputType.number,
                             maxLength: 1,
                             style: const TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold),
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
@@ -286,13 +286,12 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                             ),
                             onChanged: (v) => _onOtpChanged(v, index),
                             onTap: () {
-                              _otpControllers[index].selection =
-                                  TextSelection.fromPosition(
-                                    TextPosition(
-                                      offset:
-                                      _otpControllers[index].text.length,
-                                    ),
-                                  );
+                              _otpControllers[index]
+                                  .selection = TextSelection.fromPosition(
+                                TextPosition(
+                                  offset: _otpControllers[index].text.length,
+                                ),
+                              );
                             },
                           ),
                         );
@@ -304,8 +303,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed:
-                        (_otpCode.length == 6 && !_isVerifying)
+                        onPressed: (_otpCode.length == 6 && !_isVerifying)
                             ? _verifyOtp
                             : null,
                         style: ElevatedButton.styleFrom(
@@ -318,21 +316,22 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                         ),
                         child: _isVerifying
                             ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                            AlwaysStoppedAnimation(Colors.white),
-                          ),
-                        )
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
                             : const Text(
-                          'Verify & Activate Account',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                                'Verify & Activate Account',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
 

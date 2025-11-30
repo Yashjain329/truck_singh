@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class Rating extends StatefulWidget {
@@ -74,7 +73,9 @@ class _RatingState extends State<Rating> {
 
     final shipment = await supabase
         .from('view_shipment_updates')
-        .select('assigned_driver, assigned_agent, assigned_company, assigned_shipper')
+        .select(
+          'assigned_driver, assigned_agent, assigned_company, assigned_shipper',
+        )
         .eq('shipment_id', widget.shipmentId)
         .maybeSingle();
 
@@ -188,9 +189,9 @@ class _RatingState extends State<Rating> {
 
   Future<void> submitRating() async {
     if (editCount >= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("edit_limit".tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("edit_limit".tr())));
       return;
     }
 
@@ -237,9 +238,9 @@ class _RatingState extends State<Rating> {
       if (mounted) {
         Navigator.pop(context, editCount + 1);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("rating_saved".tr())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("rating_saved".tr())));
       }
     } catch (e) {
       if (mounted) {
@@ -257,105 +258,118 @@ class _RatingState extends State<Rating> {
     final name1 = widget.userRole.toLowerCase() == 'shipper'
         ? driverName
         : (widget.userRole.toLowerCase() == 'driver'
-        ? shipperName
-        : shipperName);
+              ? shipperName
+              : shipperName);
 
     final name2 = widget.userRole.toLowerCase() == 'shipper'
         ? agentName
-        : (widget.userRole.toLowerCase() == 'driver'
-        ? agentName
-        : driverName);
+        : (widget.userRole.toLowerCase() == 'driver' ? agentName : driverName);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("ratings".tr()),
-      ),
+      appBar: AppBar(title: Text("ratings".tr())),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: (deliveryDate != null && isWithin3Days)
             ? ListView(
-          children: [
-            Text("hello_user".tr(args: [widget.userRole]),
-                style: const TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
+                children: [
+                  Text(
+                    "hello_user".tr(args: [widget.userRole]),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
-            Text("shipment_id".tr(args: [widget.shipmentId])),
-            Text("assigned_driver"
-                .tr(args: [driverName ?? widget.assignedDriver ?? 'N/A'])),
-            Text("assigned_agent"
-                .tr(args: [agentName ?? widget.assignedAgent ?? 'N/A'])),
-            Text("assigned_company"
-                .tr(args: [companyName ?? widget.assignedCompany ?? 'N/A'])),
+                  Text("shipment_id".tr(args: [widget.shipmentId])),
+                  Text(
+                    "assigned_driver".tr(
+                      args: [driverName ?? widget.assignedDriver ?? 'N/A'],
+                    ),
+                  ),
+                  Text(
+                    "assigned_agent".tr(
+                      args: [agentName ?? widget.assignedAgent ?? 'N/A'],
+                    ),
+                  ),
+                  Text(
+                    "assigned_company".tr(
+                      args: [companyName ?? widget.assignedCompany ?? 'N/A'],
+                    ),
+                  ),
 
-            const Divider(),
-            const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 24),
 
-            // PERSON 1
-            Text("rate_person".tr(args: [name1 ?? label1]),
-                style: const TextStyle(fontSize: 18)),
-            RatingBar.builder(
-              initialRating: rating1,
-              minRating: 1,
-              itemBuilder: (_, __) =>
-              const Icon(Icons.star, color: Colors.amber),
-              onRatingUpdate: (r) => setState(() => rating1 = r),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: feedback1,
-              decoration: InputDecoration(
-                labelText: "feedback_for".tr(args: [name1 ?? label1]),
-                border: const OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
+                  // PERSON 1
+                  Text(
+                    "rate_person".tr(args: [name1 ?? label1]),
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  RatingBar.builder(
+                    initialRating: rating1,
+                    minRating: 1,
+                    itemBuilder: (_, __) =>
+                        const Icon(Icons.star, color: Colors.amber),
+                    onRatingUpdate: (r) => setState(() => rating1 = r),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: feedback1,
+                    decoration: InputDecoration(
+                      labelText: "feedback_for".tr(args: [name1 ?? label1]),
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                  ),
 
-            const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-            // PERSON 2
-            Text("rate_person".tr(args: [name2 ?? label2]),
-                style: const TextStyle(fontSize: 18)),
-            RatingBar.builder(
-              initialRating: rating2,
-              minRating: 1,
-              itemBuilder: (_, __) =>
-              const Icon(Icons.star, color: Colors.amber),
-              onRatingUpdate: (r) => setState(() => rating2 = r),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: feedback2,
-              decoration: InputDecoration(
-                labelText: "feedback_for".tr(args: [name2 ?? label2]),
-                border: const OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
+                  // PERSON 2
+                  Text(
+                    "rate_person".tr(args: [name2 ?? label2]),
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  RatingBar.builder(
+                    initialRating: rating2,
+                    minRating: 1,
+                    itemBuilder: (_, __) =>
+                        const Icon(Icons.star, color: Colors.amber),
+                    onRatingUpdate: (r) => setState(() => rating2 = r),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: feedback2,
+                    decoration: InputDecoration(
+                      labelText: "feedback_for".tr(args: [name2 ?? label2]),
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                  ),
 
-            const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-            ElevatedButton(
-              onPressed: isEditDisabled ? null : submitRating,
-              child: Text(
-                isEditDisabled
-                    ? "edit_limit".tr()
-                    : (editCount > 0
-                    ? "edit_rating".tr()
-                    : "submit".tr()),
-              ),
-            ),
-          ],
-        )
+                  ElevatedButton(
+                    onPressed: isEditDisabled ? null : submitRating,
+                    child: Text(
+                      isEditDisabled
+                          ? "edit_limit".tr()
+                          : (editCount > 0
+                                ? "edit_rating".tr()
+                                : "submit".tr()),
+                    ),
+                  ),
+                ],
+              )
             : Center(
-          child: Text(
-            deliveryDate == null
-                ? "delivery_not_available".tr()
-                : "rating_expired".tr(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ),
+                child: Text(
+                  deliveryDate == null
+                      ? "delivery_not_available".tr()
+                      : "rating_expired".tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ),
       ),
     );
   }

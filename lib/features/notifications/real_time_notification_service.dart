@@ -7,12 +7,12 @@ import 'package:easy_localization/easy_localization.dart';
 
 class RealTimeNotificationService {
   static final RealTimeNotificationService _instance =
-  RealTimeNotificationService._internal();
+      RealTimeNotificationService._internal();
   factory RealTimeNotificationService() => _instance;
   RealTimeNotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _localNotifications =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
 
   RealtimeChannel? _notificationChannel;
   bool _isInitialized = false;
@@ -23,7 +23,7 @@ class RealTimeNotificationService {
   final Map<String, DateTime> _notificationTimestamps = <String, DateTime>{};
 
   final StreamController<Map<String, dynamic>> _notificationController =
-  StreamController<Map<String, dynamic>>.broadcast();
+      StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get notificationStream =>
       _notificationController.stream;
@@ -31,11 +31,14 @@ class RealTimeNotificationService {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    const androidSettings =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
-    const initSettings =
-    InitializationSettings(android: androidSettings, iOS: iosSettings);
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
 
     await _localNotifications.initialize(
       initSettings,
@@ -93,15 +96,14 @@ class RealTimeNotificationService {
       _notificationChannel = supabase
           .channel('public:notifications:user_id=eq.${_currentUserId!}')
           .onPostgresChanges(
-        event: PostgresChangeEvent.insert,
-        schema: 'public',
-        table: 'notifications',
-        callback: (payload) {
-          final record =
-              payload.newRecord ?? <String, dynamic>{};
-          _processNotification(record);
-        },
-      );
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'notifications',
+            callback: (payload) {
+              final record = payload.newRecord;
+              _processNotification(record);
+            },
+          );
       _notificationChannel!.subscribe();
     } catch (e) {
       debugPrint('Error starting realtime connection: $e');
@@ -138,9 +140,9 @@ class RealTimeNotificationService {
       final prefs = await SharedPreferences.getInstance();
       final lastCheck =
           prefs.getString('last_notification_check_$userId') ??
-              DateTime.now()
-                  .subtract(const Duration(minutes: 20))
-                  .toIso8601String();
+          DateTime.now()
+              .subtract(const Duration(minutes: 20))
+              .toIso8601String();
 
       final now = DateTime.now().toIso8601String();
 
@@ -162,8 +164,7 @@ class RealTimeNotificationService {
     }
   }
 
-  Future<void> _showLocalNotification(
-      Map<String, dynamic> notification) async {
+  Future<void> _showLocalNotification(Map<String, dynamic> notification) async {
     try {
       const androidDetails = AndroidNotificationDetails(
         'alerts_channel',

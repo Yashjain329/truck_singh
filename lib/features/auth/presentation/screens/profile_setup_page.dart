@@ -2,10 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:logistics_toolkit/features/auth/presentation/screens/register_screen.dart';
 import 'package:logistics_toolkit/features/auth/presentation/screens/role_selection_page.dart';
 import 'package:logistics_toolkit/features/auth/utils/user_role.dart';
-import '../../services/supabase_service.dart';
+import 'package:logistics_toolkit/features/auth/services/supabase_service.dart';
 import 'dashboard_router.dart';
 
 class ProfileSetupPage extends StatefulWidget {
@@ -64,27 +63,27 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildRoleInfo(),
-              const SizedBox(height: 24),
-              _buildNameField(),
-              const SizedBox(height: 16),
-              _buildDateOfBirthField(),
-              const SizedBox(height: 16),
-              _buildMobileField(),
-              const SizedBox(height: 16),
-              _buildEmailField(),
-              const SizedBox(height: 32),
-              _buildSubmitButton(),
-            ],
-          ),
-        ),
-      ),
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildRoleInfo(),
+                    const SizedBox(height: 24),
+                    _buildNameField(),
+                    const SizedBox(height: 16),
+                    _buildDateOfBirthField(),
+                    const SizedBox(height: 16),
+                    _buildMobileField(),
+                    const SizedBox(height: 16),
+                    _buildEmailField(),
+                    const SizedBox(height: 32),
+                    _buildSubmitButton(),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
@@ -181,7 +180,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Widget _buildEmailField() {
     return TextFormField(
       controller: _emailController,
-      enabled: true,//changed from false to true
+      enabled: true, //changed from false to true
       decoration: InputDecoration(
         labelText: 'email'.tr(),
         border: OutlineInputBorder(),
@@ -230,9 +229,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Future<void> _selectDate() async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().subtract(
-        const Duration(days: 6570),
-      ),
+      initialDate: DateTime.now().subtract(const Duration(days: 6570)),
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
     );
@@ -295,7 +292,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 builder: (context) =>
                     DashboardRouter(role: widget.selectedRole),
               ),
-                  (route) => false,
+              (route) => false,
             );
           }
         }

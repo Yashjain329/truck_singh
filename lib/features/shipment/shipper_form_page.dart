@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
-import '../../config/config.dart';
-import '../shipment/shipment_preview_page.dart';
+import 'package:logistics_toolkit/config/config.dart';
+import 'package:logistics_toolkit/features/shipment/shipment_preview_page.dart';
 import 'address_search_page.dart';
 import 'form_step/address_step.dart';
 import 'form_step/schedule_step.dart';
@@ -83,15 +81,15 @@ class _ShipperFormPageState extends State<ShipperFormPage>
       duration: const Duration(milliseconds: 800),
     );
 
-    _fadeAnimation =
-        CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
     );
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     _fadeController.forward();
     _slideController.forward();
@@ -224,7 +222,8 @@ class _ShipperFormPageState extends State<ShipperFormPage>
         valid = _selectedTruckType != null;
         break;
       case 1:
-        valid = _itemController.text.isNotEmpty &&
+        valid =
+            _itemController.text.isNotEmpty &&
             (_weightController.text.isNotEmpty ||
                 _unitController.text.isNotEmpty);
         break;
@@ -232,7 +231,8 @@ class _ShipperFormPageState extends State<ShipperFormPage>
         valid = _pickupPlace != null && _dropPlace != null;
         break;
       case 3:
-        valid = _selectedDate != null &&
+        valid =
+            _selectedDate != null &&
             _pickupDate != null &&
             _pickupTime != null &&
             _materialController.text.isNotEmpty;
@@ -315,8 +315,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
         newNumber = (number ?? 0) + 1;
       }
 
-      final newShipmentId =
-          "$prefix-${newNumber.toString().padLeft(4, '0')}";
+      final newShipmentId = "$prefix-${newNumber.toString().padLeft(4, '0')}";
 
       await supabase.from('shipment').insert({
         'shipment_id': newShipmentId,
@@ -357,9 +356,9 @@ class _ShipperFormPageState extends State<ShipperFormPage>
       );
       _clearForm();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed: $e")));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -482,8 +481,10 @@ class _ShipperFormPageState extends State<ShipperFormPage>
   }
 
   Future<void> _pickTime() async {
-    final picked =
-    await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
 
     if (picked != null) {
       setState(() => _pickupTime = picked.format(context));
@@ -504,7 +505,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.1),
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.1),
                 blurRadius: 10,
                 spreadRadius: 2,
               ),
@@ -519,15 +520,15 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                   Text(
                     "Step ${_currentStep + 1} of 4",
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                   TextButton.icon(
                     onPressed: _saveDraft,
                     icon: const Icon(Icons.save, size: 18),
                     label: const Text("Save Draft"),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.orange,
-                    ),
+                    style: TextButton.styleFrom(foregroundColor: Colors.orange),
                   ),
                 ],
               ),
@@ -535,7 +536,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
               Row(
                 children: List.generate(
                   4,
-                      (index) => Expanded(
+                  (index) => Expanded(
                     child: Container(
                       height: 8,
                       margin: EdgeInsets.only(right: index < 3 ? 4 : 0),
@@ -550,10 +551,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                _stepDescription(),
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(_stepDescription(), style: const TextStyle(fontSize: 14)),
             ],
           ),
         ),
@@ -657,8 +655,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                             label: const Text("Back"),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.grey.shade600,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -672,60 +669,58 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                         flex: 2,
                         child: _currentStep == 3
                             ? ElevatedButton.icon(
-                          onPressed: _isFormValid && !_isSubmitting
-                              ? () {
-                            FocusScope.of(context).unfocus();
-                            _submitShipment();
-                          }
-                              : null,
-                          icon: _isSubmitting
-                              ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          )
-                              : const Icon(Icons.send),
-                          label: Text(
-                            _isSubmitting
-                                ? "Submitting..."
-                                : "Submit",
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _isFormValid &&
-                                !_isSubmitting
-                                ? Colors.green.shade600
-                                : Colors.grey.shade400,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        )
+                                onPressed: _isFormValid && !_isSubmitting
+                                    ? () {
+                                        FocusScope.of(context).unfocus();
+                                        _submitShipment();
+                                      }
+                                    : null,
+                                icon: _isSubmitting
+                                    ? const SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.send),
+                                label: Text(
+                                  _isSubmitting ? "Submitting..." : "Submit",
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      _isFormValid && !_isSubmitting
+                                      ? Colors.green.shade600
+                                      : Colors.grey.shade400,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              )
                             : ElevatedButton.icon(
-                          onPressed: _stepValid[_currentStep]
-                              ? () {
-                            FocusScope.of(context).unfocus();
-                            _nextStep();
-                          }
-                              : null,
-                          icon:
-                          const Icon(Icons.arrow_forward),
-                          label: const Text("Next"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                            _stepValid[_currentStep]
-                                ? Colors.orange.shade600
-                                : Colors.grey.shade400,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
+                                onPressed: _stepValid[_currentStep]
+                                    ? () {
+                                        FocusScope.of(context).unfocus();
+                                        _nextStep();
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.arrow_forward),
+                                label: const Text("Next"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _stepValid[_currentStep]
+                                      ? Colors.orange.shade600
+                                      : Colors.grey.shade400,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
                       ),
                     ],
                   ),
