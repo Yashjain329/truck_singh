@@ -21,7 +21,6 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
   BitmapDescriptor? _truckIcon;
   bool _isTrackingEnabled = false;
   bool _isLoading = true;
-  String? _customUserId;
 
   static const CameraPosition _kInitialPosition = CameraPosition(
     target: LatLng(19.0330, 73.0297),
@@ -35,14 +34,12 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
   }
 
   Future<void> _initializePage() async {
-    await Future.wait([_loadTruckIcon(), _loadCustomUserId()]);
+    await Future.wait([_loadTruckIcon()]);
 
     final service = FlutterBackgroundService();
     bool isRunning = await service.isRunning();
     service.on('update').listen((event) {
-      if (event != null &&
-          event['lat'] != null &&
-          event['lng'] != null) {
+      if (event != null && event['lat'] != null && event['lng'] != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _updateLocationOnMap(
@@ -60,32 +57,6 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
         _isTrackingEnabled = isRunning;
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _loadCustomUserId() async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) {
-        _showErrorSnackBar("User not authenticated.");
-        return;
-      }
-
-      final response = await supabase
-          .from('user_profiles')
-          .select('custom_user_id')
-          .eq('user_id', userId)
-          .single();
-
-      if (mounted) {
-        setState(() {
-          _customUserId = response['custom_user_id'];
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar("Could not load user profile.");
-      }
     }
   }
 
@@ -132,7 +103,8 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
   Future<bool> _handleLocationPermission() async {
     if (await handler.Permission.notification.request().isDenied) {
       _showErrorSnackBar(
-          "Notification permission is required for tracking service.");
+        "Notification permission is required for tracking service.",
+      );
       return false;
     }
     final serviceStatus = await handler.Permission.location.serviceStatus;
@@ -151,7 +123,8 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
 
     if (permissionStatus.isPermanentlyDenied) {
       _showErrorSnackBar(
-          "Location permission permanently denied. Enable in settings.");
+        "Location permission permanently denied. Enable in settings.",
+      );
       await handler.openAppSettings();
       return false;
     }
@@ -164,19 +137,21 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
           title: const Text("Background Location Required"),
           content: const Text(
             "To track your location when app is closed:\n\n"
-                "→ Go to Settings → Permissions → Location\n"
-                "→ Select 'Allow all the time'\n",
+            "→ Go to Settings → Permissions → Location\n"
+            "→ Select 'Allow all the time'\n",
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel")),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
             TextButton(
-                onPressed: () {
-                  handler.openAppSettings();
-                  Navigator.pop(context);
-                },
-                child: const Text("Go to Settings")),
+              onPressed: () {
+                handler.openAppSettings();
+                Navigator.pop(context);
+              },
+              child: const Text("Go to Settings"),
+            ),
           ],
         ),
       );
@@ -206,17 +181,15 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
     );
   }
 
@@ -241,13 +214,13 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GoogleMap(
-        onMapCreated: (controller) => mapController = controller,
-        initialCameraPosition: _kInitialPosition,
-        markers: _driverMarker != null ? {_driverMarker!} : {},
-        myLocationButtonEnabled: true,
-        myLocationEnabled: true,
-        zoomControlsEnabled: false,
-      ),
+              onMapCreated: (controller) => mapController = controller,
+              initialCameraPosition: _kInitialPosition,
+              markers: _driverMarker != null ? {_driverMarker!} : {},
+              myLocationButtonEnabled: true,
+              myLocationEnabled: true,
+              zoomControlsEnabled: false,
+            ),
     );
   }
 }
