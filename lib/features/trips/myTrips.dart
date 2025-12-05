@@ -168,7 +168,7 @@ class _MyShipmentsPageState extends State<MyShipments> {
   void showFilterDialog() {
     final List<String> statuses = [
       'All',
-      'Pending',
+      // 'Pending',
       'Accepted',
       'En Route to Pickup',
       'Arrived at Pickup',
@@ -484,7 +484,7 @@ class _MyShipmentsPageState extends State<MyShipments> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('myShipments'.tr()),
+        title: Text('activeTrips'.tr()),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
