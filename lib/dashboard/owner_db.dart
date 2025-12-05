@@ -7,6 +7,7 @@ import '../features/chat/agent_chat_list_page.dart';
 import '../features/driver_documents/driver_documents_page.dart';
 import '../features/trips/myTrips_history.dart';
 import '../features/truck_documents/truck_documents_page.dart';
+import '../widgets/chat_screen.dart';
 import '../widgets/common/app_bar.dart';
 import 'package:logistics_toolkit/features/bilty/shipment_selection_page.dart';
 import '../services/onesignal_notification_service.dart';
@@ -25,6 +26,8 @@ import '../features/trips/myTrips.dart';
 import 'package:logistics_toolkit/features/tracking/shared_shipments_page.dart';
 import '../features/ratings/presentation/screen/trip_ratings.dart';
 import 'package:logistics_toolkit/features/Report%20Analysis/report_chart.dart';
+
+import '../widgets/floating_chat_control.dart';
 
 class DashboardState {
   final bool isLoading;
@@ -153,24 +156,48 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
 
       appBar: _buildAppBar(),
       bottomNavigationBar: _buildBottomAppBar(),
-      body: _dashboardState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _dashboardState.error != null
-          ? Center(child: Text('Error: ${_dashboardState.error}'))
-          : RefreshIndicator(
-        onRefresh: _loadDashboardData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildPerformanceOverviewCard(),
-              const SizedBox(height: 20),
-              _buildFeatureGrid(),
-            ],
+      body: Stack(
+        children: [
+          _dashboardState.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _dashboardState.error != null
+              ? Center(child: Text('Error: ${_dashboardState.error}'))
+              : RefreshIndicator(
+            onRefresh: _loadDashboardData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildPerformanceOverviewCard(),
+                  const SizedBox(height: 20),
+                  _buildFeatureGrid(),
+                ],
+              ),
+            ),
           ),
-        ),
+          // Floating Chat Control always visible
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingChatControl(
+              onOpenChat: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      onNavigate: (s) {
+                        Navigator.of(context).pushNamed('/$s');
+                      },
+                    ),
+                  ),
+                );
+              },
+              listening: false,
+            ),
+          ),
+        ],
       ),
+
     );
   }
 

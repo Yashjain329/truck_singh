@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:logistics_toolkit/config/theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/widgets/feature_card.dart';
+import '../widgets/chat_screen.dart';
 import '../widgets/common/app_bar.dart';
 import '../services/onesignal_notification_service.dart';
 import '../features/Report Analysis/report_chart.dart';
@@ -24,6 +25,7 @@ import '../features/complains/mycomplain.dart';
 import '../features/settings/presentation/screen/settings_page.dart';
 import '../features/driver_documents/driver_documents_page.dart';
 import '../features/truck_documents/truck_documents_page.dart';
+import '../widgets/floating_chat_control.dart';
 
 class DashboardState {
   final bool isLoading;
@@ -148,21 +150,45 @@ class _AgentDashboardState extends State<AgentDashboard> {
         showMessages: true,
         onProfileTap: () => _push(const SettingsPage()),
       ),
-      body: _dashboard.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _dashboard.error != null
-          ? Center(child: Text("Error: ${_dashboard.error}"))
-          : RefreshIndicator(
-        onRefresh: _loadDashboardData,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _performanceCard(),
-            const SizedBox(height: 20),
-            _featureGrid(),
-          ],
-        ),
+      body: Stack(
+        children: [
+          _dashboard.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _dashboard.error != null
+              ? Center(child: Text("Error: ${_dashboard.error}"))
+              : RefreshIndicator(
+            onRefresh: _loadDashboardData,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _performanceCard(),
+                const SizedBox(height: 20),
+                _featureGrid(),
+              ],
+            ),
+          ),
+          // Floating Chat Control always visible
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingChatControl(
+              onOpenChat: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      onNavigate: (s) {
+                        Navigator.of(context).pushNamed('/$s');
+                      },
+                    ),
+                  ),
+                );
+              },
+              listening: false,
+            ),
+          ),
+        ],
       ),
+
       bottomNavigationBar: BottomAppBar(
         child: ElevatedButton.icon(
           onPressed: () => _push(const ReportAnalysisPage()),

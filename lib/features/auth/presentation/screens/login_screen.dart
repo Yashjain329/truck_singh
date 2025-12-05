@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../../../widgets/chat_screen.dart';
+import '../../../../widgets/floating_chat_control.dart';
 import 'reset_password_screen.dart';
 import 'role_selection_page.dart';
 import 'dashboard_router.dart';
@@ -319,8 +321,23 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
             children: [
               Center(child: _buildCard(context)),
               Positioned(top: 100, right: 60, child: _languageButton()),
+              FloatingChatControl(
+                onOpenChat: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        onNavigate: (s) {
+                          Navigator.of(context).pushNamed('/$s');
+                        },
+                      ),
+                    ),
+                  );
+                },
+                listening: false,
+              ),
             ],
           ),
+
         ),
       ),
     );
