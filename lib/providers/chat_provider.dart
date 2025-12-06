@@ -1,4 +1,3 @@
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:logistics_toolkit/features/mytruck/mytrucks.dart';
@@ -439,11 +438,6 @@ class ChatProvider extends ChangeNotifier {
         ),
       );
 
-      // If action is open_screen, also auto-navigate (optional). We'll not auto-navigate to avoid surprising user.
-      // If you want auto navigation uncomment next lines:
-      // if (parsed.action == 'open_screen' && buttonScreen != null) {
-      //   onNavigate(buttonScreen);
-      // }
     } catch (e) {
       addBotMessage(
         ChatMessage(text: _localizeReply(
@@ -469,39 +463,3 @@ List<String> filterIdsByMap(List<Map<String, dynamic>> shipments, String key) {
       .where((id) => id.isNotEmpty)
       .toList();
 }
-
-//
-// List<Map<String, dynamic>> filterShipments(
-//     List<Map<String, dynamic>> shipments,
-//     ) {
-//   return shipments.map((map) {
-//     return {
-//       for (final key in shipment_map_keys)
-//         if (map.containsKey(key)) key: map[key],
-//     };
-//   }).toList();
-// }
-//
-//
-//
-// final shipment_map_keys = [
-//   'shipment_id',
-//   'shipper_id',
-//   'pickup',
-//   'drop',
-//   'pickup_latitude',
-//   'pickup_longitude',
-//   'dropoff_latitude',
-//   'dropoff_longitude',
-//   'shipping_item',
-//   'weight',
-//   'unit',
-//   'delivery_date',
-//   'pickup_date',
-//   'material_inside',
-//   'truck_type',
-//   'pickup_time',
-//   'notes',
-//   'booking_status',
-//   'assigned_company',
-// ];

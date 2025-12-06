@@ -136,11 +136,18 @@ class TransportBiltyPreview extends StatefulWidget {
 
 class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
   bool _isUploading = false;
+  bool _isSaved = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            _isSaved ? Navigator.pop(context, true) : Navigator.pop(context);
+          },
+        ),
         title: const Text('Transport Bilty Preview'),
         backgroundColor: AppColors.tealBlue,
         foregroundColor: Colors.white,
@@ -154,7 +161,7 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
           if (!_isUploading)
             IconButton(
               icon: Icon(Icons.send),
-              onPressed: _uploadAndSaveBilty,
+              onPressed: () => _uploadAndSaveBilty(share: true),
               tooltip: 'Upload and Save Bilty',
             )
           else
@@ -240,6 +247,34 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
                   if (widget.remarks.isNotEmpty) _buildRemarks(),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: ElevatedButton.icon(
+          icon: _isUploading
+              ? const SizedBox.shrink() // Don't show icon when loading
+              : const Icon(Icons.save_alt_rounded),
+          label: _isUploading
+              ? const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 3,
+            ),
+          )
+              : const Text('SAVE'),
+          onPressed: _isUploading ? null : _uploadAndSaveBilty,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -766,7 +801,7 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
                         _InfoRow(
                           label: 'Delivery Date',
                           value:
-                              '${widget.deliveryDate!.day.toString().padLeft(2, '0')}/${widget.deliveryDate!.month.toString().padLeft(2, '0')}/${widget.deliveryDate!.year}',
+                          '${widget.deliveryDate!.day.toString().padLeft(2, '0')}/${widget.deliveryDate!.month.toString().padLeft(2, '0')}/${widget.deliveryDate!.year}',
                         ),
                       ],
                     ],
@@ -796,7 +831,7 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
                         _InfoRow(
                           label: 'Delivery Date',
                           value:
-                              '${widget.deliveryDate!.day.toString().padLeft(2, '0')}/${widget.deliveryDate!.month.toString().padLeft(2, '0')}/${widget.deliveryDate!.year}',
+                          '${widget.deliveryDate!.day.toString().padLeft(2, '0')}/${widget.deliveryDate!.month.toString().padLeft(2, '0')}/${widget.deliveryDate!.year}',
                         ),
                     ],
                   );
@@ -869,7 +904,7 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
                       SizedBox(height: 8),
                       // Goods items as cards
                       ...widget.goods.map(
-                        (item) => Container(
+                            (item) => Container(
                           margin: EdgeInsets.only(bottom: 8),
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -941,7 +976,7 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
                         ],
                       ),
                       ...widget.goods.map(
-                        (item) => TableRow(
+                            (item) => TableRow(
                           children: [
                             Padding(
                               padding: EdgeInsets.all(8),
@@ -1151,12 +1186,12 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
               children: selectedCharges
                   .map(
                     (charge) => Chip(
-                      label: Text(charge.replaceAll('_', ' ').toUpperCase()),
-                      backgroundColor: AppColors.tealBlue.withAlpha(
-                        (0.1 * 255).round(),
-                      ),
-                    ),
-                  )
+                  label: Text(charge.replaceAll('_', ' ').toUpperCase()),
+                  backgroundColor: AppColors.tealBlue.withAlpha(
+                    (0.1 * 255).round(),
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ],
@@ -1269,13 +1304,13 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
             SizedBox(height: 16),
             Text(
               '1. The trader should load the goods only after completing all the vehicle documents.\n'
-              '2. Insurance of goods more than Rs. 10,000/- is a must.\n'
-              '3. Goods will be transported at owner\'s risk.\n'
-              '4. Payment should be made as per agreed terms.\n'
-              '5. Any dispute will be subject to local jurisdiction.\n'
-              '6. E-way bill compliance is mandatory for GST registered businesses.\n'
-              '7. Delivery will be made only to the authorized person.\n'
-              '8. Detention charges will be applicable for delays beyond control.',
+                  '2. Insurance of goods more than Rs. 10,000/- is a must.\n'
+                  '3. Goods will be transported at owner\'s risk.\n'
+                  '4. Payment should be made as per agreed terms.\n'
+                  '5. Any dispute will be subject to local jurisdiction.\n'
+                  '6. E-way bill compliance is mandatory for GST registered businesses.\n'
+                  '7. Delivery will be made only to the authorized person.\n'
+                  '8. Detention charges will be applicable for delays beyond control.',
               style: TextStyle(fontSize: 14),
             ),
           ],
@@ -1355,37 +1390,79 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
   }
 
   Future<File> _generatePDF() async {
-    final pdf = pw.Document();
-    final ttf = await PdfGoogleFonts.notoSansRegular();
-    // Load assets
-    Uint8List truckImageBytes = await rootBundle
-        .load('assets/truck.png')
-        .then((data) => data.buffer.asUint8List());
-    final truckImage = pw.MemoryImage(truckImageBytes);
+    // 1. Parallel loading
+    final futures = await Future.wait([
+      PdfGoogleFonts.notoSansRegular(),
+      rootBundle.load('assets/truck.png'),
+    ]);
 
-    // Dynamic sizing for goods table to help fit on one page
+    final ttf = futures[0] as pw.Font;
+    final truckData = futures[1] as ByteData;
+    final truckImage = pw.MemoryImage(truckData.buffer.asUint8List());
+
+    // 2. Pre-process Signatures
+    final senderSigImage =
+    (widget.senderSignature != null && widget.senderSignature!.isNotEmpty)
+        ? pw.MemoryImage(base64Decode(widget.senderSignature!))
+        : null;
+
+    // If you decide to pass driver signature later, handle it here:
+    // final driverSigImage = ...
+
+    // 3. Define Constants & Styles
+    final pdf = pw.Document();
+    const baseColor = PdfColors.teal;
+    const white = PdfColors.white;
+    final greyText = PdfColors.grey700;
+
+    final headerBgColor = baseColor;
+
+    final titleStyle = pw.TextStyle(
+      fontSize: 18,
+      fontWeight: pw.FontWeight.bold,
+      color: baseColor,
+    );
+    final smallTextStyle = pw.TextStyle(fontSize: 8, color: greyText);
+    final labelStyle = pw.TextStyle(
+      fontSize: 7,
+      fontWeight: pw.FontWeight.bold,
+      color: greyText,
+      font: ttf,
+    );
+    final valueStyle = pw.TextStyle(fontSize: 7, font: ttf);
+    final tableHeaderStyle = pw.TextStyle(
+      color: white,
+      fontWeight: pw.FontWeight.bold,
+      fontSize: 8,
+    );
+
+    // Dynamic sizing logic
     final int goodsCount = widget.goods.length;
-    final double goodsFontSize = goodsCount > 10
-        ? 7
-        : goodsCount > 6
-        ? 7.5
-        : 8;
+    final double goodsFontSize = goodsCount > 10 ? 6.5 : 7.5;
+    final goodsStyle = pw.TextStyle(fontSize: goodsFontSize, font: ttf);
+
+    // Helper for Date Formatting
+    String formatDate(DateTime? date) {
+      if (date == null) return '-';
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    }
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(8),
+        margin: const pw.EdgeInsets.all(
+          12,
+        ), // Slightly larger margin for printability
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              // Compact Header
+              // --- Header ---
               pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   pw.Container(
-                    width: 50,
-                    height: 50,
+                    width: 45,
+                    height: 45,
                     child: pw.Image(truckImage),
                   ),
                   pw.SizedBox(width: 10),
@@ -1394,174 +1471,195 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
                       crossAxisAlignment: pw.CrossAxisAlignment.center,
                       children: [
                         pw.Text(
-                          widget.companyName ?? '',
-                          style: pw.TextStyle(
-                            fontSize: 18,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.teal,
-                          ),
+                          widget.companyName ?? 'LOGISTICS COMPANY',
+                          style: titleStyle,
                         ),
-                        if (widget.companyAddress != null &&
-                            widget.companyAddress!.isNotEmpty)
+                        if (widget.companyAddress?.isNotEmpty == true)
                           pw.Text(
                             widget.companyAddress!,
-                            style: pw.TextStyle(
-                              fontSize: 8,
-                              color: PdfColors.grey700,
-                            ),
+                            style: smallTextStyle,
                             textAlign: pw.TextAlign.center,
                           ),
-                        if (widget.companyCity != null &&
-                            widget.companyCity!.isNotEmpty)
+                        // Added Transporter Name/GSTIN from form data
+                        if (widget.transporterName != null)
                           pw.Text(
-                            widget.companyCity!,
-                            style: pw.TextStyle(
-                              fontSize: 8,
-                              color: PdfColors.grey700,
-                            ),
-                            textAlign: pw.TextAlign.center,
+                            '${widget.transporterName} (GST: ${widget.transporterGSTIN ?? '-'})',
+                            style: smallTextStyle.copyWith(color: baseColor),
                           ),
                       ],
                     ),
                   ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    decoration: pw.BoxDecoration(
-                      color: PdfColors.teal,
-                      borderRadius: pw.BorderRadius.circular(3),
-                    ),
-                    child: pw.Text(
-                      'CONS. COPY',
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 8,
-                        fontWeight: pw.FontWeight.bold,
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'CONS. COPY',
+                        style: pw.TextStyle(
+                          color: baseColor,
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
                       ),
-                    ),
+                      pw.SizedBox(height: 2),
+                      pw.BarcodeWidget(
+                        barcode: pw.Barcode.code128(),
+                        data: widget.biltyNo,
+                        width: 80,
+                        height: 25,
+                        drawText: false,
+                      ),
+                    ],
                   ),
                 ],
               ),
               pw.SizedBox(height: 4),
               pw.Container(
                 width: double.infinity,
-                padding: const pw.EdgeInsets.symmetric(vertical: 4),
-                color: PdfColors.teal,
+                padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                color: baseColor,
                 child: pw.Text(
-                  'TRANSPORT BILTY / CONSIGNMENT NOTE',
+                  'CONSIGNMENT NOTE / BILTY',
                   style: pw.TextStyle(
-                    color: PdfColors.white,
-                    fontSize: 12,
+                    color: white,
+                    fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
                   ),
                   textAlign: pw.TextAlign.center,
                 ),
               ),
-              pw.SizedBox(height: 4),
+              pw.SizedBox(height: 6),
 
-              // Two-column compact content layout
+              // --- Row 1: Basic Info & Route (ADDED ROUTE HERE) ---
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Expanded(
-                    child: pw.Column(
-                      children: [
-                        _buildPDFSection('BASIC INFORMATION', [
-                          pw.Row(
-                            children: [
-                              pw.Expanded(
-                                child: _buildPDFInfoRow(
-                                  'Bilty No.',
-                                  widget.biltyNo,
-                                ),
-                              ),
-                              pw.SizedBox(width: 8),
-                              pw.Expanded(
-                                child: _buildPDFInfoRow(
-                                  'Bilty Date',
-                                  widget.biltyDate != null
-                                      ? '${widget.biltyDate!.day.toString().padLeft(2, '0')}/${widget.biltyDate!.month.toString().padLeft(2, '0')}/${widget.biltyDate!.year}'
-                                      : '',
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (widget.biltyType != null &&
-                              widget.biltyType!.isNotEmpty)
-                            _buildPDFInfoRow('Bilty Type', widget.biltyType!),
-                          if (widget.transporterCode != null &&
-                              widget.transporterCode!.isNotEmpty)
-                            _buildPDFInfoRow(
-                              'Transporter Code',
-                              widget.transporterCode!,
-                            ),
-                          if (widget.branchCode != null &&
-                              widget.branchCode!.isNotEmpty)
-                            _buildPDFInfoRow('Branch Code', widget.branchCode!),
-                        ]),
-                        _buildPDFSection('SENDER DETAILS', [
-                          _buildPDFInfoRow('Name', widget.senderName),
-                          _buildPDFInfoRow('Address', widget.senderAddress),
-                          if (widget.senderEmail != null &&
-                              widget.senderEmail!.isNotEmpty)
-                            _buildPDFInfoRow('Email', widget.senderEmail!),
-                          if (widget.senderPAN != null &&
-                              widget.senderPAN!.isNotEmpty)
-                            _buildPDFInfoRow('PAN', widget.senderPAN!),
-                          if (widget.senderGSTIN.isNotEmpty)
-                            _buildPDFInfoRow('GSTIN', widget.senderGSTIN),
-                          if (widget.senderPhone.isNotEmpty)
-                            _buildPDFInfoRow('Phone', widget.senderPhone),
-                        ]),
-                      ],
-                    ),
+                    child: _buildSection('BASIC INFO', headerBgColor, [
+                      _buildCompactRow(
+                        'Bilty No',
+                        widget.biltyNo,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'Date',
+                        formatDate(widget.biltyDate),
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'Type',
+                        widget.biltyType ?? '-',
+                        labelStyle,
+                        valueStyle,
+                      ),
+                    ]),
                   ),
                   pw.SizedBox(width: 6),
                   pw.Expanded(
-                    child: pw.Column(
-                      children: [
-                        _buildPDFSection('VEHICLE & DRIVER', [
-                          _buildPDFInfoRow('Truck No.', widget.truckNo),
-                          _buildPDFInfoRow('Engine No.', widget.engineNo),
-                          _buildPDFInfoRow('Chassis No.', widget.chassisNo),
-                          if (widget.vehicleType != null &&
-                              widget.vehicleType!.isNotEmpty)
-                            _buildPDFInfoRow(
-                              'Vehicle Type',
-                              widget.vehicleType!,
+                    child: _buildSection('ROUTE & DATES', headerBgColor, [
+                      _buildCompactRow(
+                        'From',
+                        widget.fromWhere,
+                        labelStyle,
+                        valueStyle,
+                      ), // Added
+                      _buildCompactRow(
+                        'To',
+                        widget.tillWhere,
+                        labelStyle,
+                        valueStyle,
+                      ), // Added
+                      pw.Row(
+                        children: [
+                          pw.Expanded(
+                            child: _buildCompactRow(
+                              'Pickup',
+                              formatDate(widget.pickupDate),
+                              labelStyle,
+                              valueStyle,
                             ),
-                          _buildPDFInfoRow(
-                            'Truck Owner',
-                            widget.truckOwnerName,
-                          ),
-                          if (widget.truckOwnerPhone != null &&
-                              widget.truckOwnerPhone!.isNotEmpty)
-                            _buildPDFInfoRow(
-                              'Owner Phone',
-                              widget.truckOwnerPhone!,
+                          ), // Added
+                          pw.SizedBox(width: 4),
+                          pw.Expanded(
+                            child: _buildCompactRow(
+                              'Deliv.',
+                              formatDate(widget.deliveryDate),
+                              labelStyle,
+                              valueStyle,
                             ),
-                          _buildPDFInfoRow('Driver Name', widget.driverName),
-                          if (widget.driverAddress != null &&
-                              widget.driverAddress!.isNotEmpty)
-                            _buildPDFInfoRow(
-                              'Driver Address',
-                              widget.driverAddress!,
-                            ),
-                          if (widget.driverPhone != null &&
-                              widget.driverPhone!.isNotEmpty)
-                            _buildPDFInfoRow(
-                              'Driver Phone',
-                              widget.driverPhone!,
-                            ),
-                          if (widget.driverLicense != null &&
-                              widget.driverLicense!.isNotEmpty)
-                            _buildPDFInfoRow(
-                              'Driver License',
-                              widget.driverLicense!,
-                            ),
-                        ]),
+                          ), // Added
+                        ],
+                      ),
+                    ]),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 4),
+
+              // --- Row 2: Sender & Recipient (ADDED RECIPIENT) ---
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: _buildSection('CONSIGNOR (SENDER)', headerBgColor, [
+                      _buildCompactRow(
+                        'Name',
+                        widget.senderName,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'Addr',
+                        widget.senderAddress,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'Phone',
+                        widget.senderPhone,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'GSTIN',
+                        widget.senderGSTIN,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                    ]),
+                  ),
+                  pw.SizedBox(width: 6),
+                  pw.Expanded(
+                    child: _buildSection(
+                      'CONSIGNEE (RECIPIENT)',
+                      headerBgColor,
+                      [
+                        _buildCompactRow(
+                          'Name',
+                          widget.recipientName,
+                          labelStyle,
+                          valueStyle,
+                        ), // Added
+                        _buildCompactRow(
+                          'Addr',
+                          widget.recipientAddress,
+                          labelStyle,
+                          valueStyle,
+                        ), // Added
+                        _buildCompactRow(
+                          'Phone',
+                          widget.recipientPhone,
+                          labelStyle,
+                          valueStyle,
+                        ), // Added
+                        _buildCompactRow(
+                          'GSTIN',
+                          widget.recipientGSTIN,
+                          labelStyle,
+                          valueStyle,
+                        ), // Added
                       ],
                     ),
                   ),
@@ -1570,157 +1668,175 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
 
               pw.SizedBox(height: 4),
 
-              // Goods table compact
-              _buildPDFSection('GOODS & CHARGES', [
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.teal, width: 0.5),
-                  columnWidths: {
-                    0: const pw.FlexColumnWidth(3),
-                    1: const pw.FlexColumnWidth(1),
-                    2: const pw.FlexColumnWidth(1),
-                    3: const pw.FlexColumnWidth(1),
-                    4: const pw.FlexColumnWidth(1),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.teal),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(
-                            'Description',
-                            style: pw.TextStyle(
-                              color: PdfColors.white,
-                              fontWeight: pw.FontWeight.bold,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(
-                            'Weight',
-                            style: pw.TextStyle(
-                              color: PdfColors.white,
-                              fontWeight: pw.FontWeight.bold,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(
-                            'Qty',
-                            style: pw.TextStyle(
-                              color: PdfColors.white,
-                              fontWeight: pw.FontWeight.bold,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(
-                            'Rate',
-                            style: pw.TextStyle(
-                              color: PdfColors.white,
-                              fontWeight: pw.FontWeight.bold,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(
-                            'Amount',
-                            style: pw.TextStyle(
-                              color: PdfColors.white,
-                              fontWeight: pw.FontWeight.bold,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    ...widget.goods.map(
-                      (item) => pw.TableRow(
+              // --- Row 3: Vehicle & Driver ---
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: _buildSection('VEHICLE DETAILS', headerBgColor, [
+                      pw.Row(
                         children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(3),
-                            child: pw.Text(
-                              item.description,
-                              style: pw.TextStyle(fontSize: goodsFontSize),
+                          pw.Expanded(
+                            child: _buildCompactRow(
+                              'Truck',
+                              widget.truckNo,
+                              labelStyle,
+                              valueStyle,
                             ),
                           ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(3),
-                            child: pw.Text(
-                              item.weight.toString(),
-                              style: pw.TextStyle(fontSize: goodsFontSize),
-                            ),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(3),
-                            child: pw.Text(
-                              item.quantity.toString(),
-                              style: pw.TextStyle(fontSize: goodsFontSize),
-                            ),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(3),
-                            child: pw.Text(
-                              item.rate.toString(),
-                              style: pw.TextStyle(fontSize: goodsFontSize),
-                            ),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(3),
-                            child: pw.Text(
-                              item.amount.toString(),
-                              style: pw.TextStyle(fontSize: goodsFontSize),
+                          pw.SizedBox(width: 4),
+                          pw.Expanded(
+                            child: _buildCompactRow(
+                              'Type',
+                              widget.vehicleType ?? '-',
+                              labelStyle,
+                              valueStyle,
                             ),
                           ),
                         ],
                       ),
+                      _buildCompactRow(
+                        'Engine',
+                        widget.engineNo,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'Chassis',
+                        widget.chassisNo,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                    ]),
+                  ),
+                  pw.SizedBox(width: 6),
+                  pw.Expanded(
+                    child: _buildSection('DRIVER & OWNER', headerBgColor, [
+                      _buildCompactRow(
+                        'Driver',
+                        widget.driverName,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'Phone',
+                        widget.driverPhone ?? '-',
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'License',
+                        widget.driverLicense ?? '-',
+                        labelStyle,
+                        valueStyle,
+                      ),
+                      _buildCompactRow(
+                        'Owner',
+                        widget.truckOwnerName,
+                        labelStyle,
+                        valueStyle,
+                      ),
+                    ]),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 4),
+
+              // --- Goods Table ---
+              _buildSection('GOODS DESCRIPTION', headerBgColor, [
+                pw.Table(
+                  border: pw.TableBorder.all(color: baseColor, width: 0.5),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(3), // Desc
+                    1: const pw.FlexColumnWidth(1), // Weight
+                    2: const pw.FlexColumnWidth(1), // Qty
+                    3: const pw.FlexColumnWidth(1), // Rate
+                    4: const pw.FlexColumnWidth(1.2), // Amount
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(color: baseColor),
+                      children:
+                      ['Description', 'Weight', 'Qty', 'Rate', 'Amount']
+                          .map(
+                            (t) => pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          child: pw.Text(t, style: tableHeaderStyle),
+                        ),
+                      )
+                          .toList(),
+                    ),
+                    ...widget.goods.map(
+                          (item) => pw.TableRow(
+                        children:
+                        [
+                          item.description,
+                          item.weight.toString(),
+                          item.quantity.toString(),
+                          item.rate.toString(),
+                          item.amount.toStringAsFixed(2),
+                        ]
+                            .map(
+                              (t) => pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 3,
+                              vertical: 2,
+                            ),
+                            child: pw.Text(t, style: goodsStyle),
+                          ),
+                        )
+                            .toList(),
+                      ),
                     ),
                   ],
                 ),
+
                 pw.SizedBox(height: 4),
+
+                // Totals Row
                 pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
                   children: [
-                    pw.Expanded(
-                      child: _buildPDFInfoRow(
-                        'Basic Fare (₹)',
-                        widget.basicFare,
-                        ttf,
+                    pw.Text(
+                      'Basic: ${widget.basicFare}   |   Charges: ${widget.otherCharges}   |   GST: ${widget.gst}%',
+                      style: labelStyle,
+                    ),
+                    pw.Spacer(),
+                    // Payment Status Badge (Added)
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      margin: const pw.EdgeInsets.only(right: 8),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(color: baseColor),
+                        borderRadius: pw.BorderRadius.circular(2),
+                      ),
+                      child: pw.Text(
+                        widget.paymentStatus.toUpperCase(),
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                          color: baseColor,
+                        ),
                       ),
                     ),
-                    pw.SizedBox(width: 6),
-                    pw.Expanded(
-                      child: _buildPDFInfoRow(
-                        'Other Charges (₹)',
-                        widget.otherCharges,
-                        ttf,
-                      ),
-                    ),
-                    pw.SizedBox(width: 6),
-                    pw.Expanded(child: _buildPDFInfoRow('GST (%)', widget.gst)),
-                    pw.SizedBox(width: 6),
                     pw.Container(
                       padding: const pw.EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 6,
+                        vertical: 4,
                       ),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.teal,
-                        borderRadius: pw.BorderRadius.circular(4),
-                      ),
+                      color: baseColor,
                       child: pw.Text(
-                        'TOTAL: ₹${widget.totalAmount}',
+                        'TOTAL: Rs. ${double.parse(widget.totalAmount).toStringAsFixed(2)}',
                         style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontSize: 9,
-                          font: ttf,
+                          color: white,
+                          fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
@@ -1729,90 +1845,80 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
                 ),
               ]),
 
-              pw.SizedBox(height: 4),
+              pw.Spacer(),
 
-              // Signatures + Bank compact row
+              // --- Footer (Bank & Signatures) ---
               pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
+                  // Bank Details
+                  if (widget.bankName.isNotEmpty)
+                    pw.Expanded(
+                      flex: 4,
+                      child: _buildSection('BANK DETAILS', headerBgColor, [
+                        _buildCompactRow(
+                          'Bank',
+                          widget.bankName,
+                          labelStyle,
+                          valueStyle,
+                        ),
+                        _buildCompactRow(
+                          'A/C No',
+                          widget.accountNo,
+                          labelStyle,
+                          valueStyle,
+                        ),
+                        _buildCompactRow(
+                          'IFSC',
+                          widget.ifscCode,
+                          labelStyle,
+                          valueStyle,
+                        ),
+                      ]),
+                    ),
+                  if (widget.bankName.isNotEmpty) pw.SizedBox(width: 8),
+
+                  // Signatures
                   pw.Expanded(
+                    flex: 6,
                     child: pw.Container(
-                      padding: const pw.EdgeInsets.all(8),
+                      padding: const pw.EdgeInsets.all(4),
                       decoration: pw.BoxDecoration(
                         border: pw.Border.all(
                           color: PdfColors.grey400,
-                          width: 0.8,
+                          width: 0.5,
                         ),
                         borderRadius: pw.BorderRadius.circular(4),
                       ),
                       child: pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                         children: [
-                          _buildPDFSignature('SENDER', widget.senderSignature),
+                          _buildSignature('SENDER', senderSigImage),
+                          // You can add Driver Signature here if you pass it
+                          _buildSignature('DRIVER', null),
+                          _buildSignature('AUTHORISED', null),
                         ],
                       ),
                     ),
                   ),
-                  pw.SizedBox(width: 6),
-                  if (widget.bankName.isNotEmpty ||
-                      widget.accountName.isNotEmpty ||
-                      widget.accountNo.isNotEmpty ||
-                      widget.ifscCode.isNotEmpty)
-                    pw.Container(
-                      width: 200,
-                      padding: const pw.EdgeInsets.all(8),
-                      decoration: pw.BoxDecoration(
-                        border: pw.Border.all(
-                          color: PdfColors.grey400,
-                          width: 0.8,
-                        ),
-                        borderRadius: pw.BorderRadius.circular(4),
-                      ),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'BANK DETAILS',
-                            style: pw.TextStyle(
-                              fontSize: 9,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.teal,
-                            ),
-                          ),
-                          pw.SizedBox(height: 4),
-                          _buildPDFInfoRow('Bank', widget.bankName),
-                          _buildPDFInfoRow('Acc. Name', widget.accountName),
-                          _buildPDFInfoRow('Acc. No', widget.accountNo),
-                          _buildPDFInfoRow('IFSC', widget.ifscCode),
-                        ],
-                      ),
-                    ),
                 ],
               ),
 
               if (widget.remarks.isNotEmpty) ...[
-                pw.SizedBox(height: 4),
-                _buildPDFSection('REMARKS', [
-                  pw.Text(
-                    widget.remarks,
-                    style: const pw.TextStyle(fontSize: 9),
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'Remarks: ${widget.remarks}',
+                  style: pw.TextStyle(
+                    fontSize: 7,
+                    fontStyle: pw.FontStyle.italic,
                   ),
-                ]),
+                ),
               ],
 
-              pw.SizedBox(height: 4),
-              _buildPDFSection('TERMS', [
-                pw.Text(
-                  '1) Goods transported at owner\'s risk. 2) E-way bill as applicable. 3) Payment as per agreed terms. 4) Disputes under local jurisdiction.',
-                  style: const pw.TextStyle(fontSize: 7, height: 1.2),
-                ),
-              ]),
-
-              pw.SizedBox(height: 4),
+              pw.SizedBox(height: 2),
               pw.Text(
-                'This is a computer generated document.',
-                style: pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
-                textAlign: pw.TextAlign.center,
+                'Terms: Goods at owner\'s risk. Subject to local jurisdiction.',
+                style: pw.TextStyle(fontSize: 6, color: greyText),
               ),
             ],
           );
@@ -1826,11 +1932,42 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
     return file;
   }
 
-  // Helper method to build PDF sections
-  pw.Widget _buildPDFSection(String title, List<pw.Widget> children) {
-    if (children.isEmpty) {
-      return pw.SizedBox.shrink();
-    }
+  // Optimized Compact Row Helper
+  pw.Widget _buildCompactRow(
+      String label,
+      String value,
+      pw.TextStyle labelStyle,
+      pw.TextStyle valueStyle,
+      ) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 1),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 45, // Fixed width for labels alignment
+            child: pw.Text('$label:', style: labelStyle),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: valueStyle,
+              maxLines: 1,
+              overflow: pw.TextOverflow.clip,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Optimized Helpers
+  pw.Widget _buildSection(
+      String title,
+      PdfColor color,
+      List<pw.Widget> children,
+      ) {
+    if (children.isEmpty) return pw.SizedBox.shrink();
     return pw.Container(
       margin: const pw.EdgeInsets.only(bottom: 4),
       child: pw.Column(
@@ -1840,7 +1977,7 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
             width: double.infinity,
             padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: pw.BoxDecoration(
-              color: PdfColor.fromInt(AppColors.tealBlue.toARGB32()),
+              color: color,
               borderRadius: pw.BorderRadius.circular(4),
             ),
             child: pw.Text(
@@ -1869,40 +2006,7 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
     );
   }
 
-  // Helper method to build PDF info rows
-  pw.Widget _buildPDFInfoRow(String label, String value, [pw.Font? font]) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 1),
-      child: pw.Row(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.SizedBox(
-            width: 82,
-            child: pw.Text(
-              '$label:',
-              style: pw.TextStyle(
-                font: font,
-                fontSize: 7.5,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.grey700,
-              ),
-            ),
-          ),
-          pw.Expanded(
-            child: pw.Text(
-              value,
-              style: pw.TextStyle(font: font, fontSize: 7.5),
-              maxLines: 1,
-              overflow: pw.TextOverflow.clip,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to build PDF signature areas
-  pw.Widget _buildPDFSignature(String label, String? signatureData) {
+  pw.Widget _buildSignature(String label, pw.MemoryImage? signatureImage) {
     return pw.Column(
       children: [
         pw.Text(
@@ -1921,16 +2025,14 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
             border: pw.Border.all(color: PdfColors.grey400, width: 1),
             borderRadius: pw.BorderRadius.circular(2),
           ),
-          child: signatureData != null && signatureData.isNotEmpty
-              ? pw.Image(pw.MemoryImage(base64Decode(signatureData)))
-              : null,
+          child: signatureImage != null ? pw.Image(signatureImage) : null,
         ),
       ],
     );
   }
 
   /// --- New Upload and Save Logic ---
-  Future<void> _uploadAndSaveBilty() async {
+  Future<void> _uploadAndSaveBilty({bool share = false}) async {
     setState(() => _isUploading = true);
     final supabase = Supabase.instance.client;
 
@@ -2004,14 +2106,14 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
         await supabase.storage
             .from('bilties')
             .uploadBinary(
-              filePath,
-              pdfBytes,
-              fileOptions: const FileOptions(
-                cacheControl: '3600',
-                upsert: true,
-                contentType: 'application/pdf',
-              ),
-            );
+          filePath,
+          pdfBytes,
+          fileOptions: const FileOptions(
+            cacheControl: '3600',
+            upsert: true,
+            contentType: 'application/pdf',
+          ),
+        );
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -2022,13 +2124,15 @@ class _TransportBiltyPreviewState extends State<TransportBiltyPreview> {
           );
         }
       }
-
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(pdfFile.path)],
-          text: "Bilty: #$widget.shipmentId",
-        ),
-      );
+      _isSaved = true;
+      if (share) {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(pdfFile.path)],
+            text: "Bilty: #$widget.shipmentId",
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2086,13 +2190,17 @@ class _SignatureLine extends StatelessWidget {
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
           child: signatureData != null && signatureData!.isNotEmpty
               ? ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: Image.memory(
-                    base64Decode(signatureData!),
-                    fit: BoxFit.contain,
-                  ),
-                )
-              : Container(width: 150, height: 1, color: Theme.of(context).cardColor,),
+            borderRadius: BorderRadius.circular(4),
+            child: Image.memory(
+              base64Decode(signatureData!),
+              fit: BoxFit.contain,
+            ),
+          )
+              : Container(
+            width: 150,
+            height: 1,
+            color: Theme.of(context).cardColor,
+          ),
         ),
         SizedBox(height: 4),
         Text(label, style: TextStyle(fontSize: 13)),

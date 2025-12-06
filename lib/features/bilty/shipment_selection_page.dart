@@ -6,7 +6,6 @@ import 'package:logistics_toolkit/features/bilty/bilty_pdf_preview_screen.dart';
 import 'package:logistics_toolkit/features/bilty/transport_bilty_form.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum PdfState { notDownloaded, downloaded }
@@ -102,6 +101,7 @@ class _ShipmentSelectionPageState extends State<ShipmentSelectionPage> {
     final bilty = biltyMap[id];
     if (bilty == null) return _toast('noBiltyFoundToDelete'.tr());
 
+    isLoading = true;
     await _client.storage.from('bilties').remove([bilty['file_path']]);
     await _client.from('bilties').delete().eq('shipment_id', id);
 
@@ -114,6 +114,7 @@ class _ShipmentSelectionPageState extends State<ShipmentSelectionPage> {
     biltyMap.remove(id);
 
     setState(() {});
+    isLoading = false;
     _toast('biltyDeletedSuccessfully'.tr());
   }
 
@@ -149,7 +150,7 @@ class _ShipmentSelectionPageState extends State<ShipmentSelectionPage> {
       appBar: AppBar(title: Text("selectShipmentForBilty".tr())),
       body: SafeArea(
         child: isLoading
-            ? _skeleton()
+            ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
           onRefresh: _fetchShipments,
           child: shipments.isEmpty
@@ -243,13 +244,4 @@ class _ShipmentSelectionPageState extends State<ShipmentSelectionPage> {
       ),
     );
   }
-
-  Widget _skeleton() => ListView.builder(
-    itemCount: 5,
-    itemBuilder: (_, __) => Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
-      child: const ListTile(title: SizedBox(height: 18, width: 200)),
-    ),
-  );
 }
