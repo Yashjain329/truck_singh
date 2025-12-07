@@ -27,8 +27,9 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
   String? _loggedInUserId;
   UserRole? _userRole;
   late AnimationController _animationController;
-  String _selectedStatusFilter = 'All';
-  final List<String> _statusFilters = ['All', 'Uploaded', 'Verified'];
+  // Use stable internal codes for filters
+  String _selectedStatusFilter = 'all';
+  final List<String> _statusFilters = ['all', 'uploaded', 'verified'];
   String? _loggedInUserName;
 
   // Vehicle documents that can be uploaded for trucks
@@ -244,7 +245,8 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
             orElse: () => <String, dynamic>{},
           );
 
-          final statusValue = doc.isEmpty ? 'Not Uploaded' : 'uploaded';
+          // Use stable status codes
+          final statusValue = doc.isEmpty ? 'not_uploaded' : 'uploaded';
 
           if (doc.isNotEmpty) {
             print('Document found for $truckNumber-$type: uploaded');
@@ -302,13 +304,29 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
     }
   }
 
+  // Map internal filter code to localized label
+  String _getStatusFilterLabel(String code) {
+    switch (code) {
+      case 'all':
+        return 'all'.tr(); // e.g. "सभी"
+      case 'uploaded':
+        return 'uploaded'.tr(); // keep short in hi.json: "अपलोड"
+      case 'verified':
+        return 'verified'.tr(); // "सत्यापित"
+      default:
+        return code;
+    }
+  }
+
   void _applyStatusFilter() {
-    if (_selectedStatusFilter == 'All') {
+    if (_selectedStatusFilter == 'all') {
       _filteredTrucks = List.from(_trucks);
     } else {
       _filteredTrucks = _trucks.where((truck) {
         final docs = truck['documents'] as Map<String, Map<String, dynamic>>;
-        return docs.values.any((doc) => doc['status'] == _selectedStatusFilter);
+        return docs.values.any(
+              (doc) => doc['status'] == _selectedStatusFilter,
+        );
       }).toList();
     }
   }
@@ -331,7 +349,6 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       return;
     }
 
-    // Debug print to check truck data structure
     print('Truck data for upload: $truck');
 
     // Check if truck owner is uploading for their own truck
@@ -367,7 +384,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
         print('Fetched truck ID from database: $truckId');
       } catch (e) {
         print('Error fetching truck ID: $e');
-        _showErrorSnackBar('Could not find truck ID');
+        _showErrorSnackBar('truck_id_not_found'.tr());
         return;
       }
     }
@@ -463,7 +480,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
         }
       }
 
-      _showSuccessSnackBar('Document uploaded successfully');
+      _showSuccessSnackBar('document_uploaded_successfully'.tr());
       await _loadTruckDocuments();
     } catch (e) {
       print('Error uploading document: $e');
@@ -536,7 +553,6 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
                   roleText,
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
-                // withOpacity() deprecated → use withValues() on latest Flutter
                 backgroundColor: AppColors.teal.withValues(alpha: 0.8),
               ),
             ),
@@ -559,27 +575,27 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: _statusFilters.map((status) {
+                      children: _statusFilters.map((statusCode) {
                         final isSelected =
-                            _selectedStatusFilter == status;
+                            _selectedStatusFilter == statusCode;
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
-                            label: Text(status),
+                            label: Text(
+                              _getStatusFilterLabel(statusCode),
+                            ),
                             selected: isSelected,
                             onSelected: (selected) {
                               setState(() {
-                                _selectedStatusFilter = status;
+                                _selectedStatusFilter = statusCode;
                                 _applyStatusFilter();
                               });
                             },
-                            backgroundColor: isSelected
-                                ? AppColors.teal
-                                : null,
+                            backgroundColor:
+                            isSelected ? AppColors.teal : null,
                             selectedColor: AppColors.teal,
                             labelStyle: TextStyle(
-                              color:
-                              isSelected ? Colors.white : null,
+                              color: isSelected ? Colors.white : null,
                             ),
                           ),
                         );
@@ -694,10 +710,11 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       Map<String, dynamic> docConfig,
       Map<String, dynamic> docStatus,
       ) {
-    final status = docStatus['status'] ?? 'Not Uploaded';
+    final status = (docStatus['status'] ?? 'not_uploaded') as String;
     final fileUrl = docStatus['file_url'];
     final isUploading =
         _uploadingTruckNumber == truckNumber && _uploadingDocType == docType;
+
     bool canUpload = false;
     if (_userRole == UserRole.agent) {
       canUpload = true;
@@ -710,7 +727,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
     }
 
     Color statusColor;
-    switch (status.toLowerCase()) {
+    switch (status) {
       case 'verified':
         statusColor = Colors.green;
         break;
@@ -719,6 +736,19 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
         break;
       default:
         statusColor = Colors.grey;
+    }
+
+    // Localized status label for badge
+    String statusLabel;
+    switch (status) {
+      case 'verified':
+        statusLabel = 'verified'.tr();
+        break;
+      case 'uploaded':
+        statusLabel = 'uploaded'.tr();
+        break;
+      default:
+        statusLabel = 'not_uploaded'.tr();
     }
 
     return Container(
@@ -754,13 +784,12 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        // withOpacity() deprecated → use withValues()
                         color: statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: statusColor),
                       ),
                       child: Text(
-                        status,
+                        statusLabel,
                         style: TextStyle(
                           color: statusColor,
                           fontSize: 10,
@@ -803,7 +832,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
     List<Widget> actionButtons = [];
 
     // Upload button for not uploaded documents
-    if (status == 'Not Uploaded' && canUpload) {
+    if (status == 'not_uploaded' && canUpload) {
       actionButtons.add(
         SizedBox(
           height: 32,
@@ -823,8 +852,8 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       );
     }
 
-    // View button for uploaded documents
-    if (status != 'Not Uploaded' && fileUrl != null) {
+    // View button for uploaded/verified documents
+    if (status != 'not_uploaded' && fileUrl != null) {
       actionButtons.add(
         IconButton(
           tooltip: 'view'.tr(),
@@ -849,17 +878,17 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
               final uri = Uri.parse(properUrl);
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
-                _showSuccessSnackBar('Opening document...');
+                _showSuccessSnackBar('opening_document'.tr());
               } else {
                 print('Cannot launch URL: $properUrl');
                 _showErrorSnackBar(
-                  'Cannot open document - URL not supported by device',
+                  'cannot_open_url'.tr(),
                 );
               }
             } catch (e) {
               print('Error opening document: $e');
               print('File URL was: $fileUrl');
-              _showErrorSnackBar('Cannot open document: ${e.toString()}');
+              _showErrorSnackBar('cannot_open_document'.tr());
             }
           },
         ),
@@ -880,8 +909,8 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       );
     }
 
-    if (status == 'Not Uploaded' && !canUpload) {
-      String disabledText = 'Cannot Upload';
+    if (status == 'not_uploaded' && !canUpload) {
+      String disabledText = 'cannot_upload'.tr();
       if (_userRole == UserRole.driver) {
         disabledText = 'view_only'.tr();
       }
