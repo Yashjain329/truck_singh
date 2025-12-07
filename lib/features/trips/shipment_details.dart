@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:logistics_toolkit/features/auth/services/supabase_service.dart';
-import 'package:logistics_toolkit/features/complains/complain_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import 'dart:math';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:logistics_toolkit/features/auth/services/supabase_service.dart';
+import 'package:logistics_toolkit/features/complains/complain_screen.dart';
 import '../ratings/presentation/screen/rating.dart';
 import '../tracking/shipment_tracking_page.dart';
+import '../notifications/notification_service.dart';
 
 class ShipmentDetailsPage extends StatefulWidget {
   final Map<String, dynamic> shipment;
@@ -25,23 +26,13 @@ class ShipmentDetailsPage extends StatefulWidget {
 
 class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
     with TickerProviderStateMixin {
+
   Timer? _trackingTimer;
   LatLng? _currentLocation;
   Map<String, int> ratingEditCount = {};
 
   late String currentUserCustomId;
-  bool isFetchingUserId = true; // optional: for loading state
-
-  bool get canShareTracking {
-    if (isFetchingUserId) return false;
-
-    final shipperId = widget.shipment['shipper_id'] ?? '';
-    final assignedAgent = widget.shipment['assigned_agent'] ?? '';
-
-    // ✅ Allow both shipper or agent to share
-    return currentUserCustomId == shipperId ||
-        currentUserCustomId == assignedAgent;
-  }
+  bool isFetchingUserId = true;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -54,33 +45,43 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
     _fetchCurrentUserCustomId();
   }
 
+  @override
+  void dispose() {
+    _trackingTimer?.cancel();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  /// Fetches the current user's custom ID to determine permissions (e.g., sharing).
   Future<void> _fetchCurrentUserCustomId() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
+
     setState(() => isFetchingUserId = true);
 
-    final userId = user.id;
-    final response = await Supabase.instance.client
-        .from('user_profiles')
-        .select('custom_user_id')
-        .eq('user_id:: text', userId)
-        .maybeSingle();
+    try {
+      final userId = user.id;
+      final response = await Supabase.instance.client
+          .from('user_profiles')
+          .select('custom_user_id')
+          .eq('user_id:: text', userId)
+          .maybeSingle();
 
-    if (response != null) {
-      currentUserCustomId = (response['custom_user_id'] as String?)!;
+      if (response != null) {
+        currentUserCustomId = (response['custom_user_id'] as String?)!;
+      }
+    } catch (e) {
+      debugPrint('Error fetching user ID: $e');
     }
 
-    // 🧩 Add these debug prints
-    print('✅ currentUserCustomId: $currentUserCustomId');
-    print('🚚 shipperId: ${widget.shipment['shipper_id']}');
-    print('🧑‍💼 assignedAgent: ${widget.shipment['assigned_agent']}');
-
-    setState(() => isFetchingUserId = false);
+    if (mounted) {
+      setState(() => isFetchingUserId = false);
+    }
   }
 
   void _setupAnimations() {
     _pulseController = AnimationController(
-      duration: Duration(seconds: 2),
+      duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat();
 
@@ -89,7 +90,36 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
     );
   }
 
-  // function for complaint button visible
+  /// Simulates live tracking updates for demonstration purposes.
+  void _startLiveTracking() {
+    _trackingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (_currentLocation != null) {
+        double newLat =
+            _currentLocation!.latitude + (Random().nextDouble() - 0.5) * 0.001;
+        double newLng =
+            _currentLocation!.longitude + (Random().nextDouble() - 0.5) * 0.001;
+
+        if (mounted) {
+          setState(() {
+            _currentLocation = LatLng(newLat, newLng);
+          });
+        }
+      }
+    });
+  }
+
+  /// Checks if the current user is allowed to share tracking (Shipper or Agent).
+  bool get canShareTracking {
+    if (isFetchingUserId) return false;
+
+    final shipperId = widget.shipment['shipper_id'] ?? '';
+    final assignedAgent = widget.shipment['assigned_agent'] ?? '';
+
+    return currentUserCustomId == shipperId ||
+        currentUserCustomId == assignedAgent;
+  }
+
+  /// Determines if the "File Complaint" button should be visible.
   bool get canFileComplaint {
     if (widget.isHistoryPage) return false;
 
@@ -103,22 +133,6 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
     // Complaint allowed up to 7 days after completion
     if (deliveryDate == null) return false;
     return DateTime.now().difference(deliveryDate).inDays <= 7;
-  }
-
-  void _startLiveTracking() {
-    _trackingTimer = Timer.periodic(Duration(seconds: 10), (timer) {
-      // Simulate vehicle movement
-      if (_currentLocation != null) {
-        double newLat =
-            _currentLocation!.latitude + (Random().nextDouble() - 0.5) * 0.001;
-        double newLng =
-            _currentLocation!.longitude + (Random().nextDouble() - 0.5) * 0.001;
-
-        setState(() {
-          _currentLocation = LatLng(newLat, newLng);
-        });
-      }
-    });
   }
 
   String getFormattedDate(String? dateStr) {
@@ -177,10 +191,59 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
     }
   }
 
+  /// Sends in-app and push notifications to both the sender (confirmation) and the receiver.
+  Future<void> _sendShareNotifications(String recipientInput, String shipmentId) async {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser == null) return;
+
+    // 1. Notify Sender (Self) - Confirmation
+    await NotificationService.sendNotification(
+      recipientUserId: currentUser.id,
+      title: 'Tracking Shared',
+      message: 'You successfully shared tracking for shipment $shipmentId with $recipientInput.',
+      data: {'type': 'tracking_share_sent', 'shipment_id': shipmentId},
+    );
+
+    // 2. Notify Receiver
+    try {
+      // Resolve Recipient UUID from user_profiles based on input (ID, Mobile, or Name)
+      final response = await Supabase.instance.client
+          .from('user_profiles')
+          .select('user_id, name')
+          .or('custom_user_id.eq.$recipientInput,mobile_number.eq.$recipientInput,name.eq.$recipientInput')
+          .limit(1)
+          .maybeSingle();
+
+      if (response != null) {
+        final recipientUuid = response['user_id'] as String;
+
+        // Get Sender Name for the message
+        final senderProfile = await Supabase.instance.client
+            .from('user_profiles')
+            .select('name')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+        final senderName = senderProfile?['name'] ?? 'A user';
+
+        await NotificationService.sendNotification(
+          recipientUserId: recipientUuid,
+          title: 'Shipment Tracking Shared',
+          message: '$senderName shared tracking for shipment $shipmentId with you.',
+          data: {'type': 'tracking_share_received', 'shipment_id': shipmentId},
+        );
+      } else {
+        debugPrint('Could not resolve recipient UUID for notification: $recipientInput');
+      }
+    } catch (e) {
+      debugPrint('Error sending share notification to recipient: $e');
+    }
+  }
+
+  /// Displays dialog to input recipient details and shares the shipment.
   Future<void> _showShareTrackingDialog() async {
     final formKey = GlobalKey<FormState>();
     final recipientController = TextEditingController();
-    bool isSharing = false; // For loading state within the dialog
+    bool isSharing = false;
 
     return showDialog<void>(
       context: context,
@@ -238,24 +301,33 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                       : () async {
                     if (!formKey.currentState!.validate()) return;
 
-                    setStateDialog(() => isSharing = true);
                     final recipient = recipientController.text.trim();
 
-                    // 🧩 Prevent sharing with yourself
+                    // Constraint: Prevent sharing with Drivers (IDs starting with DRV)
+                    if (recipient.toUpperCase().startsWith('DRV')) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Warning: You cannot share tracking with a driver.'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Constraint: Prevent sharing with self
                     if (recipient == currentUserCustomId) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('You cannot share tracking with yourself'),
                         ),
                       );
-                      setStateDialog(() => isSharing = false);
                       return;
                     }
 
+                    setStateDialog(() => isSharing = true);
+
                     try {
-                      // ✅ Get current user's custom ID
-                      final String? sharerId =
-                      await SupabaseService.getCustomUserId(
+                      final String? sharerId = await SupabaseService.getCustomUserId(
                         Supabase.instance.client.auth.currentUser!.id,
                       );
 
@@ -263,7 +335,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                         throw Exception("Could not get the current user's ID.");
                       }
 
-                      // ✅ Call the RPC with correct parameters
+                      // Invoke RPC to share shipment
                       final response = await Supabase.instance.client.rpc(
                         'share_shipment_track',
                         params: {
@@ -280,12 +352,15 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(message),
-                            backgroundColor:
-                            status == 'success' ? Colors.green : Colors.red,
+                            backgroundColor: status == 'success'
+                                ? Colors.green
+                                : Colors.red,
                           ),
                         );
                         if (status == 'success') {
                           Navigator.of(context).pop();
+                          // Send notifications after successful share
+                          await _sendShareNotifications(recipient, widget.shipment['shipment_id']);
                         }
                       }
                     } catch (e) {
@@ -310,32 +385,20 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
     );
   }
 
-
-  @override
-  void dispose() {
-    _trackingTimer?.cancel();
-    _pulseController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     String shipmentID = widget.shipment['shipment_id'];
+
+    // Rating logic
     final initialEditCount = widget.shipment['edit_count'] as int? ?? 0;
-    final currentEditCount =
-        ratingEditCount[shipmentID] ?? initialEditCount;
-    bool isCompleted =
-        widget.shipment['booking_status'].toString().toLowerCase() ==
-            'completed';
+    final currentEditCount = ratingEditCount[shipmentID] ?? initialEditCount;
+    bool isCompleted = widget.shipment['booking_status'].toString().toLowerCase() == 'completed';
     bool editLimitReached = currentEditCount >= 3;
-    final deliveryDate = DateTime.tryParse(
-      widget.shipment['delivery_date'] ?? '',
-    );
-    final bool isRatingPeriodExpired =
-        deliveryDate != null &&
-            DateTime.now().isAfter(deliveryDate.add(const Duration(days: 107)));
-    final bool canRate =
-        isCompleted && !editLimitReached && !isRatingPeriodExpired;
+    final deliveryDate = DateTime.tryParse(widget.shipment['delivery_date'] ?? '');
+    final bool isRatingPeriodExpired = deliveryDate != null &&
+        DateTime.now().isAfter(deliveryDate.add(const Duration(days: 107)));
+    final bool canRate = isCompleted && !editLimitReached && !isRatingPeriodExpired;
+
     return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
@@ -343,11 +406,8 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
           elevation: 0,
           actions: [
             IconButton(
-              icon: Icon(Icons.refresh),
-              onPressed: () {
-                setState(() {
-                });
-              },
+              icon: const Icon(Icons.refresh),
+              onPressed: () => setState(() {}),
             ),
           ],
         ),
@@ -355,17 +415,16 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
           child: SingleChildScrollView(
             child: Column(
               children: [
+                // Header: Status Card
                 Container(
                   width: double.infinity,
-                  margin: EdgeInsets.all(16),
-                  padding: EdgeInsets.all(20),
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
                         getStatusColor(widget.shipment['booking_status']),
-                        getStatusColor(
-                          widget.shipment['booking_status'],
-                        ).withValues(alpha: 7),
+                        getStatusColor(widget.shipment['booking_status']).withValues(alpha: 0.7),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -373,11 +432,9 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: getStatusColor(
-                          widget.shipment['booking_status'],
-                        ).withValues(alpha: 3),
+                        color: getStatusColor(widget.shipment['booking_status']).withValues(alpha: 0.3),
                         blurRadius: 10,
-                        offset: Offset(0, 4),
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -397,24 +454,21 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                               );
                             },
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  widget.shipment['booking_status'] ??
-                                      'unknown'.tr(),
-                                  style: TextStyle(
+                                  widget.shipment['booking_status'] ?? 'unknown'.tr(),
+                                  style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 Text(
                                   '${'shipmentID'.tr()}: ${widget.shipment['shipment_id']}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                  ),
+                                  style: const TextStyle(fontSize: 14),
                                 ),
                               ],
                             ),
@@ -425,7 +479,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                   ),
                 ),
 
-                //live tracking container that is clickable and redirect to live tracking page
+                // Live Tracking Button
                 if (widget.shipment['booking_status'] != 'Completed')
                   InkWell(
                     onTap: () {
@@ -440,34 +494,29 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                     },
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 16),
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
-                        //color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 10,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Column(
                         children: [
                           Padding(
-                            padding: EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(16),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.location_on,
-                                  color: Colors.red,
-                                  size: 24,
-                                ),
-                                SizedBox(width: 8),
+                                const Icon(Icons.location_on, color: Colors.red, size: 24),
+                                const SizedBox(width: 8),
                                 Text(
                                   'liveTracking'.tr(),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -476,21 +525,14 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                             ),
                           ),
                           Padding(
-                            padding: EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(16),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.touch_app,
-                                  color: Colors.grey[600],
-                                  size: 16,
-                                ),
-                                SizedBox(width: 4),
+                                Icon(Icons.touch_app, color: Colors.grey[600], size: 16),
+                                const SizedBox(width: 4),
                                 Text(
                                   'tapToOpenLiveTracking'.tr(),
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
+                                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                                 ),
                               ],
                             ),
@@ -500,19 +542,20 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                     ),
                   ),
 
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
+
+                // Info Section
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16),
-                  padding: EdgeInsets.all(20),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    //color: Colors.white,
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
-                        offset: Offset(0, 2),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -521,9 +564,9 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                     children: [
                       Text(
                         'shipmentInformation'.tr(),
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
                       _buildInfoRow(
                         Icons.location_on,
@@ -573,16 +616,15 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                   ),
                 ),
 
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-                // Action Buttons
+                // Action Buttons Section
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
-                      // ## New Share Tracking Button
-                      if (widget.shipment['booking_status'] != 'Completed' &&
-                          canShareTracking) ...[
+                      // Share Tracking Button
+                      if (widget.shipment['booking_status'] != 'Completed' && canShareTracking) ...[
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -591,9 +633,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                             onPressed: _showShareTrackingDialog,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 2,
                             ),
                           ),
@@ -601,40 +641,37 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                         const SizedBox(height: 12),
                       ],
 
-                      // Complaint Button below
+                      // Complaint Button
                       if (canFileComplaint)
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            icon: Icon(Icons.report_problem),
+                            icon: const Icon(Icons.report_problem),
                             label: Text('fileAComplaint'.tr()),
                             onPressed: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => ComplaintPage(
-                                    preFilledShipmentId:
-                                    widget.shipment['shipment_id'],
+                                    preFilledShipmentId: widget.shipment['shipment_id'],
                                     editMode: false,
-                                    complaintData: {},
+                                    complaintData: const {},
                                   ),
                                 ),
                               );
                             },
-
-                            //Rating button below
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.redAccent,
                               foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 2,
                             ),
                           ),
                         ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
+
+                      // Rating Button
                       if (canRate)
                         SizedBox(
                           width: double.infinity,
@@ -651,42 +688,27 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                               style: const TextStyle(fontSize: 14),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: canRate
-                                  ? Colors.blue
-                                  : Colors.grey[400],
-                              foregroundColor: canRate
-                                  ? Colors.black
-                                  : Colors.grey[700],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadiusGeometry.circular(20),
-                              ),
+                              backgroundColor: canRate ? Colors.blue : Colors.grey[400],
+                              foregroundColor: canRate ? Colors.black : Colors.grey[700],
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             ),
                             onPressed: canRate
                                 ? () async {
                               final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => Rating(
-                                    shipmentId:
-                                    widget.shipment['shipment_id'],
-                                  ),
+                                  builder: (context) => Rating(shipmentId: widget.shipment['shipment_id']),
                                 ),
                               );
 
                               if (result != null && result is int) {
-                                // Update the local state
                                 setState(() {
                                   ratingEditCount[shipmentID] = result;
                                 });
 
-                                // Show snackbar
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'ratingSavedSuccessfully'.tr(),
-                                      ),
-                                    ),
+                                    SnackBar(content: Text('ratingSavedSuccessfully'.tr())),
                                   );
                                 }
                                 Navigator.pop(context, result);
@@ -698,7 +720,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                     ],
                   ),
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -708,12 +730,12 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: Colors.grey[600], size: 20),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -726,10 +748,10 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),

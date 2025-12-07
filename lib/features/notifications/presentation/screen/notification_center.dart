@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart' as ptr;
 import 'package:logistics_toolkit/features/admin/support_ticket_detail_page.dart';
 import 'package:logistics_toolkit/features/truck_documents/truck_documents_page.dart';
+import '../../../trips/shipment_details.dart';
 
 class NotificationCenterPage extends StatefulWidget {
   const NotificationCenterPage({Key? key}) : super(key: key);
@@ -14,11 +15,12 @@ class NotificationCenterPage extends StatefulWidget {
 
 class _NotificationCenterPageState extends State<NotificationCenterPage> {
   final supabase = Supabase.instance.client;
-  bool isLoading = false;
-  List<Map<String, dynamic>> notifications = [];
   final ptr.RefreshController _refreshController = ptr.RefreshController(
     initialRefresh: false,
   );
+
+  bool isLoading = false;
+  List<Map<String, dynamic>> notifications = [];
 
   @override
   void initState() {
@@ -26,6 +28,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
     _loadNotifications();
   }
 
+  /// Fetches notifications from Supabase for the current user.
   Future<void> _loadNotifications() async {
     if (!mounted) return;
     setState(() => isLoading = true);
@@ -46,7 +49,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
     try {
       final response = await supabase
           .from('notifications')
-          .select('*') // FIXED
+          .select('*')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
@@ -56,16 +59,15 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
           isLoading = false;
         });
       }
-
       _refreshController.refreshCompleted();
     } catch (e) {
       debugPrint("❌ Error loading notifications: $e");
-
       if (mounted) setState(() => isLoading = false);
       _refreshController.refreshFailed();
     }
   }
 
+  /// Marks all unread notifications as read.
   Future<void> markAllAsRead() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
@@ -76,13 +78,14 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
         .toList();
 
     if (unreadIds.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('all_caught_up'.tr())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('all_caught_up'.tr())),
+      );
       return;
     }
 
     try {
+      // Optimistic UI update
       setState(() {
         for (var n in notifications) {
           n['read'] = true;
@@ -96,30 +99,227 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
           .inFilter('id', unreadIds);
     } catch (e) {
       debugPrint("❌ Error marking all as read: $e");
+      // Revert or reload on error
       _loadNotifications();
     }
   }
 
+  /// Formats the time difference into a user-friendly string (e.g., "5 minutes ago").
+  /// Handles singular/plural logic and removes {0} placeholders.
   String _formatTimeAgo(String timeString) {
     try {
       final createdAt = DateTime.parse(timeString).toLocal();
       final diff = DateTime.now().difference(createdAt);
 
       if (diff.inSeconds < 60) return 'just_now'.tr();
-      if (diff.inMinutes < 60) return '${diff.inMinutes} ${'minutes_ago'.tr()}';
-      if (diff.inHours < 24) return '${diff.inHours} ${'hours_ago'.tr()}';
-      if (diff.inDays < 30) return '${diff.inDays} ${'days_ago'.tr()}';
+
+      // Helper to format string and remove '(s)' for singular values
+      String format(String key, int value) {
+        return key
+            .tr(args: [value.toString()])
+            .replaceAll('{0}', value.toString())
+            .replaceAll('(s)', value == 1 ? '' : 's');
+      }
+
+      if (diff.inMinutes < 60) return format('minutes_ago', diff.inMinutes);
+      if (diff.inHours < 24) return format('hours_ago', diff.inHours);
+      if (diff.inDays < 30) return format('days_ago', diff.inDays);
 
       if (diff.inDays < 365) {
         final m = (diff.inDays / 30).floor();
-        return '$m ${'months_ago'.tr()}';
+        return format('months_ago', m);
       }
 
       final y = (diff.inDays / 365).floor();
-      return '$y ${'years_ago'.tr()}';
+      return format('years_ago', y);
     } catch (_) {
       return timeString;
     }
+  }
+
+  /// Handles tap events on a notification card.
+  /// Identifies the notification type and navigates to the appropriate screen.
+  void _handleNotificationTap(Map<String, dynamic> notification) async {
+    // 1. Mark notification as read immediately
+    if (notification['read'] != true) {
+      setState(() => notification['read'] = true);
+      try {
+        await supabase
+            .from('notifications')
+            .update({'read': true})
+            .eq('id', notification['id']);
+      } catch (e) {
+        debugPrint("❌ Error marking read: $e");
+      }
+    }
+
+    // 2. Extract Data & Type
+    String type = (notification['type'] ?? '').toString().toLowerCase();
+    final dynamic data = notification['data'];
+
+    // Fallback: Check inside 'data' if top-level type is missing
+    if ((type.isEmpty || type == 'null') && data is Map) {
+      type = (data['type'] ?? '').toString().toLowerCase();
+    }
+
+    // 3. Extract Source ID (Robust Strategy)
+    String? sourceId = notification['source_id']?.toString();
+
+    // Helper to check if an ID is valid
+    bool isInvalidId(String? id) => id == null || id.isEmpty || id.toLowerCase() == 'null';
+
+    if (isInvalidId(sourceId)) {
+      // Strategy A: Check 'data' object
+      if (data is Map) {
+        sourceId = data['shipment_id']?.toString() ??
+            data['id']?.toString() ??
+            data['source_id']?.toString();
+      }
+
+      // Strategy B: Check 'shipment_details' map
+      if (isInvalidId(sourceId) && notification['shipment_details'] is Map) {
+        final details = notification['shipment_details'];
+        sourceId = details['shipment_id']?.toString() ??
+            details['id']?.toString();
+      }
+
+      // Strategy C: Regex fallback on message text
+      if (isInvalidId(sourceId)) {
+        final message = (notification['message'] ?? '').toString();
+        final regex = RegExp(r'(SHP-[\w\d-]+)');
+        final match = regex.firstMatch(message);
+        if (match != null) {
+          sourceId = match.group(0);
+        }
+      }
+    }
+
+    // Auto-correct type if we successfully found a Shipment ID
+    if (sourceId != null && sourceId.startsWith('SHP-')) {
+      type = 'shipment';
+    }
+
+    // 4. Navigate based on Type
+
+    // --- Case: Support Ticket ---
+    if (type == 'support_ticket' && data is Map && data['ticket_id'] != null) {
+      _navigateToSupportTicket(data['ticket_id']);
+      return;
+    }
+
+    // --- Case: Truck Documents ---
+    if (type.contains('truck_document')) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TruckDocumentsPage()),
+      );
+      return;
+    }
+
+    // --- Case: Shipment Details ---
+    if (type.contains('shipment') && !isInvalidId(sourceId)) {
+      _navigateToShipment(sourceId!);
+      return;
+    }
+
+    // Default: Show simple details dialog if no navigation rule matched
+    _showNotificationDetails(notification);
+  }
+
+  Future<void> _navigateToSupportTicket(String ticketId) async {
+    try {
+      final ticket = await supabase
+          .from('support_tickets')
+          .select()
+          .eq('id', ticketId)
+          .single();
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EnhancedSupportTicketDetailPage(ticket: ticket),
+        ),
+      );
+    } catch (e) {
+      debugPrint("❌ Error opening ticket: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('error_opening_ticket'.tr())),
+        );
+      }
+    }
+  }
+
+  Future<void> _navigateToShipment(String shipmentId) async {
+    try {
+      final shipmentData = await supabase
+          .from('shipment')
+          .select()
+          .eq('shipment_id', shipmentId)
+          .maybeSingle();
+
+      if (!mounted) return;
+
+      if (shipmentData != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ShipmentDetailsPage(shipment: shipmentData),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('shipment_not_found'.tr())),
+        );
+      }
+    } catch (e) {
+      debugPrint("❌ Error opening shipment: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('error_opening_shipment'.tr())),
+        );
+      }
+    }
+  }
+
+  /// Displays a simple dialog with notification details when no specific action exists.
+  void _showNotificationDetails(Map<String, dynamic> n) {
+    final shipmentDetails = (n['shipment_details'] is Map)
+        ? n['shipment_details']
+        : {};
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(n['title'] ?? 'details'.tr()),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(n['message'] ?? ''),
+                const SizedBox(height: 12),
+                if (shipmentDetails.isNotEmpty) ...[
+                  const Divider(),
+                  Text("Status: ${shipmentDetails['status']}"),
+                  Text("ID: ${shipmentDetails['id']}"),
+                  Text("From: ${shipmentDetails['from']}"),
+                  Text("To: ${shipmentDetails['to']}"),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('close'.tr()),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -222,101 +422,6 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
             ),
             onTap: () => _handleNotificationTap(n),
           ),
-        );
-      },
-    );
-  }
-
-  void _handleNotificationTap(Map<String, dynamic> notification) async {
-    if (notification['read'] != true) {
-      setState(() => notification['read'] = true);
-
-      try {
-        await supabase
-            .from('notifications')
-            .update({'read': true})
-            .eq('id', notification['id']);
-      } catch (e) {
-        debugPrint("❌ Error marking read: $e");
-      }
-    }
-
-    final dynamic data =
-        notification['data'] ?? notification['shipment_details'] ?? {};
-    final String type = data is Map ? (data['type'] ?? '') : '';
-
-    if (type == 'support_ticket' && data is Map && data['ticket_id'] != null) {
-      try {
-        final ticket = await supabase
-            .from('support_tickets')
-            .select() // FIXED
-            .eq('id', data['ticket_id'])
-            .single();
-
-        if (!mounted) return;
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                EnhancedSupportTicketDetailPage(ticket: ticket),
-          ),
-        );
-      } catch (e) {
-        debugPrint("❌ Error opening ticket: $e");
-
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('error_opening_ticket'.tr())));
-        }
-      }
-      return;
-    }
-
-    if (type == 'truck_document_upload' || type == 'truck_document_update') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const TruckDocumentsPage()),
-      );
-      return;
-    }
-
-    _showNotificationDetails(notification);
-  }
-
-  void _showNotificationDetails(Map<String, dynamic> n) {
-    final shipmentDetails = (n['shipment_details'] is Map)
-        ? n['shipment_details']
-        : {};
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(n['title'] ?? 'details'.tr()),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(n['message'] ?? ''),
-                const SizedBox(height: 12),
-                if (shipmentDetails.isNotEmpty) ...[
-                  const Divider(),
-                  Text("Status: ${shipmentDetails['status']}"),
-                  Text("ID: ${shipmentDetails['id']}"),
-                  Text("From: ${shipmentDetails['from']}"),
-                  Text("To: ${shipmentDetails['to']}"),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: Text('close'.tr()),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
         );
       },
     );

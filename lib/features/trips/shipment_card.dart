@@ -160,6 +160,10 @@ class _ShipmentCardState extends State<ShipmentCard> {
     final hasInvoice =
         invoicePath != null && invoicePath.toString().trim().isNotEmpty;
     final state = widget.pdfStates[shipmentId] ?? PdfState.notGenerated;
+    final status = shipment['booking_status']?.toString().toLowerCase() ?? '';
+    if (status != 'completed') {
+      return const SizedBox.shrink();
+    }
 
     print("buildActionButtons: role=$role, customUserId=$customUserId, shipperId=$shipperId, assignedCompanyId=$assignCompanyId, hasInvoice=$hasInvoice, state=$state");
     print("Shipment: ${shipment['shipment_id']}, assigned_agent=${shipment['assigned_agent']}, shipper_id=${shipment['shipper_id']}");
