@@ -44,8 +44,7 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
   // Shipment Data State
   List<Map<String, dynamic>> shipments = [];
   List<Map<String, dynamic>> filteredShipments = [];
-  Map<String, List<Map<String, dynamic>>> _groupedShipments = {};
-  List<String> _sortedMonths = [];
+  // _groupedShipments and _sortedMonths removed as they conflicted with specific date filtering
   Set<String> _invoiceRequests = {};
   Set<String> ratedShipments = {};
   Map<String, int> ratingEditCount = {};
@@ -53,8 +52,11 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
 
   // UI State
   bool loading = true;
+
+  // Filters
   String searchQuery = '';
   String statusFilter = 'All';
+  int? selectedYear;
   String? selectedMonth;
 
   // Invoice Form Controllers
@@ -128,7 +130,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     try {
       List<dynamic> response = [];
 
-      // Determine query based on role
       if (role == 'shipper') {
         response = await Supabase.instance.client
             .from('invoice_requests')
@@ -198,7 +199,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       setState(() {
         shipments = List<Map<String, dynamic>>.from(jsonDecode(cachedData));
         filteredShipments = shipments;
-        _processShipmentData();
         loading = false;
       });
     }
@@ -232,9 +232,8 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       // Filter All shipments, expect pending shipments
       final completedShipments = res.where((s) {
         final status = s['booking_status']?.toString().toLowerCase() ?? '';
-        return status != 'pending'; // exclude only pending shipments
+        return status != 'pending';
       }).toList();
-
 
       if (mounted) {
         setState(() {
@@ -244,13 +243,13 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         });
       }
 
-      // Update cache and dependent data
       await saveShipmentToCache(shipments);
       await fetchEditCounts();
       await checkPdfStates();
       await fetchInvoiceRequests();
 
-      _processShipmentData();
+      // Apply any existing filters immediately after fetching
+      applyFilters();
       _refreshController.refreshCompleted();
     } catch (e) {
       debugPrint("Error fetching shipments: $e");
@@ -259,27 +258,138 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     }
   }
 
-  void _processShipmentData() {
-    _groupedShipments = groupShipmentsByMonth(filteredShipments);
+  /// A simple, styled widget for items in the filter dialog.
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Theme.of(context).primaryColor : null,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
 
-    _sortedMonths = _groupedShipments.keys.toList()
-      ..sort((a, b) {
-        try {
-          final da = DateFormat.yMMMM().parse(a);
-          final db = DateFormat.yMMMM().parse(b);
-          return db.compareTo(da);
-        } catch (e) {
-          return 0;
-        }
-      });
+  void _showMonthYearFilterDialog() {
+    final availableYears =
+    shipments
+        .map((s) => DateTime.tryParse(s['delivery_date'] ?? ''))
+        .where((d) => d != null)
+        .map((d) => d!.year)
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
 
-    // Set default month selection
-    if (selectedMonth == null && _sortedMonths.isNotEmpty) {
-      selectedMonth = _sortedMonths.first;
-    } else if (selectedMonth != null &&
-        !_sortedMonths.contains(selectedMonth)) {
-      selectedMonth = _sortedMonths.isNotEmpty ? _sortedMonths.first : null;
+    if (availableYears.isEmpty) {
+      availableYears.add(DateTime.now().year);
     }
+    final allMonths = DateFormat.MMMM().dateSymbols.MONTHS;
+    int tempYear = selectedYear ?? availableYears.first;
+    String? tempMonth = selectedMonth;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('filterByDate'.tr(), textAlign: TextAlign.center),
+              contentPadding: const EdgeInsets.only(top: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              content: SizedBox(
+                height: 300,
+                width: 300,
+                child: Row(
+                  children: [
+                    // --- Month Column ---
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: allMonths.length,
+                        itemBuilder: (context, index) {
+                          final month = allMonths[index];
+                          final isSelected = tempMonth == month;
+                          return _buildFilterChip(
+                            label: month,
+                            isSelected: isSelected,
+                            onTap: () {
+                              setDialogState(() {
+                                tempMonth = isSelected ? null : month;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    // --- Year Column ---
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: availableYears.length,
+                        itemBuilder: (context, index) {
+                          final year = availableYears[index];
+                          final isSelected = tempYear == year;
+                          return _buildFilterChip(
+                            label: year.toString(),
+                            isSelected: isSelected,
+                            onTap: () {
+                              setDialogState(() {
+                                tempYear = year;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('cancel'.tr()),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      selectedYear = tempYear;
+                      selectedMonth = tempMonth;
+                      applyFilters();
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Text('apply'.tr()),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void searchShipments(String query) {
@@ -303,29 +413,56 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
   void applyFilters() {
     filteredShipments = shipments.where((s) {
       final bookingStatus = s['booking_status']?.toString().toLowerCase() ?? '';
+      final deliveryDate = DateTime.tryParse(s['delivery_date'] ?? '');
 
-      final matchQuery = searchQuery.isEmpty ||
-          s.values.any((value) => value.toString().toLowerCase().contains(searchQuery.toLowerCase()));
+      // Query match
+      final matchQuery =
+          searchQuery.isEmpty ||
+              s.values.any(
+                    (value) => value.toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ),
+              );
 
-      final matchStatus = statusFilter == 'All' ||
-          bookingStatus == statusFilter.toLowerCase();
+      // Status match
+      final matchStatus =
+          statusFilter == 'All' || bookingStatus == statusFilter.toLowerCase();
 
-      return matchQuery && matchStatus;
+      // Date match
+      bool matchDate = true;
+      if (deliveryDate != null) {
+        // Year must match if selected (or default to current/first available in logic)
+        // Here we only filter if selectedYear is explicitly set,
+        // though logic suggests selectedYear is always set in the dialog.
+        final matchYear =
+            selectedYear == null || deliveryDate.year == selectedYear;
+
+        // Month must match if selected
+        final matchMonth =
+            selectedMonth == null ||
+                DateFormat.MMMM().format(deliveryDate) == selectedMonth;
+        matchDate = matchYear && matchMonth;
+      } else if (selectedYear != null || selectedMonth != null) {
+        // If a date filter is set, shipments without dates are excluded
+        matchDate = false;
+      }
+
+      return matchQuery && matchStatus && matchDate;
     }).toList();
 
     // Sort latest on top
     filteredShipments.sort((a, b) {
-      final aDate = DateTime.tryParse(a['delivery_date'] ?? '') ?? DateTime.now();
-      final bDate = DateTime.tryParse(b['delivery_date'] ?? '') ?? DateTime.now();
+      final aDate =
+          DateTime.tryParse(a['delivery_date'] ?? '') ?? DateTime.now();
+      final bDate =
+          DateTime.tryParse(b['delivery_date'] ?? '') ?? DateTime.now();
       return bDate.compareTo(aDate);
     });
 
-    _processShipmentData(); // update list grouping
     setState(() {});
   }
 
   void _showStatusFilterDialog() {
-    // These are your allowed statuses (no "Pending")
     final List<String> statuses = [
       'All',
       'Accepted',
@@ -347,7 +484,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         title: Text('filterByStatus'.tr()),
         content: SingleChildScrollView(
           child: RadioGroup<String>(
-            // 👇 Only RadioGroup handles value + change
             groupValue: statusFilter,
             onChanged: (val) {
               if (val == null) return;
@@ -362,8 +498,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
               children: statuses.map((status) {
                 return RadioListTile<String>(
                   value: status,
-                  // ❌ NO groupValue
-                  // ❌ NO onChanged here
                   title: Text(status.tr()),
                   activeColor: Colors.teal,
                   visualDensity: VisualDensity.compact,
@@ -374,49 +508,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         ),
       ),
     );
-  }
-
-  Map<String, List<Map<String, dynamic>>> groupShipmentsByMonth(
-      List<Map<String, dynamic>> shipments,
-      ) {
-    Map<String, List<Map<String, dynamic>>> grouped = {};
-
-    for (var shipment in shipments) {
-      final dateStr = shipment['delivery_date'];
-      if (dateStr == null || dateStr.isEmpty) continue;
-      try {
-        final date = DateTime.parse(dateStr);
-        final monthKey = DateFormat.yMMMM().format(date);
-        grouped.putIfAbsent(monthKey, () => []);
-        grouped[monthKey]!.add(shipment);
-      } catch (e) {
-        // Ignore invalid dates
-      }
-    }
-
-    // Ensure last 6 months exist in keys even if empty
-    final now = DateTime.now();
-    for (int i = 0; i < 6; i++) {
-      final monthDate = DateTime(now.year, now.month - i);
-      final monthKey = DateFormat.yMMMM().format(monthDate);
-      grouped.putIfAbsent(monthKey, () => []);
-    }
-
-    return grouped;
-  }
-
-  String getMonthLabel(String monthKey) {
-    final now = DateTime.now();
-    final currentMonth = DateFormat.yMMMM().format(
-      DateTime(now.year, now.month),
-    );
-    final prevMonth = DateFormat.yMMMM().format(
-      DateTime(now.year, now.month - 1),
-    );
-
-    if (monthKey == currentMonth) return "This Month";
-    if (monthKey == prevMonth) return "Previous Month";
-    return monthKey;
   }
 
   /// Check if invoice PDFs exist locally or are valid URLs
@@ -1426,10 +1517,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
 
   @override
   Widget build(BuildContext context) {
-    if (_sortedMonths.isEmpty && filteredShipments.isNotEmpty) {
-      _processShipmentData();
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: Text('shipment_history'.tr()),
@@ -1444,84 +1531,117 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
               if (result != null) searchShipments(result);
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showStatusFilterDialog,
-          ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await fetchShipments();
-        },
-        child: loading
-            ? buildSkeletonLoader()
-            : filteredShipments.isEmpty
-            ? buildEmptyState()
-            : Column(
-          children: [
-            _buildMonthDropdown(),
-            const Divider(thickness: 1, height: 1),
-            Expanded(child: _buildShipmentList()),
-          ],
-        ),
-      ),
-    );
-  }
+      body: Column(
+        children: [
+          // ---------------------------------------------------------
+          // 1. FILTER CONTROLS (ALWAYS VISIBLE)
+          // ---------------------------------------------------------
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: Row(
+              children: [
+                // --- Status Filter Chip ---
+                ActionChip(
+                  avatar: const Icon(Icons.tune, size: 18),
+                  label: Text(
+                    statusFilter == 'All' ? 'status'.tr() : statusFilter,
+                    style: TextStyle(
+                      fontWeight: statusFilter == 'All'
+                          ? FontWeight.normal
+                          : FontWeight.bold,
+                      color: statusFilter == 'All'
+                          ? null
+                          : Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  backgroundColor: statusFilter == 'All'
+                      ? null
+                      : Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  onPressed: _showStatusFilterDialog,
+                ),
+                const SizedBox(width: 8),
 
-  Widget _buildMonthDropdown() {
-    if (_sortedMonths.isEmpty) return const SizedBox.shrink();
+                // --- Date Filter Chip ---
+                ActionChip(
+                  avatar: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(
+                    selectedYear != null
+                        ? '${selectedMonth ?? ''} ${selectedYear!}'
+                        : 'date'.tr(),
+                    style: TextStyle(
+                      fontWeight: selectedYear == null
+                          ? FontWeight.normal
+                          : FontWeight.bold,
+                      color: selectedYear == null
+                          ? null
+                          : Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  backgroundColor: selectedYear == null
+                      ? null
+                      : Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  onPressed: _showMonthYearFilterDialog,
+                ),
 
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: "select_month".tr(),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 4,
+                // --- Clear Filters Button (Optional, shows if filters are active) ---
+                if (statusFilter != 'All' || selectedYear != null) ...[
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    tooltip: "Clear Filters",
+                    onPressed: () {
+                      setState(() {
+                        statusFilter = 'All';
+                        selectedYear = null;
+                        selectedMonth = null;
+                        searchQuery = '';
+                        applyFilters();
+                      });
+                    },
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: selectedMonth,
-            isExpanded: true,
-            hint: Text("choose_month".tr()),
-            icon: const Icon(Icons.calendar_month, color: Colors.blue),
-            onChanged: (value) => setState(() => selectedMonth = value),
-            items: _sortedMonths.map((m) {
-              return DropdownMenuItem(value: m, child: Text(getMonthLabel(m)));
-            }).toList(),
+          const Divider(thickness: 1, height: 1),
+
+          // ---------------------------------------------------------
+          // 2. CONTENT AREA (SCROLLABLE)
+          // ---------------------------------------------------------
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await fetchShipments();
+              },
+              child: loading
+                  ? buildSkeletonLoader()
+                  : filteredShipments.isEmpty
+                  ? buildEmptyState()
+                  : _buildShipmentList(),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildShipmentList() {
-    final shipmentsToShow = selectedMonth != null
-        ? (_groupedShipments[selectedMonth] ?? [])
-        : [];
-
-    if (shipmentsToShow.isEmpty) {
-      return Center(
-        child: Text(
-          "No shipments in $selectedMonth",
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      );
-    }
+    // We now use filteredShipments directly as applyFilters handles all logic
+    // including date and status filtering.
 
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 50),
-      itemCount: shipmentsToShow.length,
+      itemCount: filteredShipments.length,
       itemBuilder: (_, i) {
-        final shipment = shipmentsToShow[i];
+        final shipment = filteredShipments[i];
         final shipmentId = shipment['shipment_id'].toString();
         final isRequested = _invoiceRequests.contains(shipmentId);
 
-        final status = shipment['booking_status']?.toString().toLowerCase() ?? '';
+        final status =
+            shipment['booking_status']?.toString().toLowerCase() ?? '';
 
         return shipment_card.ShipmentCard(
           shipment: shipment,
@@ -1533,10 +1653,7 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShipmentDetailsPage(
-                  shipment: shipment,
-                  isHistoryPage: true,
-                ),
+                builder: (context) => ShipmentDetailsPage(shipment: shipment),
               ),
             );
           },
@@ -1606,34 +1723,47 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     );
   }
 
+  // Updated Empty State to be scrollable (so RefreshIndicator works)
   Widget buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.inbox, size: 80, color: Colors.grey),
-          const SizedBox(height: 16),
-          Text(
-            'no_shipments_found'.tr(),
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.filter_alt_off, size: 80, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'no_shipments_found'.tr(),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'try_refreshing_filters'.tr(),
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    statusFilter = 'All';
+                    selectedYear = null;
+                    selectedMonth = null;
+                    applyFilters();
+                  });
+                },
+                child: const Text('Clear All Filters'),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'try_refreshing_filters'.tr(),
-            style: const TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: fetchShipments,
-            icon: const Icon(Icons.refresh),
-            label: Text('refresh'.tr()),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1655,7 +1785,7 @@ class ShipmentSearchDelegate extends SearchDelegate<String> {
   );
 
   @override
-  Widget buildResults(BuildContext context) => Container();
+  Widget buildResults(BuildContext context) => buildSuggestions(context);
 
   @override
   Widget buildSuggestions(BuildContext context) {
@@ -1712,6 +1842,9 @@ class ShipmentSearchDelegate extends SearchDelegate<String> {
                   ),
               ],
             ),
+            onTap: () {
+              close(context, s['shipment_id'].toString());
+            },
           ),
         );
       },

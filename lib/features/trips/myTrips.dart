@@ -526,7 +526,6 @@ class _MyShipmentsPageState extends State<MyShipments> {
                     MaterialPageRoute(
                       builder: (context) => ShipmentDetailsPage(
                         shipment: s,
-                        isHistoryPage: false,
                       ),
                     ),
                   );

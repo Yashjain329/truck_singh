@@ -164,7 +164,6 @@ class _TrackTrucksPageState extends State<TrackTrucksPage> {
           MaterialPageRoute(
             builder: (context) => ShipmentDetailsPage(
               shipment: response,
-              isHistoryPage: false,
             ),
           ),
         );
