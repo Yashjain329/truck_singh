@@ -197,7 +197,11 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
                   ),
                   child: Text(
                     trip['feedback'] ?? tr("no_feedback"),
-                    style: const TextStyle(fontSize: 14),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
 

@@ -88,31 +88,41 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
 
       _openChat(
         "Chat with $name",
-            () => _chat.getDriverOwnerChatRoom(driverId, agentId),
+        () => _chat.getDriverOwnerChatRoom(driverId, agentId),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: Text("my_chats".tr()),
+          backgroundColor: scheme.surface,
+          foregroundColor: scheme.onSurface,
           bottom: TabBar(
-            indicatorColor: Theme.of(context).colorScheme.secondary,
-            labelColor: Theme.of(context).colorScheme.onPrimary,
-            unselectedLabelColor: Colors.white70,
+            indicatorColor: scheme.primary,
+            dividerHeight: 0,
+            labelColor: scheme.primary,
+            unselectedLabelColor: scheme.onSurfaceVariant,
+
             tabs: [
               Tab(
-                icon: const Icon(Icons.local_shipping),
+                icon: Icon(Icons.local_shipping, color: scheme.primary),
                 text: "shipment_chats".tr(),
               ),
-              Tab(icon: const Icon(Icons.person), text: "direct_chats".tr()),
+              Tab(
+                icon: Icon(Icons.person, color: scheme.primary),
+                text: "direct_chats".tr(),
+              ),
             ],
           ),
         ),
+
         body: RefreshIndicator(
           onRefresh: _refresh,
           child: FutureBuilder(
@@ -121,10 +131,12 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snap.hasError)
+              if (snap.hasError) {
                 return Center(child: Text("Error: ${snap.error}"));
-              if (!snap.hasData)
+              }
+              if (!snap.hasData) {
                 return Center(child: Text("no_data_found".tr()));
+              }
 
               final data = snap.data!;
               return TabBarView(
@@ -141,13 +153,15 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
   }
 
   Widget _shipmentList(List shipments) {
-    if (shipments.isEmpty)
+    if (shipments.isEmpty) {
       return Center(child: Text("no_active_shipments".tr()));
+    }
 
     return ListView.builder(
       itemCount: shipments.length,
       itemBuilder: (_, i) {
         final id = shipments[i]["shipment_id"] ?? "N/A";
+
         return _card(
           title: id,
           subtitle: "group_chat_shipment".tr(),
@@ -159,13 +173,16 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
   }
 
   Widget _driverList(List drivers) {
-    if (drivers.isEmpty) return Center(child: Text("no_drivers_added".tr()));
+    if (drivers.isEmpty) {
+      return Center(child: Text("no_drivers_added".tr()));
+    }
 
     return ListView.builder(
       itemCount: drivers.length,
       itemBuilder: (_, i) {
         final d = drivers[i];
         final name = d["name"] ?? "Unknown";
+
         return _card(
           title: name,
           subtitle: "ID: ${d['custom_user_id']}",
@@ -181,13 +198,22 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
     required String subtitle,
     required IconData icon,
     required VoidCallback action,
-  }) => Card(
-    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    child: ListTile(
-      leading: CircleAvatar(child: Icon(icon)),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle),
-      onTap: action,
-    ),
-  );
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      surfaceTintColor: scheme.surface,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: scheme.primaryContainer,
+          child: Icon(icon, color: scheme.primary),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle),
+        onTap: action,
+      ),
+    );
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'shipment_tracking_page.dart';
 
 class SharedShipmentsPage extends StatefulWidget {
@@ -35,18 +36,16 @@ class _SharedShipmentsPageState extends State<SharedShipmentsPage> {
 
       if (data != null && data is List) {
         final List<Map<String, dynamic>> allShipments =
-        List<Map<String, dynamic>>.from(data);
+            List<Map<String, dynamic>>.from(data);
 
         final now = DateTime.now();
         final filtered = allShipments.where((shipment) {
-          final status =
-          shipment['booking_status']?.toString().toLowerCase();
+          final status = shipment['booking_status']?.toString().toLowerCase();
           final completedAtStr =
               shipment['completed_at'] ?? shipment['updated_at'];
 
           if (status == 'completed' && completedAtStr != null) {
-            final completedAt =
-            DateTime.tryParse(completedAtStr.toString());
+            final completedAt = DateTime.tryParse(completedAtStr.toString());
             if (completedAt != null) {
               return now.difference(completedAt).inHours < 24;
             }
@@ -63,8 +62,7 @@ class _SharedShipmentsPageState extends State<SharedShipmentsPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage =
-          "Could not fetch shared shipments: ${e.toString()}";
+          _errorMessage = "fetch_error".tr(args: [e.toString()]);
         });
       }
       print(_errorMessage);
@@ -80,7 +78,7 @@ class _SharedShipmentsPageState extends State<SharedShipmentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Shared With Me")),
+      appBar: AppBar(title: Text("shared_with_me".tr())),
       body: SafeArea(child: _buildBody()),
     );
   }
@@ -92,17 +90,16 @@ class _SharedShipmentsPageState extends State<SharedShipmentsPage> {
 
     if (_errorMessage != null) {
       return Center(
-        child:
-        Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+        child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
       );
     }
 
     if (_sharedShipments.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          "No one has shared a shipment with you yet.",
+          "no_shared_shipments".tr(),
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
         ),
       );
     }
@@ -113,8 +110,9 @@ class _SharedShipmentsPageState extends State<SharedShipmentsPage> {
         itemCount: _sharedShipments.length,
         itemBuilder: (context, index) {
           final shipment = _sharedShipments[index];
-          final sharerName = shipment['sharer_name'] ?? 'Someone';
-          final shipmentId = shipment['shipment_id']?.toString() ?? "Unknown";
+          final sharerName = shipment['sharer_name'] ?? 'someone'.tr();
+          final shipmentId =
+              shipment['shipment_id']?.toString() ?? "unknown".tr();
 
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -128,7 +126,8 @@ class _SharedShipmentsPageState extends State<SharedShipmentsPage> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                "Shared by: $sharerName\nStatus: ${shipment['booking_status'] ?? 'N/A'}",
+                "${'shared_by'.tr()}: $sharerName\n"
+                "${'status'.tr()}: ${shipment['booking_status'] ?? 'N/A'}",
               ),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               isThreeLine: true,
@@ -136,9 +135,8 @@ class _SharedShipmentsPageState extends State<SharedShipmentsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ShipmentTrackingPage(
-                      shipmentId: shipmentId,
-                    ),
+                    builder: (context) =>
+                        ShipmentTrackingPage(shipmentId: shipmentId),
                   ),
                 );
               },

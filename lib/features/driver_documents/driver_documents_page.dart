@@ -27,6 +27,7 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   UserRole? _userRole;
   late AnimationController _animationController;
   String _selectedStatusFilter = 'all';
+
   final List<String> _statusFilters = [
     'all',
     'pending',
@@ -60,8 +61,10 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
   @override
   void initState() {
     super.initState();
-    _animationController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     _initializeData();
   }
 
@@ -70,6 +73,29 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
     _animationController.dispose();
     super.dispose();
   }
+
+  int _compareDocsByDate(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final aTime = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime(1970);
+    final bTime = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime(1970);
+    return bTime.compareTo(aTime);
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      case 'pending':
+        return Colors.orange;
+      case 'not_uploaded':
+      default:
+        return Colors.grey;
+    }
+  }
+
+  bool get _canReview =>
+      _userRole == UserRole.agent || _userRole == UserRole.truckOwner;
 
   Future<void> _initializeData() async {
     await _detectUserRole();
@@ -98,7 +124,6 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         _userRole = UserRole.driver;
       }
     } catch (_) {
-      // Fallback: if detection fails, default to driver
       if (_loggedInUserId?.startsWith('TRUK') == true) {
         _userRole = UserRole.truckOwner;
       } else {
@@ -112,7 +137,7 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
     try {
       List<Map<String, dynamic>> relations = [];
 
-      if (_userRole == UserRole.agent || _userRole == UserRole.truckOwner) {
+      if (_canReview) {
         relations = await supabase
             .from('driver_relation')
             .select('driver_custom_id')
@@ -146,8 +171,8 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       final uploadedDocs = await supabase
           .from('driver_documents')
           .select(
-        'driver_custom_id, document_type, updated_at, file_url, status, file_path, rejection_reason, submitted_at, reviewed_at, reviewed_by, uploaded_by_role, owner_custom_id, truck_owner_id, document_category',
-      )
+            'driver_custom_id, document_type, updated_at, file_url, status, file_path, rejection_reason, submitted_at, reviewed_at, reviewed_by, uploaded_by_role, owner_custom_id, truck_owner_id, document_category',
+          )
           .inFilter('driver_custom_id', driverIds)
           .eq('document_category', 'personal');
 
@@ -159,26 +184,23 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
 
         final docStatus = <String, Map<String, dynamic>>{};
         for (var docType in _personalDocuments.keys) {
-          final matched = docs.where((d) => d['document_type'] == docType).toList();
-          matched.sort((a, b) {
-            final aTime = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime(1970);
-            final bTime = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime(1970);
-            return bTime.compareTo(aTime);
-          });
+          final matched = docs
+              .where((d) => d['document_type'] == docType)
+              .toList();
+          matched.sort(_compareDocsByDate);
           final doc = matched.isNotEmpty ? matched.first : {};
           String statusKey = 'not_uploaded';
           if (doc.isNotEmpty) {
             final raw = (doc['status'] ?? '').toString().trim().toLowerCase();
-            if (raw.isEmpty || raw == 'null') {
-              statusKey = 'not_uploaded';
-            } else if (raw.contains('pending')) {
-              statusKey = 'pending';
-            } else if (raw.contains('approved')) {
-              statusKey = 'approved';
-            } else if (raw.contains('rejected')) {
-              statusKey = 'rejected';
-            } else {
-              statusKey = raw;
+            if (raw.isNotEmpty && raw != 'null') {
+              if (raw.contains('pending'))
+                statusKey = 'pending';
+              else if (raw.contains('approved'))
+                statusKey = 'approved';
+              else if (raw.contains('rejected'))
+                statusKey = 'rejected';
+              else
+                statusKey = raw;
             }
           }
           docStatus[docType] = {
@@ -219,9 +241,10 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       return docs.values.any((doc) {
         final docStatus = (doc['status'] ?? '').toString().toLowerCase().trim();
         if (filter == 'not_uploaded') {
-          return docStatus == 'not_uploaded' || docStatus.isEmpty || docStatus == 'null';
+          return docStatus == 'not_uploaded' ||
+              docStatus.isEmpty ||
+              docStatus == 'null';
         }
-
         return docStatus == filter;
       });
     }).toList();
@@ -242,7 +265,9 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
     driverDocs.forEach((k, v) {
       final docStatus = (v['status'] ?? '').toString().toLowerCase().trim();
       if (filter == 'not_uploaded') {
-        if (docStatus == 'not_uploaded' || docStatus.isEmpty || docStatus == 'null') {
+        if (docStatus == 'not_uploaded' ||
+            docStatus.isEmpty ||
+            docStatus == 'null') {
           result[k] = v;
         }
       } else {
@@ -257,18 +282,8 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
 
   String _localizedStatusLabel(String statusKey) {
     final key = (statusKey).toString().toLowerCase().trim();
-    switch (key) {
-      case 'approved':
-        return 'approved'.tr();
-      case 'rejected':
-        return 'rejected'.tr();
-      case 'pending':
-        return 'pending'.tr();
-      case 'not_uploaded':
-        return 'not_uploaded'.tr();
-      default:
-        return key.isEmpty ? 'not_uploaded'.tr() : key.tr();
-    }
+    if (key.isEmpty) return 'not_uploaded'.tr();
+    return key.tr();
   }
 
   String _localizedDocTitle(String docType) {
@@ -287,36 +302,16 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
     }
   }
 
-  String _localizedDocDescription(String docType) {
-    switch (docType) {
-      case 'Drivers License':
-        return 'drivers_license_desc'.tr();
-      case 'Aadhaar Card':
-        return 'aadhaar_card_desc'.tr();
-      case 'PAN Card':
-        return 'pan_card_desc'.tr();
-      case 'Profile Photo':
-        return 'profile_photo_desc'.tr();
-      default:
-        return '';
-    }
-  }
-
   String _localizedRoleText() {
     if (_userRole == null) return '';
-    switch (_userRole!) {
-      case UserRole.agent:
-        return 'agent'.tr();
-      case UserRole.truckOwner:
-        return 'truck_owner'.tr();
-      case UserRole.driver:
-        return 'driver'.tr();
-    }
+    return _userRole.toString().split('.').last.tr();
   }
 
   Future<void> _uploadDocument(String driverId, String docType) async {
     if (_userRole == UserRole.driver && driverId != _loggedInUserId) {
-      _showErrorSnackBar('Drivers can only upload their own documents');
+      _showErrorSnackBar(
+        'drivers_can_only_upload_own'.tr(),
+      ); // Localized key assumption
       return;
     }
     try {
@@ -327,14 +322,41 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         _uploadingDriverId = driverId;
         _uploadingDocType = docType;
       });
+      final existingDocs = await supabase
+          .from('driver_documents')
+          .select('id, file_path, updated_at')
+          .eq('driver_custom_id', driverId)
+          .eq('document_type', docType)
+          .eq('document_category', 'personal');
+
+      if (existingDocs.isNotEmpty) {
+        existingDocs.sort(_compareDocsByDate);
+
+        final docToDelete = existingDocs.first;
+        final docId = docToDelete['id'];
+        final filePathToDelete = docToDelete['file_path'] as String?;
+
+        if (filePathToDelete != null && filePathToDelete.isNotEmpty) {
+          try {
+            await supabase.storage.from('driver-documents').remove([
+              filePathToDelete,
+            ]);
+          } catch (_) {}
+        }
+        await supabase.from('driver_documents').delete().eq('id', docId);
+      }
 
       final file = File(result.files.single.path!);
       final ext = result.files.single.extension ?? 'jpg';
       final fileName =
           '${driverId}_${docType.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final filePath = 'driver_documents/$fileName';
+
       await supabase.storage.from('driver-documents').upload(filePath, file);
-      final publicUrl = supabase.storage.from('driver-documents').getPublicUrl(filePath);
+      final publicUrl = supabase.storage
+          .from('driver-documents')
+          .getPublicUrl(filePath);
+
       await supabase.from('driver_documents').upsert({
         'driver_custom_id': driverId,
         'document_type': docType,
@@ -342,15 +364,19 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         'file_path': filePath,
         'status': 'pending',
         'submitted_at': DateTime.now().toIso8601String(),
-        'uploaded_by_role': _userRole == UserRole.agent ? 'agent' : 'driver',
+        'updated_at': DateTime.now().toIso8601String(),
+        'uploaded_by_role': _userRole == UserRole.agent
+            ? 'agent'
+            : (_userRole == UserRole.truckOwner ? 'truck_owner' : 'driver'),
         'document_category': 'personal',
         'user_id': supabase.auth.currentUser?.id,
-      });
+        'rejection_reason': '',
+      }, onConflict: 'driver_custom_id, document_type');
 
-      _showSuccessSnackBar('Document uploaded successfully');
+      _showSuccessSnackBar("document_uploaded_success".tr());
       await _loadDriverDocuments();
     } catch (e) {
-      _showErrorSnackBar('Error uploading document: ${e.toString()}');
+      _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
       setState(() {
         _uploadingDriverId = null;
@@ -376,20 +402,18 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         _showErrorSnackBar('no_document_found_to_approve'.tr());
         return;
       }
-      docs.sort((a, b) {
-        final aT = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime(1970);
-        final bT = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime(1970);
-        return bT.compareTo(aT);
-      });
-
+      docs.sort(_compareDocsByDate);
       final docId = docs.first['id'];
-      await supabase.rpc('approve_driver_document', params: {
-        'p_document_id': docId,
-        'p_reviewed_by': supabase.auth.currentUser?.id,
-        'p_reviewed_at': DateTime.now().toIso8601String(),
-      });
+      await supabase.rpc(
+        'approve_driver_document',
+        params: {
+          'p_document_id': docId,
+          'p_reviewed_by': supabase.auth.currentUser?.id,
+          'p_reviewed_at': DateTime.now().toIso8601String(),
+        },
+      );
 
-      _showSuccessSnackBar('Document approved');
+      _showSuccessSnackBar('approved'.tr());
       await _loadDriverDocuments();
       _applyStatusFilter();
     } catch (e) {
@@ -417,13 +441,7 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         _showErrorSnackBar('no_document_found_to_reject'.tr());
         return;
       }
-
-      docs.sort((a, b) {
-        final aT = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime(1970);
-        final bT = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime(1970);
-        return bT.compareTo(aT);
-      });
-
+      docs.sort(_compareDocsByDate);
       final doc = docs.first;
       final docId = doc['id'];
       final filePath = doc['file_path'] as String?;
@@ -433,14 +451,17 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         } catch (_) {}
       }
 
-      await supabase.rpc('reject_driver_document', params: {
-        'p_document_id': docId,
-        'p_reviewed_by': supabase.auth.currentUser?.id,
-        'p_rejection_reason': reason,
-        'p_reviewed_at': DateTime.now().toIso8601String(),
-      });
+      await supabase.rpc(
+        'reject_driver_document',
+        params: {
+          'p_document_id': docId,
+          'p_reviewed_by': supabase.auth.currentUser?.id,
+          'p_rejection_reason': reason,
+          'p_reviewed_at': DateTime.now().toIso8601String(),
+        },
+      );
 
-      _showSuccessSnackBar('Document rejected');
+      _showSuccessSnackBar('rejected'.tr());
       await _loadDriverDocuments();
       _applyStatusFilter();
     } catch (e) {
@@ -463,8 +484,14 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
           maxLines: 3,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('cancel'.tr())),
-          ElevatedButton(onPressed: () => Navigator.pop(context, reason), child: Text('reject'.tr())),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('cancel'.tr()),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, reason),
+            child: Text('reject'.tr()),
+          ),
         ],
       ),
     );
@@ -472,22 +499,16 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
 
   void _showErrorSnackBar(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.red,
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   void _showSuccessSnackBar(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.green,
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
   }
 
   @override
@@ -516,119 +537,81 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _userRole == UserRole.driver
-          ? Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Text('filter'.tr(),
-                    style:
-                    const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _statusFilters.map((statusKey) {
-                        final displayLabel = statusKey.tr();
-                        final isSelected =
-                            _selectedStatusFilter == statusKey;
-                        return Padding(
-                          padding:
-                          const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(displayLabel),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedStatusFilter = statusKey;
-                              });
-                            },
-                            backgroundColor: isSelected
-                                ? AppColors.teal
-                                : null,
-                            selectedColor: AppColors.teal,
-                            labelStyle: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : null,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _buildDriverUploadInterfaceFiltered(),
-          ),
-        ],
-      )
-          : _buildAllDriversList(),
+          ? _buildDriverView()
+          : _buildReviewerView(),
     );
   }
 
-  Widget _buildAllDriversList() {
-    final colorScheme = Theme.of(context).colorScheme;
-
+  Widget _buildDriverView() {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            Text('filter'.tr(),
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _statusFilters.map((statusKey) {
-                    final displayLabel = statusKey.tr();
-                    final selected = _selectedStatusFilter == statusKey;
+        _buildFilterBar(),
+        Expanded(child: _buildDriverUploadInterfaceFiltered()),
+      ],
+    );
+  }
 
-                    // 🔧 Light/Dark mode–safe label color
-                    final labelColor = selected
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurface;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(displayLabel),
-                        selected: selected,
-                        onSelected: (v) {
-                          setState(() {
-                            _selectedStatusFilter = statusKey;
-                            _applyStatusFilter();
-                          });
-                        },
-                        backgroundColor:
-                        selected ? AppColors.teal : null,
-                        selectedColor: AppColors.teal,
-                        labelStyle: TextStyle(color: labelColor),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ]),
-        ),
+  Widget _buildReviewerView() {
+    return Column(
+      children: [
+        _buildFilterBar(),
         Expanded(
           child: _filteredDrivers.isEmpty
               ? Center(child: Text('no_drivers_found'.tr()))
               : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _filteredDrivers.length,
-            itemBuilder: (c, i) =>
-                _buildDriverCard(_filteredDrivers[i]),
-          ),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _filteredDrivers.length,
+                  itemBuilder: (c, i) => _buildDriverCard(_filteredDrivers[i]),
+                ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFilterBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Text(
+            'filter'.tr(),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _statusFilters.map((statusKey) {
+                  final displayLabel = statusKey.tr();
+                  final isSelected = _selectedStatusFilter == statusKey;
+                  final labelColor = isSelected
+                      ? Colors.white
+                      : colorScheme.onSurface;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(displayLabel),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedStatusFilter = statusKey;
+                          _applyStatusFilter();
+                        });
+                      },
+                      backgroundColor: isSelected ? AppColors.teal : null,
+                      selectedColor: AppColors.teal,
+                      labelStyle: TextStyle(color: labelColor),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -657,14 +640,11 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
             padding: const EdgeInsets.all(16),
             child: Column(
               children: _personalDocuments.entries.map((e) {
-                final docType = e.key;
-                final docConfig = e.value;
-                final docStatus = docs[docType] ?? {};
                 return _buildDocumentTile(
                   driverId,
-                  docType,
-                  docConfig,
-                  docStatus,
+                  e.key,
+                  e.value,
+                  docs[e.key] ?? {},
                 );
               }).toList(),
             ),
@@ -674,38 +654,22 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
     );
   }
 
-  Widget _buildDocumentTile(String driverId, String docType,
-      Map<String, dynamic> docConfig, Map<String, dynamic> docStatus) {
-    final statusKey =
-    (docStatus['status'] ?? 'not_uploaded').toString();
+  Widget _buildDocumentTile(
+    String driverId,
+    String docType,
+    Map<String, dynamic> docConfig,
+    Map<String, dynamic> docStatus,
+  ) {
+    final statusKey = (docStatus['status'] ?? 'not_uploaded').toString();
     final fileUrl = docStatus['file_url'] as String?;
-    final rejectionReason =
-    docStatus['rejection_reason'] as String?;
+    final rejectionReason = docStatus['rejection_reason'] as String?;
     final uploading =
         _uploadingDriverId == driverId && _uploadingDocType == docType;
-    bool canUpload = false;
 
-    if (_userRole == UserRole.agent ||
-        _userRole == UserRole.truckOwner ||
-        (_userRole == UserRole.driver &&
-            driverId == _loggedInUserId)) {
-      canUpload = true;
-    }
-
-    Color color;
-    switch (statusKey.toLowerCase()) {
-      case 'approved':
-        color = Colors.green;
-        break;
-      case 'rejected':
-        color = Colors.red;
-        break;
-      case 'pending':
-        color = Colors.orange;
-        break;
-      default:
-        color = Colors.grey;
-    }
+    final bool canUpload =
+        _canReview ||
+        (_userRole == UserRole.driver && driverId == _loggedInUserId);
+    final color = _getStatusColor(statusKey);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -714,26 +678,24 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(children: [
-        Icon(docConfig['icon'], color: docConfig['color']),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
+      child: Row(
+        children: [
+          Icon(docConfig['icon'], color: docConfig['color']),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   _localizedDocTitle(docType),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Text(
-                  _localizedDocDescription(docType),
-                  style: TextStyle(
-                      color: Colors.grey[600], fontSize: 12),
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     border: Border.all(color: color),
@@ -748,40 +710,50 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
                     ),
                   ),
                 ),
-                if (rejectionReason != null &&
-                    rejectionReason.isNotEmpty)
+                if (rejectionReason != null && rejectionReason.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       '${'rejection_reason'.tr()}: $rejectionReason',
-                      style: const TextStyle(
-                          color: Colors.red, fontSize: 11),
+                      style: const TextStyle(color: Colors.red, fontSize: 11),
                     ),
-                  )
-              ]),
-        ),
-        const SizedBox(width: 8),
-        if (uploading)
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        else
-          _buildActionButtons(
-              driverId, docType, statusKey, fileUrl, canUpload),
-      ]),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (uploading)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            _buildActionButtons(
+              driverId,
+              docType,
+              statusKey,
+              fileUrl,
+              canUpload,
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildActionButtons(String driverId, String docType,
-      String statusKey, String? fileUrl, bool canUpload) {
-    final statusLower = statusKey.toString().toLowerCase();
+  Widget _buildActionButtons(
+    String driverId,
+    String docType,
+    String statusKey,
+    String? fileUrl,
+    bool canUpload,
+  ) {
+    final statusLower = statusKey.toLowerCase();
     final buttons = <Widget>[];
 
     if ((statusLower == 'not_uploaded' ||
-        statusLower == 'rejected' ||
-        statusLower == '') &&
+            statusLower == 'rejected' ||
+            statusLower == '') &&
         canUpload) {
       buttons.add(
         ElevatedButton(
@@ -789,13 +761,10 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.teal,
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           ),
           child: Text(
-            statusLower == 'rejected'
-                ? 're_upload'.tr()
-                : 'upload'.tr(),
+            statusLower == 'rejected' ? 're_upload'.tr() : 'upload'.tr(),
             style: const TextStyle(fontSize: 10),
           ),
         ),
@@ -814,24 +783,19 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
             try {
               final uri = Uri.parse(fileUrl);
               if (await canLaunchUrl(uri)) {
-                await launchUrl(
-                  uri,
-                  mode: LaunchMode.externalApplication,
-                );
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
               } else {
-                _showErrorSnackBar('Cannot open document');
+                _showErrorSnackBar('cannot_open_document'.tr());
               }
-            } catch (e) {
-              _showErrorSnackBar('Cannot open document');
+            } catch (_) {
+              _showErrorSnackBar('cannot_open_document'.tr());
             }
           },
         ),
       );
     }
 
-    if (statusLower == 'pending' &&
-        (_userRole == UserRole.agent ||
-            _userRole == UserRole.truckOwner)) {
+    if (statusLower == 'pending' && _canReview) {
       buttons.addAll([
         IconButton(
           icon: const Icon(
@@ -839,17 +803,11 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
             color: Colors.green,
             size: 18,
           ),
-          onPressed: () =>
-              _approveDocument(driverId, docType),
+          onPressed: () => _approveDocument(driverId, docType),
         ),
         IconButton(
-          icon: const Icon(
-            Icons.cancel_outlined,
-            color: Colors.red,
-            size: 18,
-          ),
-          onPressed: () =>
-              _rejectDocument(driverId, docType),
+          icon: const Icon(Icons.cancel_outlined, color: Colors.red, size: 18),
+          onPressed: () => _rejectDocument(driverId, docType),
         ),
       ]);
     }
@@ -859,25 +817,8 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
 
   Widget _buildDriverUploadInterfaceFiltered() {
     final filteredDocs = _driverPersonalDocsFilteredForDriverView();
-    if (_selectedStatusFilter.trim().toLowerCase() == 'all') {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: _personalDocuments.entries.map((entry) {
-            final docType = entry.key;
-            final docData =
-                filteredDocs[docType] ?? {'status': 'not_uploaded'};
-            return _buildDriverCardDocument(
-                docType, entry.value, docData);
-          }).toList(),
-        ),
-      );
-    }
     if (filteredDocs.isEmpty) {
-      return Center(
-        child: Text('no_documents_matching_filter'.tr()),
-      );
+      return Center(child: Text('no_documents_matching_filter'.tr()));
     }
 
     return SingleChildScrollView(
@@ -887,64 +828,61 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
         children: filteredDocs.entries.map((e) {
           final docType = e.key;
           final docData = e.value;
-          final config = _personalDocuments[docType] ??
-              {
-                'icon': Icons.description,
-                'description': '',
-              };
-          return _buildDriverCardDocument(
-              docType, config, docData);
+          final config =
+              _personalDocuments[docType] ??
+              {'icon': Icons.description, 'description': ''};
+          return _buildDriverCardDocument(docType, config, docData);
         }).toList(),
       ),
     );
   }
 
-  Widget _buildDriverCardDocument(String docType,
-      Map<String, dynamic> config, Map<String, dynamic> docData) {
-    final statusKey =
-    (docData['status'] ?? 'not_uploaded').toString();
-    final rejectionReason =
-    docData['rejection_reason'] as String?;
-    final isUploading = _uploadingDriverId == _loggedInUserId &&
-        _uploadingDocType == docType;
+  Widget _buildDriverCardDocument(
+    String docType,
+    Map<String, dynamic> config,
+    Map<String, dynamic> docData,
+  ) {
+    final statusKey = (docData['status'] ?? 'not_uploaded').toString();
+    final rejectionReason = docData['rejection_reason'] as String?;
+    final isUploading =
+        _uploadingDriverId == _loggedInUserId && _uploadingDocType == docType;
+    final color = _getStatusColor(statusKey);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Icon(
-                  config['icon'],
-                  size: 24,
-                  color: AppColors.teal,
-                ),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(config['icon'], size: 24, color: AppColors.teal),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     _localizedDocTitle(docType),
                     style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-                _buildStatusChip(_localizedStatusLabel(statusKey)),
-              ]),
-              const SizedBox(height: 12),
-              if (rejectionReason != null &&
-                  rejectionReason.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: Colors.red.shade200,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: Row(children: [
+                ),
+                _buildStatusChip(_localizedStatusLabel(statusKey), color),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (rejectionReason != null && rejectionReason.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
                     Icon(
                       Icons.error_outline,
                       color: Colors.red.shade600,
@@ -960,107 +898,82 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
                         ),
                       ),
                     ),
-                  ]),
+                  ],
                 ),
-              if (rejectionReason != null &&
-                  rejectionReason.isNotEmpty)
-                const SizedBox(height: 12),
-              Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${'status'.tr()}: ${_localizedStatusLabel(statusKey)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${'status'.tr()}: ${_localizedStatusLabel(statusKey)}',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                if (isUploading)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else if (statusKey.toLowerCase() == 'not_uploaded' ||
+                    statusKey.toLowerCase() == 'rejected')
+                  ElevatedButton.icon(
+                    onPressed: () => _uploadDocument(_loggedInUserId!, docType),
+                    icon: const Icon(Icons.upload_file, size: 16),
+                    label: Text(
+                      statusKey.toLowerCase() == 'rejected'
+                          ? 're_upload'.tr()
+                          : 'upload'.tr(),
                     ),
-                    if (isUploading)
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      foregroundColor: Colors.white,
+                    ),
+                  )
+                else if (statusKey.toLowerCase() == 'pending')
+                  Text(
+                    'under_review'.tr(),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                else if (statusKey.toLowerCase() == 'approved')
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'approved'.tr(),
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
                         ),
-                      )
-                    else if (statusKey.toLowerCase() ==
-                        'not_uploaded' ||
-                        statusKey.toLowerCase() ==
-                            'rejected')
-                      ElevatedButton.icon(
-                        onPressed: () => _uploadDocument(
-                            _loggedInUserId!, docType),
-                        icon: const Icon(
-                          Icons.upload_file,
-                          size: 16,
-                        ),
-                        label: Text(
-                          statusKey.toLowerCase() ==
-                              'rejected'
-                              ? 're_upload'.tr()
-                              : 'upload'.tr(),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.teal,
-                          foregroundColor: Colors.white,
-                        ),
-                      )
-                    else if (statusKey.toLowerCase() ==
-                          'pending')
-                        Text(
-                          'under_review'.tr(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      else if (statusKey.toLowerCase() ==
-                            'approved')
-                          Row(children: [
-                            const Icon(
-                              Icons.check_circle,
-                              color: Colors.green,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'approved'.tr(),
-                              style: const TextStyle(
-                                color: Colors.green,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ]),
-                  ])
-            ]),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatusChip(String statusLabel) {
-    String lower = statusLabel.toLowerCase();
-    Color bg, text;
-    if (lower.contains('approved') || lower.contains('स्वीकृत')) {
-      bg = Colors.green.shade100;
-      text = Colors.green.shade800;
-    } else if (lower.contains('rejected') ||
-        lower.contains('अस्वीकृत') ||
-        lower.contains('अस्वीकृत')) {
-      bg = Colors.red.shade100;
-      text = Colors.red.shade800;
-    } else if (lower.contains('pending') ||
-        lower.contains('लंबित')) {
-      bg = Colors.orange.shade100;
-      text = Colors.orange.shade800;
-    } else {
-      bg = Colors.grey.shade100;
-      text = Colors.grey.shade800;
-    }
+  // Optimized Status Chip
+  Widget _buildStatusChip(String statusLabel, Color baseColor) {
+    // Generate lighter background and darker text from the base color
+    final bg = baseColor == Colors.grey
+        ? Colors.grey.shade200
+        : baseColor.withValues(alpha: 0.1);
+    final text = baseColor == Colors.grey ? Colors.grey.shade800 : baseColor;
+
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(12),

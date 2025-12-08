@@ -57,7 +57,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
   // Company configuration controllers
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _companyAddressController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController _companyCityController = TextEditingController();
 
   late final List<String> _stepTitles;
@@ -180,13 +180,13 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       if (metadata['consignor'] != null) {
         final consignor = metadata['consignor'];
         _values['sender_details'] =
-        '${consignor['name']} \n${consignor['address']}';
+            '${consignor['name']} \n${consignor['address']}';
       }
 
       if (metadata['consignee'] != null) {
         final consignee = metadata['consignee'];
         _values['recipient_details'] =
-        '${consignee['name']} \n${consignee['address']}';
+            '${consignee['name']} \n${consignee['address']}';
       }
 
       if (metadata['vehicle'] != null) {
@@ -390,7 +390,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
     String? formattedDate;
     if (value != null) {
       formattedDate =
-      '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+          '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
     }
 
     return Container(
@@ -509,8 +509,8 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
     final response = await Supabase.instance.client
         .from('user_profiles')
         .select(
-      'name, mobile_number, company_address1, company_address2, company_address3',
-    )
+          'name, mobile_number, company_address1, company_address2, company_address3',
+        )
         .eq('custom_user_id', assignedDriverId)
         .maybeSingle();
 
@@ -518,8 +518,8 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       // Decode company address if it exists
       final rawAddress =
           response['company_address1'] ??
-              response['company_address2'] ??
-              response['company_address3'];
+          response['company_address2'] ??
+          response['company_address3'];
 
       String formattedAddress = '';
       if (rawAddress != null) {
@@ -627,7 +627,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       if (bankList is List && bankList.isNotEmpty) {
         // Pick primary bank or first bank
         final bank = bankList.firstWhere(
-              (b) => b['is_primary'] == true,
+          (b) => b['is_primary'] == true,
           orElse: () => bankList[0],
         );
 
@@ -693,8 +693,8 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       // Pick the first non-null address
       final rawAddress =
           response['company_address1'] ??
-              response['company_address2'] ??
-              response['company_address3'];
+          response['company_address2'] ??
+          response['company_address3'];
 
       if (rawAddress != null) {
         try {
@@ -767,12 +767,12 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
     final GoodsItem initial = isEditing
         ? _goodsItems['goods']![index]
         : GoodsItem(
-      description: '',
-      quantity: 1,
-      weight: 0.0,
-      rate: 0.0,
-      amount: 0.0,
-    );
+            description: '',
+            quantity: 1,
+            weight: 0.0,
+            rate: 0.0,
+            amount: 0.0,
+          );
 
     final TextEditingController descriptionController = TextEditingController(
       text: initial.description,
@@ -929,7 +929,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                           final String desc = descriptionController.text.trim();
                           final double weight =
                               double.tryParse(weightController.text.trim()) ??
-                                  0;
+                              0;
                           final int qty =
                               int.tryParse(qtyController.text.trim()) ?? 0;
                           final double rate =
@@ -1163,10 +1163,10 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                     context: context,
                     initialDate: _biltyDate != null
                         ? (_biltyDate!.isBefore(firstDate)
-                        ? firstDate
-                        : (_biltyDate!.isAfter(lastDate)
-                        ? lastDate
-                        : _biltyDate!))
+                              ? firstDate
+                              : (_biltyDate!.isAfter(lastDate)
+                                    ? lastDate
+                                    : _biltyDate!))
                         : firstDate,
                     firstDate: firstDate,
                     lastDate: lastDate,
@@ -2306,7 +2306,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                   ),
                   SizedBox(height: 16),
                   ..._goodsItems['goods']!.map(
-                        (item) => _buildSummaryRow(
+                    (item) => _buildSummaryRow(
                       item.description,
                       'Qty: ${item.quantity},Weight: ${item.weight}, Rate: ${item.rate}, Amount: ${item.amount}',
                     ),
@@ -2563,7 +2563,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
         return;
       }
       final senderSignature = await _senderSignatureController.toPngBytes();
-      final bool? didSave = await Navigator.push(
+      Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => TransportBiltyPreview(
@@ -2628,9 +2628,6 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
           ),
         ),
       );
-      if (didSave == true && mounted) {
-        Navigator.pop(context);
-      }
     } catch (e) {
       debugPrint('Error navigating to preview: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2730,23 +2727,23 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                                 backgroundColor: isActive
                                     ? AppColors.tealBlue
                                     : (isCompleted
-                                    ? Colors.green
-                                    : Colors.grey.shade300),
+                                          ? Colors.green
+                                          : Colors.grey.shade300),
                                 child: isCompleted
                                     ? Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 16,
-                                )
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 16,
+                                      )
                                     : Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    color: isActive
-                                        ? Colors.white
-                                        : Colors.black54,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          color: isActive
+                                              ? Colors.white
+                                              : Colors.black54,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                               SizedBox(height: 4),
                               Text(
@@ -2817,19 +2814,19 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                           ),
                         ),
                         child:
-                        _isLoading && _currentStep == _stepTitles.length - 1
+                            _isLoading && _currentStep == _stepTitles.length - 1
                             ? SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : Text(
-                          _currentStep < _stepTitles.length - 1
-                              ? 'next'.tr()
-                              : 'submit'.tr(),
-                        ),
+                                _currentStep < _stepTitles.length - 1
+                                    ? 'next'.tr()
+                                    : 'submit'.tr(),
+                              ),
                       ),
                     ),
                   ],
@@ -2990,13 +2987,19 @@ class _CompanyAddressDropdownState extends State<CompanyAddressDropdown> {
     }
 
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: "select_company_address".tr(),
         border: OutlineInputBorder(),
       ),
       initialValue: _selectedAddress,
       items: _addresses
-          .map((addr) => DropdownMenuItem(value: addr, child: Text(addr)))
+          .map(
+            (addr) => DropdownMenuItem(
+              value: addr,
+              child: Text(addr, overflow: TextOverflow.ellipsis, maxLines: 2),
+            ),
+          )
           .toList(),
       onChanged: (value) {
         setState(() {

@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:logistics_toolkit/features/mytruck/mytrucks.dart';
 import 'package:logistics_toolkit/services/gemini_service.dart';
 import 'package:logistics_toolkit/services/intent_parser.dart';
 import 'package:logistics_toolkit/services/shipment_service.dart';
@@ -13,6 +12,7 @@ class ChatMessage {
   final Map<String, dynamic>? actionParameters;
   final String? actionButtonLabel;
   final String? actionButtonScreen;
+  final DateTime timestamp;
 
   ChatMessage({
     required this.text,
@@ -20,20 +20,20 @@ class ChatMessage {
     this.actionParameters,
     this.actionButtonLabel,
     this.actionButtonScreen,
-  });
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
 
-  // ye tab kam ayega jab mereko chatmessage ko json me change krna hoga jaise ki gemini service me krra hu
   Map<String, dynamic> toJson() {
     return {
       "text": text,
       "isUser": isUser,
+      "timestamp": timestamp.toIso8601String(),
       if (actionParameters?["action"] != null)
         "action": actionParameters!["action"],
       if (actionParameters?["language"] != null)
         "language": actionParameters!["language"],
     };
   }
-
 }
 
 class ChatProvider extends ChangeNotifier {
@@ -44,10 +44,16 @@ class ChatProvider extends ChangeNotifier {
   List<ChatMessage> messages = [];
   bool ttsEnabled = true;
   bool speaking = false;
-  bool loading = false;
+
+  // NEW: Add typing indicator
+  bool _isTyping = false;
+  bool get isTyping => _isTyping;
 
   ChatProvider({required this.gemini, required this.supabase}) {
-    _tts.setStartHandler(() => speaking = true);
+    _tts.setStartHandler(() {
+      speaking = true;
+      notifyListeners();
+    });
     _tts.setCompletionHandler(() {
       speaking = false;
       notifyListeners();
@@ -58,13 +64,11 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
-  // this is for format language in the response.
   String _localizeReply({
     required String langCode,
     required String hiText,
     required String enText,
   }) {
-    // Gemini se "hi" aaega Hindi/Hinglish ke liye, "en" English ke liye
     if (langCode == 'hi') {
       return hiText;
     } else {
@@ -72,24 +76,26 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-
   void toggleTts() {
     ttsEnabled = !ttsEnabled;
     notifyListeners();
   }
 
-  // add message in the chatList  from userChat
   void addUserMessage(String text) {
-    messages.add(ChatMessage(text: text, isUser: true));
+    messages.add(ChatMessage(
+      text: text,
+      isUser: true,
+      timestamp: DateTime.now(),
+    ));
     notifyListeners();
   }
 
-  // add message in the chatList from chatBot model response
   void addBotMessage(ChatMessage msg) {
     messages.add(msg);
     notifyListeners();
-    if (ttsEnabled)
+    if (ttsEnabled) {
       _speak(msg.text, msgActionLang: msg.actionParameters?['language']);
+    }
   }
 
   Future<void> _speak(String text, {String? msgActionLang}) async {
@@ -102,20 +108,28 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> send(
-    String input, {
-    required void Function(String screen) onNavigate,
-  }) async {
-    addUserMessage(input);
-    loading = true;
+  // NEW: Method to simulate typing
+  Future<void> _simulateTyping({int milliseconds = 800}) async {
+    _isTyping = true;
     notifyListeners();
+    await Future.delayed(Duration(milliseconds: milliseconds));
+  }
+
+  Future<void> send(
+      String input, {
+        required void Function(String screen) onNavigate,
+      }) async {
+    // Add user message
+    addUserMessage(input);
+
+    // Start typing indicator
+    await _simulateTyping(milliseconds: 600);
 
     try {
-      // isme messages jo hai history hai.
+      // Get AI response
       final raw = await gemini.queryRaw(input, messages);
       final parsed = parseBotOutput(raw);
 
-      //
       String replyText = parsed.reply.isNotEmpty
           ? parsed.reply
           : 'Reply received';
@@ -124,11 +138,12 @@ class ChatProvider extends ChangeNotifier {
       // Decide if message should include an action button (open_screen)
       String? buttonLabel;
       String? buttonScreen;
-      if (parsed.action == 'open_screen'){
+
+      if (parsed.action == 'open_screen') {
         final screen = params['screen']?.toString() ?? '';
 
         if (screen == "track_trucks") {
-          final user = await SupabaseService.getCurrentUser();
+          final user = SupabaseService.getCurrentUser();
           print('User in tracktruck:$user');
           final customUid = await SupabaseService.getCustomUserId(user!.id);
           print('customUid in trackTruck:$customUid');
@@ -137,14 +152,18 @@ class ChatProvider extends ChangeNotifier {
         }
 
         if (screen.isNotEmpty) {
-          buttonLabel = 'open ${screen}';
+          buttonLabel = 'open $screen';
           buttonScreen = screen;
         }
       }
 
+      // Simulate more typing for complex queries
+      if (parsed.action != 'unknown' && parsed.action != 'open_screen') {
+        await _simulateTyping(milliseconds: 400);
+      }
+
       //if the action requires a DB query, do it here
       switch (parsed.action) {
-
       //GET ACTIVE SHIPMENTS
         case 'get_active_shipments':
           final response = await ShipmentService.getAllMyShipments();
@@ -189,11 +208,10 @@ class ChatProvider extends ChangeNotifier {
           }
           break;
 
-
       //GET ALL TRUCKS
         case 'get_my_trucks':
           final response = await ShipmentService.getAllTrucks();
-          final truckNumbers = response.map((single_truck) => single_truck['truck_number']).toList() ;
+          final truckNumbers = response.map((single_truck) => single_truck['truck_number']).toList();
           if (truckNumbers.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
@@ -214,7 +232,7 @@ class ChatProvider extends ChangeNotifier {
       //GET AVAILABLE TRUCKS
         case 'get_available_trucks':
           final response = await ShipmentService.getAvailableTrucks();
-          final truckNumbers = response.map((single_truck) => single_truck['truck_number']).toList() ;
+          final truckNumbers = response.map((single_truck) => single_truck['truck_number']).toList();
           if (truckNumbers.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
@@ -240,8 +258,7 @@ class ChatProvider extends ChangeNotifier {
 
           print("STATUS FROM CHAT PROVIDERa: '${params["status"]}'");
 
-
-          final totalShipments = response.map((shipment) => shipment['shipment_id']).toList() ;
+          final totalShipments = response.map((shipment) => shipment['shipment_id']).toList();
           print("STATUS FROM CHAT PROVIDERb: '${totalShipments.length}'");
 
           final statusLabel = params['status'];
@@ -308,7 +325,7 @@ class ChatProvider extends ChangeNotifier {
       //GET ALL DRIVERS
         case 'get_all_drivers':
           final response = await ShipmentService.getAllDrivers();
-          final driverNumbers = response.map((driver) => driver['driver_custom_id']).toList() ;
+          final driverNumbers = response.map((driver) => driver['driver_custom_id']).toList();
           if (driverNumbers.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
@@ -337,8 +354,7 @@ class ChatProvider extends ChangeNotifier {
             );
             return;
           }
-          final response =
-          await ShipmentService.getDriverDetails(userId: driverId);
+          final response = await ShipmentService.getDriverDetails(userId: driverId);
           final name = response['name'];
           final email = response['email'];
           final role = response['role'];
@@ -351,7 +367,6 @@ class ChatProvider extends ChangeNotifier {
             'Driver details:\nName: $name\nEmail: $email\nRole: $role',
           );
           break;
-
 
       //GET TRACK TRUCKS
         case 'track_trucks':
@@ -375,10 +390,8 @@ class ChatProvider extends ChangeNotifier {
 
       //GET MARKETPLACE SHIPMENTS
         case 'get_marketplace_shipment':
-          final list =
-          await ShipmentService.getAvailableMarketplaceShipments();
-          final marketPlaceShipmentsIds =
-          filterIdsByMap(list, "shipment_id");
+          final list = await ShipmentService.getAvailableMarketplaceShipments();
+          final marketPlaceShipmentsIds = filterIdsByMap(list, "shipment_id");
 
           replyText = _localizeReply(
             langCode: parsed.language,
@@ -389,8 +402,7 @@ class ChatProvider extends ChangeNotifier {
           );
           break;
 
-
-          // OPEN SCREEN
+      // OPEN SCREEN
         case 'open_screen':
           final screen = params['screen']?.toString() ?? '';
           replyText = parsed.reply.isNotEmpty
@@ -411,7 +423,6 @@ class ChatProvider extends ChangeNotifier {
           }
           break;
         default:
-          // unknown: model may already have included a helpful reply
           if (replyText.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
@@ -424,6 +435,11 @@ class ChatProvider extends ChangeNotifier {
           break;
       }
 
+      // Stop typing before adding bot message
+      _isTyping = false;
+      notifyListeners();
+
+      // Add bot message
       addBotMessage(
         ChatMessage(
           text: replyText,
@@ -431,35 +447,49 @@ class ChatProvider extends ChangeNotifier {
           actionParameters: {
             'language': parsed.language,
             'action': parsed.action,
-            'truckOwnerId':params['truckOwnerId']
+            'truckOwnerId': params['truckOwnerId']
           },
           actionButtonLabel: buttonLabel,
           actionButtonScreen: buttonScreen,
+          timestamp: DateTime.now(),
         ),
       );
 
     } catch (e) {
+      // Stop typing on error
+      _isTyping = false;
+      notifyListeners();
+
       addBotMessage(
-        ChatMessage(text: _localizeReply(
-          langCode: 'en',
-          hiText:
-          'Mujhe samajhne me dikkat aa rahi hai, dubara simple shabdon me likho.',
-          enText:
-          'I am having trouble understanding this, please try again in simpler words.',
-        )
-          , isUser: false),
+        ChatMessage(
+          text: _localizeReply(
+            langCode: 'en',
+            hiText:
+            'Mujhe samajhne me dikkat aa rahi hai, dubara simple shabdon me likho.',
+            enText:
+            'I am having trouble understanding this, please try again in simpler words.',
+          ),
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
       );
       print(e);
     } finally {
-      loading = false;
+      _isTyping = false;
       notifyListeners();
     }
+  }
+
+  void clearChat() {
+    messages.clear();
+    _isTyping = false;
+    notifyListeners();
   }
 }
 
 List<String> filterIdsByMap(List<Map<String, dynamic>> shipments, String key) {
   return shipments
-      .map((map) => map[key].toString() ?? "")
+      .map((map) => map[key].toString())
       .where((id) => id.isNotEmpty)
       .toList();
 }

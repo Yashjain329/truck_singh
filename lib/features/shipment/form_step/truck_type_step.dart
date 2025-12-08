@@ -78,7 +78,9 @@ class TruckTypeStep extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
+                        color: Theme.of(
+                          context,
+                        ).shadowColor.withValues(alpha: 0.08),
                         spreadRadius: 1,
                         blurRadius: 5,
                         offset: const Offset(0, 3),
@@ -105,7 +107,9 @@ class TruckTypeStep extends StatelessWidget {
                               : FontWeight.normal,
                           color: isSelected
                               ? Colors.orange.shade800
-                              : Colors.black87,
+                              : (Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black87),
                         ),
                       ),
                       if (isSelected)

@@ -1200,6 +1200,7 @@
   "reject_complaint": "शिकायत अस्वीकार करें",
   "reject_document": "दस्तावेज़ अस्वीकार करें",
   "rejected": "अस्वीकृत",
+  "rejection_reason": "Rejection Reason",
   "reload": "पुनः लोड करें",
   "remarks": "टिप्पणियाँ",
   "remarks_instructions": "टिप्पणियाँ और निर्देश",
@@ -1688,7 +1689,11 @@
   "hours_ago": "{0} घंटे पहले",
   "days_ago": "{0} दिन पहले",
   "months_ago": "{0} महीने पहले",
-  "years_ago": "{0} साल पहले"
+  "years_ago": "{0} साल पहले",
+  "shared_with_me": "मेरे साथ साझा किए गए",
+  "shared_by": "द्वारा साझा किया गया",
+  "no_shared_shipments": "अभी तक किसी ने आपके साथ कोई शिपमेंट साझा नहीं किया है।",
+  "someone": "कोई"
 
 
 
