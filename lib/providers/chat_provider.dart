@@ -48,7 +48,6 @@ class ChatProvider extends ChangeNotifier {
   List<ChatMessage> messages = [];
   bool ttsEnabled = true;
   bool speaking = false;
-  // bool loading = false;   // check krnege iski need h ki ni
 
   //New : Add typing indicator variable
   bool _isTyping = false;
@@ -261,8 +260,6 @@ class ChatProvider extends ChangeNotifier {
 
       //GET SHIPMENTS BY STATUS
         case 'get_shipments_by_status':
-
-        //for pending status
           if(params["status"] == "Pending"){
 
             final response = await ShipmentService.getPendingShipments();
@@ -522,7 +519,6 @@ class ChatProvider extends ChangeNotifier {
       print(e);
     } finally {
       _isTyping = false;
-      // loading = false;
       notifyListeners();
     }
   }

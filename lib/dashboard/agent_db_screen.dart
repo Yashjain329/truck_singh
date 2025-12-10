@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:logistics_toolkit/config/theme.dart';
+import 'package:logistics_toolkit/widgets/open_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/widgets/feature_card.dart';
 import '../widgets/chat_screen.dart';
@@ -168,14 +169,15 @@ class _AgentDashboardState extends State<AgentDashboard> {
           ),
           // Floating Chat Control always visible
           Positioned(
-            bottom: 20,
-            right: 20,
+            bottom: 10,
+            right: 12,
             child: FloatingChatControl(
               onOpenChat: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => ChatScreen(
                       onNavigate: (s) {
+                       // openScreen(s, context, {});
                         Navigator.of(context).pushNamed('/$s');
                       },
                     ),

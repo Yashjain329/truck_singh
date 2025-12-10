@@ -7,8 +7,10 @@ import '../features/shipment/shipper_form_page.dart';
 import '../features/tracking/shared_shipments_page.dart';
 import '../services/onesignal_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/chat_screen.dart';
 import '../widgets/common/app_bar.dart';
 import '../features/settings/presentation/screen/settings_page.dart';
+import '../widgets/floating_chat_control.dart';
 
 class UserService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -116,7 +118,9 @@ class _ShipperDashboardState extends State<ShipperDashboard> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
-      body: RefreshIndicator(
+      body: Stack(
+        children: [
+        RefreshIndicator(
         onRefresh: _handleRefresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -131,6 +135,27 @@ class _ShipperDashboardState extends State<ShipperDashboard> {
           ),
         ),
       ),
+          Positioned(
+            bottom: 10,
+            right: 12,
+            child: FloatingChatControl(
+              onOpenChat: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      onNavigate: (s) {
+                        // openScreen(s, context, {});
+                        Navigator.of(context).pushNamed('/$s');
+                      },
+                    ),
+                  ),
+                );
+              },
+              listening: false,
+            ),
+          ),
+      ]
+      )
     );
   }
 

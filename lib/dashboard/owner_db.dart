@@ -27,6 +27,7 @@ import '../features/ratings/presentation/screen/trip_ratings.dart';
 import 'package:logistics_toolkit/features/Report%20Analysis/report_chart.dart';
 
 import '../widgets/floating_chat_control.dart';
+import '../widgets/open_screen.dart';
 
 class DashboardState {
   final bool isLoading;
@@ -165,7 +166,7 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
             onRefresh: _loadDashboardData,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
                   _buildPerformanceOverviewCard(),
@@ -177,15 +178,16 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
           ),
           // Floating Chat Control always visible
           Positioned(
-            bottom: 20,
-            right: 20,
+            bottom: 10,
+            right: 12,
             child: FloatingChatControl(
               onOpenChat: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => ChatScreen(
                       onNavigate: (s) {
-                        Navigator.of(context).pushNamed('/$s');
+                        //openScreen(s, context, {});
+                       Navigator.of(context).pushNamed('/$s');
                       },
                     ),
                   ),
