@@ -619,18 +619,39 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                       widget.shipment['pickup_time'] ?? 'nA'.tr(),
                     ),
 
+                    if (!isFetchingUserId &&
+                        widget.shipment['shipper_id'] != null)
+                      _buildInfoRow(
+                        Icons.person_add,
+                        'Created By',
+                        (widget.shipment['shipper_id'] == currentUserCustomId)
+                            ? 'You'
+                            : (widget.shipment['shipper_name'] ??
+                            widget.shipment['shipper_id']),
+                      ),
+
                     if (widget.shipment['assigned_company'] != null)
                       _buildInfoRow(
                         Icons.business,
                         'assignedCompany'.tr(),
                         widget.shipment['assigned_company'],
                       ),
-                    if (widget.shipment['assigned_agent'] != null)
+                    // Display Agent OR Truck Owner as the assigned manager
+                    if (widget.shipment['assigned_agent'] != null &&
+                        widget.shipment['assigned_agent'].toString().trim().isNotEmpty)
                       _buildInfoRow(
                         Icons.person,
                         'assignedAgent'.tr(),
                         widget.shipment['assigned_agent'],
+                      )
+                    else if (widget.shipment['assigned_truckowner'] != null &&
+                        widget.shipment['assigned_truckowner'].toString().trim().isNotEmpty)
+                      _buildInfoRow(
+                        Icons.person,
+                        'assignedAgent'.tr(),
+                        widget.shipment['assigned_truckowner'],
                       ),
+
                     if (widget.shipment['assigned_driver'] != null)
                       _buildInfoRow(
                         Icons.drive_eta,

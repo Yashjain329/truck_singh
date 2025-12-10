@@ -38,7 +38,6 @@ class ShipmentCard extends StatefulWidget {
 }
 
 class _ShipmentCardState extends State<ShipmentCard> {
-  // Helper function to get the icon based on shipment status
   IconData getStatusIcon(String? status) {
     switch (status?.toLowerCase()) {
       case 'pending':
@@ -68,7 +67,6 @@ class _ShipmentCardState extends State<ShipmentCard> {
     }
   }
 
-  // Helper function to get the color based on shipment status
   Color getStatusColor(String? status, BuildContext context) {
     switch (status?.toLowerCase()) {
       case 'pending':
@@ -91,9 +89,7 @@ class _ShipmentCardState extends State<ShipmentCard> {
     }
   }
 
-  // function to full trim address
   String trimAddress(String address) {
-    // Remove common redundant words
     String cleaned = address
         .replaceAll(
       RegExp(
@@ -126,6 +122,11 @@ class _ShipmentCardState extends State<ShipmentCard> {
     final status = widget.shipment['booking_status']?.toString();
     final isCompleted = status?.toLowerCase() == 'completed';
 
+    // Managed By data
+    final managedByName = widget.shipment['managed_by_name'];
+    final managedById = widget.shipment['managed_by_id'];
+    final isManaged = managedByName != null;
+
     final statusColor = getStatusColor(status, context);
     final statusIcon = getStatusIcon(status);
 
@@ -133,13 +134,13 @@ class _ShipmentCardState extends State<ShipmentCard> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       elevation: 3,
-      clipBehavior: Clip.antiAlias, // Ensures content respects rounded corners
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: widget.onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- NEW STATUS HEADER ---
+            // --- STATUS HEADER ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
@@ -163,7 +164,7 @@ class _ShipmentCardState extends State<ShipmentCard> {
                   ),
                   if (!isCompleted)
                     TextButton.icon(
-                      onPressed: widget.onTap, // Re-use the main tap action
+                      onPressed: widget.onTap,
                       icon: const Icon(Icons.track_changes_outlined, size: 18),
                       label: Text("track".tr()),
                       style: TextButton.styleFrom(
@@ -177,6 +178,31 @@ class _ShipmentCardState extends State<ShipmentCard> {
                 ],
               ),
             ),
+
+            // --- MANAGED BY TAG ---
+            if (isManaged)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.amber.shade100,
+                child: Row(
+                  children: [
+                    Icon(Icons.supervised_user_circle, size: 18, color: Colors.amber.shade900),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Managed by $managedByName ($managedById)",
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // --- MAIN CONTENT ---
             Padding(
               padding: const EdgeInsets.all(16),
@@ -233,12 +259,15 @@ class _ShipmentCardState extends State<ShipmentCard> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  buildActionButtons(
-                    widget.shipment,
-                    context,
-                    widget.customUserId,
-                    widget.role,
-                  ),
+
+                  // Hide buttons if managed by someone else
+                  if (!isManaged)
+                    buildActionButtons(
+                      widget.shipment,
+                      context,
+                      widget.customUserId,
+                      widget.role,
+                    ),
                 ],
               ),
             ),
@@ -263,16 +292,11 @@ class _ShipmentCardState extends State<ShipmentCard> {
         invoicePath != null && invoicePath.toString().trim().isNotEmpty;
     final state = widget.pdfStates[shipmentId] ?? PdfState.notGenerated;
     final status = shipment['booking_status']?.toString().toLowerCase() ?? '';
+
     if (status != 'completed') {
       return const SizedBox.shrink();
     }
 
-    print(
-      "buildActionButtons: role=$role, customUserId=$customUserId, shipperId=$shipperId, assignedCompanyId=$assignCompanyId, hasInvoice=$hasInvoice, state=$state",
-    );
-    print(
-      "Shipment: ${shipment['shipment_id']}, assigned_agent=${shipment['assigned_agent']}, shipper_id=${shipment['shipper_id']}",
-    );
     bool isCreator = (role == 'truckowner' && customUserId == shipperId);
     bool isAssigned =
         (role == 'truckowner' || role == 'agent' || role == 'company') &&

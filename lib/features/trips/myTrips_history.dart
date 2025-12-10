@@ -44,7 +44,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
   // Shipment Data State
   List<Map<String, dynamic>> shipments = [];
   List<Map<String, dynamic>> filteredShipments = [];
-  // _groupedShipments and _sortedMonths removed as they conflicted with specific date filtering
   Set<String> _invoiceRequests = {};
   Set<String> ratedShipments = {};
   Map<String, int> ratingEditCount = {};
@@ -92,19 +91,16 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     _loadUserAndFetchShipments();
   }
 
-  /// Initialize SharedPreferences and load cached data
   Future<void> _initializePreferences() async {
     _prefs = await SharedPreferences.getInstance();
     await loadCachedShipments();
   }
 
-  /// Wrapper to load user profile first, then fetch shipments
   Future<void> _loadUserAndFetchShipments() async {
     await _loadUser();
     await fetchShipments();
   }
 
-  /// Fetches current user profile (role, custom_user_id)
   Future<void> _loadUser() async {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     if (currentUserId == null) return;
@@ -123,7 +119,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     }
   }
 
-  /// Fetch invoice requests to determine which shipments have pending requests
   Future<void> fetchInvoiceRequests() async {
     if (customUserId == null) return;
 
@@ -154,7 +149,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     }
   }
 
-  /// Helper to fetch shipper/customer details
   Future<Map<String, String?>> fetchCustomerNameAndMobile(
       String shipperId,
       ) async {
@@ -173,7 +167,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     return {'name': null, 'mobile_number': null};
   }
 
-  /// Fetch rating edit counts for shipments
   Future<void> fetchEditCounts() async {
     try {
       final response = await Supabase.instance.client
@@ -192,7 +185,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     }
   }
 
-  /// Load shipments from local storage for offline/fast access
   Future<void> loadCachedShipments() async {
     final cachedData = _prefs?.getString('shipments_cache');
     if (cachedData != null) {
@@ -204,13 +196,11 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     }
   }
 
-  /// Save fetched shipments to local storage
   Future<void> saveShipmentToCache(List<Map<String, dynamic>> shipments) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('shipments_cache', jsonEncode(shipments));
   }
 
-  /// Main method to fetch shipments from Supabase
   Future<void> fetchShipments() async {
     setState(() => loading = true);
     final userId = Supabase.instance.client.auth.currentUser?.id;
@@ -229,7 +219,61 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     try {
       final res = await _supabaseService.getShipmentsForUser(userId);
 
-      // Filter All shipments, expect pending shipments
+      // --- LOGIC FOR MANAGED SHIPMENTS (UPDATED) ---
+      // Identify shipments created by this user but managed by someone else (agent/truckowner)
+      Set<String> managerIdsToFetch = {};
+
+      for (var s in res) {
+        final shipperId = s['shipper_id'];
+        final assignedAgent = s['assigned_agent'];
+        final assignedTruckOwner = s['assigned_truckowner'];
+
+        // If I created this shipment
+        if (shipperId == customUserId) {
+          // If assigned to an agent who is NOT me AND not empty
+          if (assignedAgent != null &&
+              assignedAgent.toString().trim().isNotEmpty &&
+              assignedAgent != customUserId) {
+            managerIdsToFetch.add(assignedAgent);
+          }
+          // If assigned to a truck owner who is NOT me AND not empty
+          else if (assignedTruckOwner != null &&
+              assignedTruckOwner.toString().trim().isNotEmpty &&
+              assignedTruckOwner != customUserId) {
+            managerIdsToFetch.add(assignedTruckOwner);
+          }
+        }
+      }
+
+      // Batch fetch manager names
+      final managerNames = await _supabaseService.getUserNames(managerIdsToFetch.toList());
+
+      // Attach manager info to shipment map
+      for (var s in res) {
+        final shipperId = s['shipper_id'];
+
+        // Only add "managed_by" tag if I am the shipper/creator
+        if (shipperId == customUserId) {
+          String? managerId;
+          final String? agentId = s['assigned_agent']?.toString();
+          final String? truckOwnerId = s['assigned_truckowner']?.toString();
+
+          // Robust check: valid if NOT null, NOT empty, and NOT self
+          if (agentId != null && agentId.trim().isNotEmpty && agentId != customUserId) {
+            managerId = agentId;
+          }
+          else if (truckOwnerId != null && truckOwnerId.trim().isNotEmpty && truckOwnerId != customUserId) {
+            managerId = truckOwnerId;
+          }
+
+          if (managerId != null) {
+            s['managed_by_id'] = managerId;
+            s['managed_by_name'] = managerNames[managerId] ?? 'Unknown';
+          }
+        }
+      }
+      // -----------------------------------
+
       final completedShipments = res.where((s) {
         final status = s['booking_status']?.toString().toLowerCase() ?? '';
         return status != 'pending';
@@ -248,7 +292,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       await checkPdfStates();
       await fetchInvoiceRequests();
 
-      // Apply any existing filters immediately after fetching
       applyFilters();
       _refreshController.refreshCompleted();
     } catch (e) {
@@ -258,7 +301,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     }
   }
 
-  /// A simple, styled widget for items in the filter dialog.
   Widget _buildFilterChip({
     required String label,
     required bool isSelected,
@@ -321,7 +363,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                 width: 300,
                 child: Row(
                   children: [
-                    // --- Month Column ---
                     Expanded(
                       child: ListView.builder(
                         itemCount: allMonths.length,
@@ -340,7 +381,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                         },
                       ),
                     ),
-                    // --- Year Column ---
                     Expanded(
                       child: ListView.builder(
                         itemCount: availableYears.length,
@@ -414,8 +454,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     filteredShipments = shipments.where((s) {
       final bookingStatus = s['booking_status']?.toString().toLowerCase() ?? '';
       final deliveryDate = DateTime.tryParse(s['delivery_date'] ?? '');
-
-      // Query match
       final matchQuery =
           searchQuery.isEmpty ||
               s.values.any(
@@ -423,34 +461,22 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                   searchQuery.toLowerCase(),
                 ),
               );
-
-      // Status match
       final matchStatus =
           statusFilter == 'All' || bookingStatus == statusFilter.toLowerCase();
-
-      // Date match
       bool matchDate = true;
       if (deliveryDate != null) {
-        // Year must match if selected (or default to current/first available in logic)
-        // Here we only filter if selectedYear is explicitly set,
-        // though logic suggests selectedYear is always set in the dialog.
         final matchYear =
             selectedYear == null || deliveryDate.year == selectedYear;
-
-        // Month must match if selected
         final matchMonth =
             selectedMonth == null ||
                 DateFormat.MMMM().format(deliveryDate) == selectedMonth;
         matchDate = matchYear && matchMonth;
       } else if (selectedYear != null || selectedMonth != null) {
-        // If a date filter is set, shipments without dates are excluded
         matchDate = false;
       }
-
       return matchQuery && matchStatus && matchDate;
     }).toList();
 
-    // Sort latest on top
     filteredShipments.sort((a, b) {
       final aDate =
           DateTime.tryParse(a['delivery_date'] ?? '') ?? DateTime.now();
@@ -510,7 +536,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     );
   }
 
-  /// Check if invoice PDFs exist locally or are valid URLs
   Future checkPdfStates() async {
     for (var shipment in shipments) {
       final shipmentId = shipment['shipment_id'].toString();
@@ -520,7 +545,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       if (await File(filePath).exists()) {
         pdfStates[shipmentId] = PdfState.downloaded;
       } else {
-        // Verify remote URL validity
         final String? pdfUrl = shipment['Invoice_link'] as String?;
         if (pdfUrl != null && pdfUrl.isNotEmpty) {
           try {
@@ -540,7 +564,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
   }
 
   Future generateInvoice(Map<String, dynamic> shipment) async {
-    // 1. Fetch Billing Address
     _fetchedBillingAddress = await fetchBillingAddressForShipment(shipment);
     if (_fetchedBillingAddress == null) {
       if (!mounted) return;
@@ -550,7 +573,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       return;
     }
 
-    // 2. Fetch Company Addresses
     final companyAddresses = await fetchCompanyAddresses();
     if (companyAddresses.isEmpty) {
       if (!mounted) return;
@@ -560,7 +582,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       return;
     }
 
-    // 3. Select Company Address
     if (companyAddresses.length == 1) {
       _selectedCompanyAddress = companyAddresses.first;
     } else {
@@ -578,7 +599,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       }
     }
 
-    // 4. Generate PDF
     final invoiceUrl = await generateInvoicePDF(
       shipment: shipment,
       price: _priceController.text,
@@ -605,7 +625,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       taxType: _selectedTaxType == TaxType.withinState ? "CGST+SGST" : "IGST",
     );
 
-    // 5. Update Local State & Backend
     shipment['Invoice_link'] = invoiceUrl;
     shipment['hasInvoice'] = true;
     pdfStates[shipment['shipment_id'].toString()] = PdfState.uploaded;
@@ -618,7 +637,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         .update({'Invoice_link': invoiceUrl})
         .eq('shipment_id', shipmentId);
 
-    // 6. Clean up requests & Notify
     try {
       await Supabase.instance.client
           .from('invoice_requests')
@@ -645,7 +663,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     final shipmentId = shipment['shipment_id'].toString();
     String? pdfUrl = shipment['Invoice_link'] as String?;
 
-    // Fallback fetch if URL is missing
     if (pdfUrl == null || pdfUrl.isEmpty) {
       final shipmentRow = await Supabase.instance.client
           .from('shipment')
@@ -761,19 +778,16 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     try {
       final pdfPath = shipment['Invoice_link'] as String?;
       if (pdfPath != null && pdfPath.isNotEmpty) {
-        // Delete from Storage
         final bucketPath = pdfPath.split('/invoices/').last;
         await Supabase.instance.client.storage.from('invoices').remove([
           bucketPath,
         ]);
 
-        // Delete Local File
         final appDir = await getApplicationDocumentsDirectory();
         final localPath = '${appDir.path}/$shipmentId.pdf';
         final file = File(localPath);
         if (await file.exists()) await file.delete();
 
-        // Update Database
         await Supabase.instance.client
             .from('shipment')
             .update({'Invoice_link': null})
@@ -801,7 +815,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
   }
 
   void requestInvoice(Map<String, dynamic> shipment) async {
-    // Prioritize Agent, else Truck Owner
     final agentId = shipment['assigned_agent']?.toString();
     final truckOwnerId = shipment['assigned_truck_owner']?.toString();
 
@@ -1629,9 +1642,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
   }
 
   Widget _buildShipmentList() {
-    // We now use filteredShipments directly as applyFilters handles all logic
-    // including date and status filtering.
-
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 50),
       itemCount: filteredShipments.length,

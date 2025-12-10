@@ -385,7 +385,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
           ),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: isRead ? Colors.white : Colors.grey.shade200,
+              backgroundColor: isRead ? Colors.grey.shade200 : Colors.grey.shade200,
               child: Icon(
                 Icons.notifications,
                 color: isRead ? Colors.grey : Colors.green,
@@ -394,8 +394,9 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
             title: Text(
               n['title'] ?? '',
               style: TextStyle(
-                fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                fontSize: 16,
+                  fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                  fontSize: 16,
+                  color: isRead ? Colors.black : Colors.white
               ),
             ),
             subtitle: Column(
@@ -407,7 +408,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: isRead ? Colors.grey.shade600 : Colors.black87,
+                    color:Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -415,7 +416,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
                   _formatTimeAgo(n['created_at']),
                   style: TextStyle(
                     fontSize: 12,
-                    color: isRead ? Colors.grey.shade400 : Colors.blueGrey,
+                    color: isRead ? Colors.black : Colors.blueGrey,
                   ),
                 ),
               ],

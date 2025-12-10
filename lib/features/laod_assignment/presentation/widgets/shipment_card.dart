@@ -13,7 +13,8 @@ class ShipmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shipperName = trip['user_profiles']?['name'] ?? 'Unknown Shipper';
+    // Read directly from the 'shipper_name' field, with fallback to ID
+    final shipperName = trip['shipper_name'] ?? trip['shipper_id'] ?? 'Unknown Shipper';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -143,7 +144,9 @@ class ShipmentCard extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: onAccept,
+                    onPressed: () {
+                      showAcceptConfirmationDialog(context, onAccept);
+                    },
                     icon: const Icon(Icons.check_circle_outline),
                     label: Text('accept_shipment'.tr()),
                     style: ElevatedButton.styleFrom(
