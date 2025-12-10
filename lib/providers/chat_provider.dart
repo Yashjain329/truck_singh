@@ -1,3 +1,5 @@
+
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:logistics_toolkit/features/mytruck/mytrucks.dart';
@@ -13,6 +15,7 @@ class ChatMessage {
   final Map<String, dynamic>? actionParameters;
   final String? actionButtonLabel;
   final String? actionButtonScreen;
+  final DateTime timestamp;
 
   ChatMessage({
     required this.text,
@@ -20,7 +23,8 @@ class ChatMessage {
     this.actionParameters,
     this.actionButtonLabel,
     this.actionButtonScreen,
-  });
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
 
   // ye tab kam ayega jab mereko chatmessage ko json me change krna hoga jaise ki gemini service me krra hu
   Map<String, dynamic> toJson() {
@@ -44,7 +48,11 @@ class ChatProvider extends ChangeNotifier {
   List<ChatMessage> messages = [];
   bool ttsEnabled = true;
   bool speaking = false;
-  bool loading = false;
+  // bool loading = false;   // check krnege iski need h ki ni
+
+  //New : Add typing indicator variable
+  bool _isTyping = false;
+  bool get isTyping => _isTyping;
 
   ChatProvider({required this.gemini, required this.supabase}) {
     _tts.setStartHandler(() => speaking = true);
@@ -80,7 +88,7 @@ class ChatProvider extends ChangeNotifier {
 
   // add message in the chatList  from userChat
   void addUserMessage(String text) {
-    messages.add(ChatMessage(text: text, isUser: true));
+    messages.add(ChatMessage(text: text, isUser: true,timestamp: DateTime.now()));
     notifyListeners();
   }
 
@@ -102,13 +110,26 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  // NEW: Method to simulate typing
+  Future<void> _simulateTyping({int milliseconds = 800}) async {
+    // _isTyping = true;
+    // notifyListeners();
+    await Future.delayed(Duration(milliseconds: milliseconds));
+  }
+
   Future<void> send(
-    String input, {
-    required void Function(String screen) onNavigate,
-  }) async {
+      String input, {
+        required void Function(String screen) onNavigate,
+      }) async {
     addUserMessage(input);
-    loading = true;
+
+    //for start ai is typing
+    _isTyping = true;
     notifyListeners();
+
+    await _simulateTyping(milliseconds: 600);
+    //loading = true;
+    //notifyListeners();
 
     try {
       // isme messages jo hai history hai.
@@ -141,6 +162,12 @@ class ChatProvider extends ChangeNotifier {
           buttonScreen = screen;
         }
       }
+
+      //Simulate more typing for complex queries
+      if(parsed.action != 'unknown' && parsed.action != 'open_screen'){
+        await _simulateTyping(milliseconds: 400);
+      }
+
 
       //if the action requires a DB query, do it here
       switch (parsed.action) {
@@ -234,34 +261,72 @@ class ChatProvider extends ChangeNotifier {
 
       //GET SHIPMENTS BY STATUS
         case 'get_shipments_by_status':
-          final response = await ShipmentService.getShipmentByStatus(
-            status: params["status"],
-          );
 
-          print("STATUS FROM CHAT PROVIDERa: '${params["status"]}'");
+        //for pending status
+          if(params["status"] == "Pending"){
 
+            final response = await ShipmentService.getPendingShipments();
+            print("STATUS FROM CHAT PROVIDERa: '${params["status"]}'");
 
-          final totalShipments = response.map((shipment) => shipment['shipment_id']).toList() ;
-          print("STATUS FROM CHAT PROVIDERb: '${totalShipments.length}'");
+            final totalShipments = response.map((shipment) => shipment['shipment_id']).toList() ;
 
-          final statusLabel = params['status'];
+            final statusLabel = params['status'];
 
-          if (totalShipments.isEmpty) {
-            replyText = _localizeReply(
-              langCode: parsed.language,
-              hiText:
-              'Abhi 0 shipments "$statusLabel" status me hain.',
-              enText:
-              'You currently have 0 shipments with status "$statusLabel".',
+            if (totalShipments.isEmpty) {
+              replyText = _localizeReply(
+                langCode: parsed.language,
+                hiText:
+                'Abhi 0 shipments "$statusLabel" status me hain.',
+                enText:
+                'You currently have 0 shipments with status "$statusLabel".',
+              );
+            } else {
+              replyText = _localizeReply(
+                langCode: parsed.language,
+                hiText:
+                '${totalShipments.length} shipments abhi "$statusLabel" status me hain in shipments ko driver assigned nahi hai.\nShipment IDs: ${totalShipments.join(",")}',
+                enText:
+                'You currently have ${totalShipments.length} shipments with status "$statusLabel" And not assigned driver.\nShipment IDs: ${totalShipments.join(",")}',
+              );
+            }
+
+            // for all the status only pending are restrict
+          }
+          else {
+            final response = await ShipmentService.getShipmentByStatus(
+              status: params["status"],
             );
-          } else {
-            replyText = _localizeReply(
-              langCode: parsed.language,
-              hiText:
-              '${totalShipments.length} shipments abhi "$statusLabel" status me hain.\nShipment IDs: ${totalShipments.join(",")}',
-              enText:
-              'You currently have ${totalShipments.length} shipments with status "$statusLabel".\nShipment IDs: ${totalShipments.join(",")}',
-            );
+
+            print("STATUS FROM CHAT PROVIDERa: '${params["status"]}'");
+
+
+            final totalShipments = response.map((
+                shipment) => shipment['shipment_id']).toList();
+            print("STATUS FROM CHAT PROVIDERb: '${totalShipments.length}'");
+
+            final statusLabel = params['status'];
+
+            if (totalShipments.isEmpty) {
+              replyText = _localizeReply(
+                langCode: parsed.language,
+                hiText:
+                'Abhi 0 shipments "$statusLabel" status me hain.',
+                enText:
+                'You currently have 0 shipments with status "$statusLabel".',
+              );
+            } else {
+              replyText = _localizeReply(
+                langCode: parsed.language,
+                hiText:
+                '${totalShipments
+                    .length} shipments abhi "$statusLabel" status me hain.\nShipment IDs: ${totalShipments
+                    .join(",")}',
+                enText:
+                'You currently have ${totalShipments
+                    .length} shipments with status "$statusLabel".\nShipment IDs: ${totalShipments
+                    .join(",")}',
+              );
+            }
           }
           break;
 
@@ -390,7 +455,7 @@ class ChatProvider extends ChangeNotifier {
           break;
 
 
-          // OPEN SCREEN
+      // OPEN SCREEN
         case 'open_screen':
           final screen = params['screen']?.toString() ?? '';
           replyText = parsed.reply.isNotEmpty
@@ -411,7 +476,7 @@ class ChatProvider extends ChangeNotifier {
           }
           break;
         default:
-          // unknown: model may already have included a helpful reply
+        // unknown: model may already have included a helpful reply
           if (replyText.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
@@ -438,6 +503,11 @@ class ChatProvider extends ChangeNotifier {
         ),
       );
 
+      // If action is open_screen, also auto-navigate (optional). We'll not auto-navigate to avoid surprising user.
+      // If you want auto navigation uncomment next lines:
+      // if (parsed.action == 'open_screen' && buttonScreen != null) {
+      //   onNavigate(buttonScreen);
+      // }
     } catch (e) {
       addBotMessage(
         ChatMessage(text: _localizeReply(
@@ -447,15 +517,25 @@ class ChatProvider extends ChangeNotifier {
           enText:
           'I am having trouble understanding this, please try again in simpler words.',
         )
-          , isUser: false),
+            , isUser: false),
       );
       print(e);
     } finally {
-      loading = false;
+      _isTyping = false;
+      // loading = false;
       notifyListeners();
     }
   }
+
+  //NEW : Clear chat method
+  void clearChat(){
+    messages.clear();
+    _isTyping = false;
+    notifyListeners();
+  }
 }
+
+
 
 List<String> filterIdsByMap(List<Map<String, dynamic>> shipments, String key) {
   return shipments

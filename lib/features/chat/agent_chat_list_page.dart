@@ -30,13 +30,13 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
     return {"shipments": data[0], "drivers": data[1]};
   }
 
-  Future<void> _refresh() async => setState(() => _future = _loadData());
+  Future<void> _refresh() async =>
+      setState(() => _future = _loadData());
 
   Future<void> _openChat(String title, Future<String> Function() room) async {
     try {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("opening_chat".tr())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("opening_chat".tr())));
 
       final roomId = await room();
 
@@ -51,9 +51,8 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("failed_open_chat $e".tr())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("failed_open_chat $e".tr())));
       }
     }
   }
@@ -80,9 +79,9 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
     if (confirm == true) {
       final agentId = await _chat.getCurrentCustomUserId();
       if (agentId == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("user_not_identified".tr())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("user_not_identified".tr())),
+        );
         return;
       }
 
@@ -95,24 +94,36 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: Text("my_chats".tr()),
+          backgroundColor: scheme.surface,
+          foregroundColor: scheme.onSurface,
+
+          // ------------ FIXED TABBAR ICONS FOR FLUTTER 3.38 ------------
           bottom: TabBar(
-            indicatorColor: Theme.of(context).colorScheme.secondary,
-            labelColor: Theme.of(context).colorScheme.onPrimary,
-            unselectedLabelColor: Colors.white70,
+            indicatorColor: scheme.primary,
+            dividerHeight: 0,
+            labelColor: scheme.primary,
+            unselectedLabelColor: scheme.onSurfaceVariant,
+
             tabs: [
               Tab(
-                icon: const Icon(Icons.local_shipping),
+                icon: Icon(Icons.local_shipping, color: scheme.primary),
                 text: "shipment_chats".tr(),
               ),
-              Tab(icon: const Icon(Icons.person), text: "direct_chats".tr()),
+              Tab(
+                icon: Icon(Icons.person, color: scheme.primary),
+                text: "direct_chats".tr(),
+              ),
             ],
           ),
         ),
+
         body: RefreshIndicator(
           onRefresh: _refresh,
           child: FutureBuilder(
@@ -121,10 +132,12 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snap.hasError)
+              if (snap.hasError) {
                 return Center(child: Text("Error: ${snap.error}"));
-              if (!snap.hasData)
+              }
+              if (!snap.hasData) {
                 return Center(child: Text("no_data_found".tr()));
+              }
 
               final data = snap.data!;
               return TabBarView(
@@ -141,13 +154,15 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
   }
 
   Widget _shipmentList(List shipments) {
-    if (shipments.isEmpty)
+    if (shipments.isEmpty) {
       return Center(child: Text("no_active_shipments".tr()));
+    }
 
     return ListView.builder(
       itemCount: shipments.length,
       itemBuilder: (_, i) {
         final id = shipments[i]["shipment_id"] ?? "N/A";
+
         return _card(
           title: id,
           subtitle: "group_chat_shipment".tr(),
@@ -159,13 +174,16 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
   }
 
   Widget _driverList(List drivers) {
-    if (drivers.isEmpty) return Center(child: Text("no_drivers_added".tr()));
+    if (drivers.isEmpty) {
+      return Center(child: Text("no_drivers_added".tr()));
+    }
 
     return ListView.builder(
       itemCount: drivers.length,
       itemBuilder: (_, i) {
         final d = drivers[i];
         final name = d["name"] ?? "Unknown";
+
         return _card(
           title: name,
           subtitle: "ID: ${d['custom_user_id']}",
@@ -181,13 +199,22 @@ class _AgentChatListPageState extends State<AgentChatListPage> {
     required String subtitle,
     required IconData icon,
     required VoidCallback action,
-  }) => Card(
-    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    child: ListTile(
-      leading: CircleAvatar(child: Icon(icon)),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle),
-      onTap: action,
-    ),
-  );
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      surfaceTintColor: scheme.surface,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: scheme.primaryContainer,
+          child: Icon(icon, color: scheme.primary),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle),
+        onTap: action,
+      ),
+    );
+  }
 }

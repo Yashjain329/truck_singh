@@ -13,7 +13,9 @@ class ShipmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shipperName = trip['user_profiles']?['name'] ?? 'Unknown Shipper';
+    // UPDATED: accessing shipper_name directly from the table column
+    final shipperName = trip['shipper_name'] ?? 'Unknown Shipper';
+    final shipperId = trip['shipper_id'] ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -61,6 +63,7 @@ class ShipmentCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
+                        // Showing Name and optionally ID
                         'shipper_name'.tr(namedArgs: {'name': shipperName}),
                         style: TextStyle(
                           fontSize: 14,
@@ -71,6 +74,18 @@ class ShipmentCard extends StatelessWidget {
                               ?.withValues(alpha: 0.7),
                         ),
                       ),
+                      if (shipperId.isNotEmpty)
+                        Text(
+                          'ID: $shipperId',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.color
+                                ?.withValues(alpha: 0.5),
+                          ),
+                        ),
                     ],
                   ),
                 ),

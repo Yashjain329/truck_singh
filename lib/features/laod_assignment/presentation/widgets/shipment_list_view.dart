@@ -43,7 +43,7 @@ class ShipmentListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // SEARCH LOGIC (unchanged)
+    // SEARCH LOGIC
     final List<Map<String, dynamic>> filteredList = searchQuery.isEmpty
         ? shipments
         : shipments.where((trip) {
@@ -59,7 +59,8 @@ class ShipmentListView extends StatelessWidget {
           .toString()
           .toLowerCase();
 
-      final shipperName = (trip['user_profiles']?['name'] ?? '')
+      // UPDATED: Now searching against 'shipper_name' from the table
+      final shipperName = (trip['shipper_name'] ?? '')
           .toString()
           .toLowerCase();
 
@@ -70,6 +71,7 @@ class ShipmentListView extends StatelessWidget {
           dest.contains(q) ||
           shipperName.contains(q);
     }).toList();
+
     // NO MATCH UI
     if (filteredList.isEmpty) {
       return Center(

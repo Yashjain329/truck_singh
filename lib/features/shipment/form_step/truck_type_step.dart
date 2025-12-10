@@ -27,21 +27,21 @@ class TruckTypeStep extends StatelessWidget {
         children: [
           isLoadingShipper
               ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Center(child: CircularProgressIndicator()),
-                )
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Center(child: CircularProgressIndicator()),
+          )
               : Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0),
-                  child: Text(
-                    shipperName != null
-                        ? "hiName".tr(namedArgs: {"name": shipperName!})
-                        : "hiThere".tr(),
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
+            child: Text(
+              shipperName != null
+                  ? "hiName".tr(namedArgs: {"name": shipperName!})
+                  : "hiThere".tr(),
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           progressBar,
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -105,7 +105,9 @@ class TruckTypeStep extends StatelessWidget {
                               : FontWeight.normal,
                           color: isSelected
                               ? Colors.orange.shade800
-                              : Colors.black87,
+                              : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black87),
                         ),
                       ),
                       if (isSelected)

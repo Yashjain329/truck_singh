@@ -224,8 +224,8 @@ class _ShipperFormPageState extends State<ShipperFormPage>
       case 1:
         valid =
             _itemController.text.isNotEmpty &&
-            (_weightController.text.isNotEmpty ||
-                _unitController.text.isNotEmpty);
+                (_weightController.text.isNotEmpty ||
+                    _unitController.text.isNotEmpty);
         break;
       case 2:
         valid = _pickupPlace != null && _dropPlace != null;
@@ -233,9 +233,9 @@ class _ShipperFormPageState extends State<ShipperFormPage>
       case 3:
         valid =
             _selectedDate != null &&
-            _pickupDate != null &&
-            _pickupTime != null &&
-            _materialController.text.isNotEmpty;
+                _pickupDate != null &&
+                _pickupTime != null &&
+                _materialController.text.isNotEmpty;
         break;
     }
     setState(() {
@@ -320,6 +320,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
       await supabase.from('shipment').insert({
         'shipment_id': newShipmentId,
         'shipper_id': _selectedShipperId,
+        'shipper_name': _selectedShipperName, // Added shipper name to insert
         'pickup': _pickupPlace!.description,
         'drop': _dropPlace!.description,
         'pickup_latitude': _pickupPlace!.lat,
@@ -536,7 +537,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
               Row(
                 children: List.generate(
                   4,
-                  (index) => Expanded(
+                      (index) => Expanded(
                     child: Container(
                       height: 8,
                       margin: EdgeInsets.only(right: index < 3 ? 4 : 0),
@@ -669,58 +670,58 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                         flex: 2,
                         child: _currentStep == 3
                             ? ElevatedButton.icon(
-                                onPressed: _isFormValid && !_isSubmitting
-                                    ? () {
-                                        FocusScope.of(context).unfocus();
-                                        _submitShipment();
-                                      }
-                                    : null,
-                                icon: _isSubmitting
-                                    ? const SizedBox(
-                                        height: 18,
-                                        width: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(Icons.send),
-                                label: Text(
-                                  _isSubmitting ? "Submitting..." : "Submit",
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      _isFormValid && !_isSubmitting
-                                      ? Colors.green.shade600
-                                      : Colors.grey.shade400,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              )
+                          onPressed: _isFormValid && !_isSubmitting
+                              ? () {
+                            FocusScope.of(context).unfocus();
+                            _submitShipment();
+                          }
+                              : null,
+                          icon: _isSubmitting
+                              ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                              : const Icon(Icons.send),
+                          label: Text(
+                            _isSubmitting ? "Submitting..." : "Submit",
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                            _isFormValid && !_isSubmitting
+                                ? Colors.green.shade600
+                                : Colors.grey.shade400,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        )
                             : ElevatedButton.icon(
-                                onPressed: _stepValid[_currentStep]
-                                    ? () {
-                                        FocusScope.of(context).unfocus();
-                                        _nextStep();
-                                      }
-                                    : null,
-                                icon: const Icon(Icons.arrow_forward),
-                                label: const Text("Next"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _stepValid[_currentStep]
-                                      ? Colors.orange.shade600
-                                      : Colors.grey.shade400,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
+                          onPressed: _stepValid[_currentStep]
+                              ? () {
+                            FocusScope.of(context).unfocus();
+                            _nextStep();
+                          }
+                              : null,
+                          icon: const Icon(Icons.arrow_forward),
+                          label: const Text("Next"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _stepValid[_currentStep]
+                                ? Colors.orange.shade600
+                                : Colors.grey.shade400,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),

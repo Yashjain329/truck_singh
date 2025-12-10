@@ -29,12 +29,12 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
   String trimAddress(String address) {
     String cleaned = address
         .replaceAll(
-          RegExp(
-            r'\b(At Post|Post|Tal|Taluka|Dist|District|Po)\b',
-            caseSensitive: false,
-          ),
-          '',
-        )
+      RegExp(
+        r'\b(At Post|Post|Tal|Taluka|Dist|District|Po)\b',
+        caseSensitive: false,
+      ),
+      '',
+    )
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
 
@@ -79,8 +79,8 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
       final response = await supabase
           .from('view_user_ratings')
           .select(
-            '*, shipment:shipment(shipment_id, pickup, drop, assigned_agent, assigned_driver, shipper_id)',
-          )
+        '*, shipment:shipment(shipment_id, pickup, drop, assigned_agent, assigned_driver, shipper_id)',
+      )
           .eq('ratee_id', customUserId!);
 
       List<Map<String, dynamic>> tempRatings = [];
@@ -197,7 +197,7 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
                   ),
                   child: Text(
                     trip['feedback'] ?? tr("no_feedback"),
-                    style: const TextStyle(fontSize: 14),
+                    style: const TextStyle(fontSize: 14 , color: Colors.black , fontWeight: FontWeight.bold),
                   ),
                 ),
 
@@ -207,7 +207,7 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
                   child: RatingBarIndicator(
                     rating: (trip['rating'] ?? 0).toDouble(),
                     itemBuilder: (_, __) =>
-                        const Icon(Icons.star, color: Colors.amber),
+                    const Icon(Icons.star, color: Colors.amber),
                     itemCount: 5,
                     itemSize: 22,
                   ),
@@ -275,7 +275,7 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
 
     final double avg =
         _ratings.map((r) => r['rating'] as int).reduce((a, b) => a + b) /
-        _ratings.length;
+            _ratings.length;
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -303,7 +303,7 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
                 RatingBarIndicator(
                   rating: avg,
                   itemBuilder: (_, __) =>
-                      const Icon(Icons.star, color: Colors.amber),
+                  const Icon(Icons.star, color: Colors.amber),
                   itemCount: 5,
                   itemSize: 20,
                 ),
@@ -330,151 +330,151 @@ class _TripRatingsPageState extends State<TripRatingsPage> {
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
             ? Center(
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              )
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.red),
+          ),
+        )
             : _ratings.isEmpty
             ? ptr.SmartRefresher(
-                controller: _refreshController,
-                onRefresh: _fetchRatings,
-                header: const ptr.WaterDropHeader(),
-                child: Center(
+          controller: _refreshController,
+          onRefresh: _fetchRatings,
+          header: const ptr.WaterDropHeader(),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.star_border_purple500_sharp,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    tr("no_ratings_yet"),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    tr("no_ratings_yet_description"),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        )
+            : ptr.SmartRefresher(
+          controller: _refreshController,
+          onRefresh: _fetchRatings,
+          header: const ptr.WaterDropHeader(),
+          child: ListView.builder(
+            itemCount: _ratings.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) return _buildSummaryCard();
+
+              final trip = _ratings[index - 1];
+
+              return InkWell(
+                onTap: () => _showTripDetailsPopup(context, trip),
+                child: Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.star_border_purple500_sharp,
-                          size: 80,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
                         Text(
-                          tr("no_ratings_yet"),
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
+                          trip['shipment_id'] ?? "Unknown",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          tr("no_ratings_yet_description"),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
+                        const SizedBox(height: 6),
+
+                        if (trip['delivery_date'] != null &&
+                            trip['delivery_date'] != "")
+                          Text(
+                            "completed : ${trip['delivery_date']}".tr(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
                           ),
+
+                        const SizedBox(height: 6),
+
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.location_on,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                'PICKUP: ${trimAddress(trip['pickup'] ?? "")}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.flag,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                'DROP: ${trimAddress(trip['drop'] ?? "")}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        RatingBarIndicator(
+                          rating: (trip['rating'] ?? 0).toDouble(),
+                          itemBuilder: (_, __) =>
+                          const Icon(Icons.star, color: Colors.amber),
+                          itemCount: 5,
+                          itemSize: 20,
                         ),
                       ],
                     ),
                   ),
                 ),
-              )
-            : ptr.SmartRefresher(
-                controller: _refreshController,
-                onRefresh: _fetchRatings,
-                header: const ptr.WaterDropHeader(),
-                child: ListView.builder(
-                  itemCount: _ratings.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) return _buildSummaryCard();
-
-                    final trip = _ratings[index - 1];
-
-                    return InkWell(
-                      onTap: () => _showTripDetailsPopup(context, trip),
-                      child: Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                trip['shipment_id'] ?? "Unknown",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-
-                              if (trip['delivery_date'] != null &&
-                                  trip['delivery_date'] != "")
-                                Text(
-                                  "completed : ${trip['delivery_date']}".tr(),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-
-                              const SizedBox(height: 6),
-
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    color: Colors.blue,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Expanded(
-                                    child: Text(
-                                      'PICKUP: ${trimAddress(trip['pickup'] ?? "")}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.flag,
-                                    color: Colors.red,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Expanded(
-                                    child: Text(
-                                      'DROP: ${trimAddress(trip['drop'] ?? "")}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              RatingBarIndicator(
-                                rating: (trip['rating'] ?? 0).toDouble(),
-                                itemBuilder: (_, __) =>
-                                    const Icon(Icons.star, color: Colors.amber),
-                                itemCount: 5,
-                                itemSize: 20,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

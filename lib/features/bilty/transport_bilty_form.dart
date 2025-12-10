@@ -323,7 +323,10 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                 SizedBox(width: 12),
                 Text(
                   title,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -359,7 +362,9 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
           labelText: label,
           hintText: hint,
           prefixIcon: Icon(icon, color: AppColors.tealBlue),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -375,7 +380,10 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
           // Ensure label is always visible
           floatingLabelBehavior: FloatingLabelBehavior.always,
           // Prevent label truncation
-          labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          labelStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -401,7 +409,10 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           SizedBox(height: 6),
           InkWell(
@@ -420,7 +431,10 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                   Expanded(
                     child: Text(
                       formattedDate ?? 'Select Date'.tr(),
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(
+
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                   Icon(
@@ -436,6 +450,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       ),
     );
   }
+
 
   Future<void> _loadgstin() async {
     try {
@@ -645,7 +660,6 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       }
     }
   }
-
   Future<void> _loadRouteDetails(String shipmentId) async {
     if (shipmentId.isEmpty) return;
 
@@ -760,6 +774,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       _goodsItems['goods']!.removeAt(index);
     });
   }
+
 
   // Opens a bottom sheet to add or edit a goods item to reduce congestion in the main UI
   void _openGoodsEditor({int? index}) {
@@ -977,7 +992,12 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label: ', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       ),
@@ -1005,7 +1025,6 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
 
     return subtotal + gstAmount;
   }
-
   Widget _buildCompanySettingsStep() {
     return SingleChildScrollView(
       child: Column(
@@ -1573,7 +1592,9 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                     child: ElevatedButton.icon(
                       onPressed: () => _openGoodsEditor(),
                       icon: Icon(Icons.add, color: Colors.white, size: 18),
-                      label: Text('add_item'.tr()),
+                      label: Text(
+                        'add_item'.tr(),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
@@ -1663,7 +1684,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                     ],
                   ),
                 );
-              }),
+              }).toList(),
             ],
           ),
         ),
@@ -1915,7 +1936,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
     required bool value,
     required ValueChanged<bool?> onChanged,
   }) {
-    return SizedBox(
+    return Container(
       width: double.infinity,
       child: CheckboxListTile(
         title: Text(
@@ -2305,12 +2326,14 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 16),
-                  ..._goodsItems['goods']!.map(
+                  ..._goodsItems['goods']!
+                      .map(
                         (item) => _buildSummaryRow(
-                      item.description,
+                      '${item.description}',
                       'Qty: ${item.quantity},Weight: ${item.weight}, Rate: ${item.rate}, Amount: ${item.amount}',
                     ),
-                  ),
+                  )
+                      .toList(),
                 ],
               ),
             ),
@@ -2563,7 +2586,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
         return;
       }
       final senderSignature = await _senderSignatureController.toPngBytes();
-      final bool? didSave = await Navigator.push(
+      Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => TransportBiltyPreview(
@@ -2628,9 +2651,6 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
           ),
         ),
       );
-      if (didSave == true && mounted) {
-        Navigator.pop(context);
-      }
     } catch (e) {
       debugPrint('Error navigating to preview: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2645,7 +2665,6 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
       });
     }
   }
-
   Widget _buildStepContent(int step) {
     switch (step) {
       case 0:
@@ -2842,13 +2861,14 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
     );
   }
 
-  Widget _buildResponsiveRow({required List<Widget> children}) {
+  Widget _buildResponsiveRow({
+    required List<Widget> children,
+  }) {
     final List<Widget> columnChildren = [];
     for (final w in children) {
       if (w is SizedBox && w.width != null && (w.width ?? 0) > 0) {
         columnChildren.add(const SizedBox(height: 12));
-      } else
-        columnChildren.add(w);
+      } else  columnChildren.add(w);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2990,13 +3010,19 @@ class _CompanyAddressDropdownState extends State<CompanyAddressDropdown> {
     }
 
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: "select_company_address".tr(),
         border: OutlineInputBorder(),
       ),
       initialValue: _selectedAddress,
       items: _addresses
-          .map((addr) => DropdownMenuItem(value: addr, child: Text(addr)))
+          .map((addr) => DropdownMenuItem(value: addr,child: Text(
+        addr,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 2,
+      ),
+      ))
           .toList(),
       onChanged: (value) {
         setState(() {
