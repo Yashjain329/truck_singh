@@ -16,7 +16,6 @@ import '../features/shipment/shipper_form_page.dart';
 import '../features/laod_assignment/presentation/cubits/shipment_cubit.dart';
 import '../features/laod_assignment/presentation/screen/load_assignment_screen.dart';
 import '../features/laod_assignment/presentation/screen/allLoads.dart';
-import '../features/trips/myTrips.dart';
 import '../features/trips/myTrips_history.dart';
 import '../features/mytruck/mytrucks.dart';
 import '../features/mydrivers/mydriver.dart';
@@ -243,7 +242,6 @@ class _AgentDashboardState extends State<AgentDashboard> {
       _fc('createShipment', 'postNewLoad', Icons.add_box_rounded, () => _push(const ShipperFormPage())),
       _fc('myChats', 'viewConversations', Icons.chat_bubble_outline, () => _push(const AgentChatListPage())),
       _fc('loadBoard', 'browsePostLoads', Icons.view_list_outlined, () => _push(BlocProvider(create: (_) => ShipmentCubit(), child: const allLoadsPage()))),
-      _fc('activeTrips', 'monitorLiveLocations', Icons.map_outlined, () => _push(const MyShipments())),
       _fc('sharedtrips', 'sharedtracking', Icons.share_location, () => _push(const SharedShipmentsPage())),
       _fc('myTrucks', 'addTrackVehicles', Icons.local_shipping_outlined, () => _push(const Mytrucks())),
       _fc('myDrivers', 'addTrackDrivers', Icons.people_outlined, () => _push(const MyDriverPage())),

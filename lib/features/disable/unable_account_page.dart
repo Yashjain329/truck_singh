@@ -35,8 +35,7 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
 
   String get userName => widget.userProfile['name'] ?? 'Unknown User';
   String get customUserId => widget.userProfile['custom_user_id'] ?? '';
-  String get phoneNumber =>
-      widget.userProfile['mobile_number'] ?? 'Not provided';
+  String get phoneNumber => widget.userProfile['mobile_number'] ?? 'Not provided';
   String get email => widget.userProfile['email'] ?? 'Not provided';
   String get role => widget.userProfile['role'] ?? '';
   String? get profilePicture => widget.userProfile['profile_picture'];
@@ -78,15 +77,13 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
         return;
       }
 
-      final disableInfo =
-          await AccountReactivationService.getAccountDisableInfo(
-            customUserId: customUserId,
-          );
+      final disableInfo = await AccountReactivationService.getAccountDisableInfo(
+        customUserId: customUserId,
+      );
 
-      final hasPending =
-          await AccountReactivationService.hasPendingReactivationRequest(
-            customUserId: customUserId,
-          );
+      final hasPending = await AccountReactivationService.hasPendingReactivationRequest(
+        customUserId: customUserId,
+      );
 
       if (!mounted) return;
 
@@ -197,8 +194,7 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
         NotificationService.sendPushNotificationToUser(
           recipientId: disablerId,
           title: 'Account Reactivation Request'.tr(),
-          message:
-              '$userName ${"is requesting to reactivate their account.".tr()}\n${"Message:".tr()} $message',
+          message: '$userName ${"is requesting to reactivate their account.".tr()}\n${"Message:".tr()} $message',
           data: {'type': 'reactivation_request', 'requester_id': customUserId},
         );
 
@@ -302,8 +298,16 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final Color scaffoldBackground = isDark
+        ? const Color(0xFF1E1E1E)
+        : AppColors.background;
+
+    final Color cardBackground = scaffoldBackground;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: scaffoldBackground,
       appBar: AppBar(
         title: const Text('Account Disabled'),
         backgroundColor: Colors.red.shade700,
@@ -327,9 +331,7 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
                 ),
                 child: Icon(Icons.block, size: 60, color: Colors.red.shade700),
               ),
-
               const SizedBox(height: 24),
-
               Text(
                 'Account Disabled',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -338,29 +340,19 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 16),
-
               Text(
                 'Your account has been disabled. Please contact your administrator or request activation below.',
                 style: TextStyle(color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 32),
-
-              _buildProfileCard(),
-
+              _buildProfileCard(cardBackground),
               const SizedBox(height: 32),
-
               _buildActionSection(),
-
               const SizedBox(height: 24),
-
               _buildActionButton(),
-
               const SizedBox(height: 16),
-
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -373,9 +365,7 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 24),
-
               Text(
                 'Need immediate assistance? Contact support at:\nsupport@logisticapp.com',
                 textAlign: TextAlign.center,
@@ -388,10 +378,18 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
     );
   }
 
-  Widget _buildProfileCard() {
+  Widget _buildProfileCard(Color bg) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
+      color: bg,
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isDark
+            ? BorderSide.none
+            : const BorderSide(color: Colors.black26, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -399,8 +397,7 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
             CircleAvatar(
               radius: 50,
               backgroundColor: AppColors.teal.withValues(alpha: 0.1),
-              backgroundImage:
-                  (profilePicture != null && profilePicture!.isNotEmpty)
+              backgroundImage: (profilePicture != null && profilePicture!.isNotEmpty)
                   ? NetworkImage(profilePicture!)
                   : null,
               child: (profilePicture == null || profilePicture!.isEmpty)
@@ -441,31 +438,21 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _hasPendingRequest
-              ? Colors.blue.shade50
-              : Colors.orange.shade50,
+          color: _hasPendingRequest ? Colors.blue.shade50 : Colors.orange.shade50,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
             Icon(
-              _hasPendingRequest
-                  ? Icons.hourglass_empty
-                  : Icons.supervisor_account,
-              color: _hasPendingRequest
-                  ? Colors.blue.shade600
-                  : Colors.orange.shade600,
+              _hasPendingRequest ? Icons.hourglass_empty : Icons.supervisor_account,
+              color: _hasPendingRequest ? Colors.blue.shade600 : Colors.orange.shade600,
               size: 32,
             ),
             const SizedBox(height: 12),
             Text(
-              _hasPendingRequest
-                  ? 'Request Pending'
-                  : 'Request Account Activation',
+              _hasPendingRequest ? 'Request Pending' : 'Request Account Activation',
               style: TextStyle(
-                color: _hasPendingRequest
-                    ? Colors.blue.shade800
-                    : Colors.orange.shade800,
+                color: _hasPendingRequest ? Colors.blue.shade800 : Colors.orange.shade800,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -477,9 +464,7 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
                   : 'Your account was disabled by ${_disableInfo?['disabler_name'] ?? 'an admin'}. Send them a request to reactivate your account.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: _hasPendingRequest
-                    ? Colors.blue.shade700
-                    : Colors.orange.shade700,
+                color: _hasPendingRequest ? Colors.blue.shade700 : Colors.orange.shade700,
               ),
             ),
             if (!_hasPendingRequest && _disableInfo != null) ...[
@@ -559,13 +544,13 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
             : _requestAccessFromOwner,
         icon: _isRequestingAccess
             ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
-                ),
-              )
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(Colors.white),
+          ),
+        )
             : Icon(_hasPendingRequest ? Icons.check_circle : Icons.send),
         label: Text(
           _isRequestingAccess
@@ -575,9 +560,8 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
               : 'Request Access',
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _hasPendingRequest
-              ? Colors.blue.shade600
-              : Colors.orange.shade600,
+          backgroundColor:
+          _hasPendingRequest ? Colors.blue.shade600 : Colors.orange.shade600,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -591,13 +575,13 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
       onPressed: _isSendingOtp ? null : _sendOtpForSelfActivation,
       icon: _isSendingOtp
           ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Colors.white),
-              ),
-            )
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation(Colors.white),
+        ),
+      )
           : const Icon(Icons.verified_user),
       label: Text(
         _isSendingOtp
@@ -610,12 +594,15 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
         backgroundColor: AppColors.teal,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
   Widget _buildDetailRow(String label, String value) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -625,13 +612,18 @@ class _UnableAccountPageState extends State<UnableAccountPage> {
             child: Text(
               '$label:',
               style: TextStyle(
-                color: Colors.grey.shade700,
+                color: isDark ? Colors.white70 : Colors.grey.shade700,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.grey.shade800)),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.grey.shade800,
+              ),
+            ),
           ),
         ],
       ),

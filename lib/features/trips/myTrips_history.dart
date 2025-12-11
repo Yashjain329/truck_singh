@@ -10,11 +10,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../auth/model/address_model.dart';
 import '../invoice/services/invoice_pdf_service.dart';
 import 'myTrips_Services.dart';
 import 'shipment_card.dart' as shipment_card;
-import 'package:easy_localization/easy_localization.dart';
+import '../notifications/notification_service.dart';
 
 enum TaxType { withinState, outsideState }
 
@@ -26,28 +27,38 @@ class MyTripsHistory extends StatefulWidget {
 }
 
 class _MyTripsHistoryPageState extends State<MyTripsHistory> {
-  List<Map<String, dynamic>> shipments = [];
-  List<Map<String, dynamic>> filteredShipments = [];
-  String? customUserId;
-  String? authUserId;
-  String? role;
-  String? selectedMonth;
-  Set<String> _invoiceRequests = {};
-  Set<String> ratedShipments = {};
-  Map<String, int> ratingEditCount = {};
-  bool loading = true;
-  String searchQuery = '';
-  String statusFilter = 'All';
-
+  // Services
+  SharedPreferences? _prefs;
+  final MyTripsServices _supabaseService = MyTripsServices();
   final ptr.RefreshController _refreshController = ptr.RefreshController(
     initialRefresh: false,
   );
 
-  SharedPreferences? _prefs;
-  final MyTripsServices _supabaseService = MyTripsServices();
+  // User & Auth State
+  String? customUserId;
+  String? authUserId;
+  String? role;
+  BillingAddress? _fetchedBillingAddress;
+  CompanyAddress? _selectedCompanyAddress;
 
-  // PDF-related state and controllers
+  // Shipment Data State
+  List<Map<String, dynamic>> shipments = [];
+  List<Map<String, dynamic>> filteredShipments = [];
+  Set<String> _invoiceRequests = {};
+  Set<String> ratedShipments = {};
+  Map<String, int> ratingEditCount = {};
   Map<String, PdfState> pdfStates = {};
+
+  // UI State
+  bool loading = true;
+
+  // Filters
+  String searchQuery = '';
+  String statusFilter = 'All';
+  int? selectedYear;
+  String? selectedMonth;
+
+  // Invoice Form Controllers
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _cMobileNumberController =
@@ -65,36 +76,24 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
   final TextEditingController _accountHolderController =
   TextEditingController();
   final TextEditingController _gstController = TextEditingController();
-
   final TextEditingController _taxPercentageController =
   TextEditingController();
+
+  // Invoice Calculation State
   double _calculatedTax = 0.0;
   double _calculatedTotal = 0.0;
-
   TaxType _selectedTaxType = TaxType.withinState;
-
-  BillingAddress? _fetchedBillingAddress;
-  CompanyAddress? _selectedCompanyAddress;
-  List<String> _sortedMonths = [];
-  Map<String, List<Map<String, dynamic>>> _groupedShipments = {};
 
   @override
   void initState() {
     super.initState();
-    SharedPreferences.getInstance().then((prefs) {
-      _prefs = prefs;
-      loadCachedShipments();
-    });
+    _initializePreferences();
     _loadUserAndFetchShipments();
-    fetchEditCounts();
-    for (var shipment in shipments) {
-      final shipmentId = shipment['shipment_id'].toString();
-      pdfStates[shipmentId] =
-      shipment['Invoice_link'] != null &&
-          shipment['Invoice_link'].toString().trim().isNotEmpty
-          ? PdfState.uploaded
-          : PdfState.notGenerated;
-    }
+  }
+
+  Future<void> _initializePreferences() async {
+    _prefs = await SharedPreferences.getInstance();
+    await loadCachedShipments();
   }
 
   Future<void> _loadUserAndFetchShipments() async {
@@ -112,11 +111,42 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         .eq('user_id', currentUserId)
         .maybeSingle();
 
-    setState(() {
-      customUserId = userProfile?['custom_user_id'];
-      role = userProfile?['role'];
-    });
-    print("Logged in as: customUserId=$customUserId, role=$role");
+    if (mounted) {
+      setState(() {
+        customUserId = userProfile?['custom_user_id'];
+        role = userProfile?['role'];
+      });
+    }
+  }
+
+  Future<void> fetchInvoiceRequests() async {
+    if (customUserId == null) return;
+
+    try {
+      List<dynamic> response = [];
+
+      if (role == 'shipper') {
+        response = await Supabase.instance.client
+            .from('invoice_requests')
+            .select('shipment_id')
+            .eq('requested_by', customUserId!);
+      } else {
+        response = await Supabase.instance.client
+            .from('invoice_requests')
+            .select('shipment_id')
+            .eq('requested_to', customUserId!);
+      }
+
+      if (response.isNotEmpty && mounted) {
+        setState(() {
+          _invoiceRequests = response
+              .map((r) => r['shipment_id'].toString())
+              .toSet();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching invoice requests: $e");
+    }
   }
 
   Future<Map<String, String?>> fetchCustomerNameAndMobile(
@@ -133,24 +163,25 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         'name': response['name'] as String?,
         'mobile_number': response['mobile_number'] as String?,
       };
-    } else {
-      return {'name': null, 'mobile_number': null};
     }
+    return {'name': null, 'mobile_number': null};
   }
 
   Future<void> fetchEditCounts() async {
-    final response = await Supabase.instance.client
-        .from('ratings')
-        .select(
-      'shipment_id, edit_count',
-    );
-    if (response.isNotEmpty) {
-      setState(() {
-        for (var row in response) {
-          ratingEditCount[row['shipment_id']] =
-          row['edit_count'];
-        }
-      });
+    try {
+      final response = await Supabase.instance.client
+          .from('ratings')
+          .select('shipment_id, edit_count');
+
+      if (response.isNotEmpty && mounted) {
+        setState(() {
+          for (var row in response) {
+            ratingEditCount[row['shipment_id']] = row['edit_count'];
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching edit counts: $e");
     }
   }
 
@@ -160,95 +191,245 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       setState(() {
         shipments = List<Map<String, dynamic>>.from(jsonDecode(cachedData));
         filteredShipments = shipments;
-        _processShipmentData();
         loading = false;
       });
     }
   }
 
-
   Future<void> saveShipmentToCache(List<Map<String, dynamic>> shipments) async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonStr = jsonEncode(shipments);
-    await prefs.setString('shipments_cache', jsonStr);
+    await prefs.setString('shipments_cache', jsonEncode(shipments));
   }
 
   Future<void> fetchShipments() async {
     setState(() => loading = true);
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    print('My current UID: $userId');
 
     if (userId == null) {
-      setState(() {
-        loading = false;
-        shipments = [];
-        filteredShipments = [];
-      });
+      if (mounted) {
+        setState(() {
+          loading = false;
+          shipments = [];
+          filteredShipments = [];
+        });
+      }
       return;
     }
 
-    // Fetch custom user ID
-    final res = await _supabaseService.getShipmentsForUser(userId);
-    print('Raw shipments response: $res');
+    try {
+      final res = await _supabaseService.getShipmentsForUser(userId);
 
-    setState(() {
-      loading = false;
-      shipments = [];
-      filteredShipments = [];
-    });
+      // --- LOGIC FOR MANAGED SHIPMENTS (UPDATED) ---
+      // Identify shipments created by this user but managed by someone else (agent/truckowner)
+      Set<String> managerIdsToFetch = {};
 
-    shipments = res.where((s) {
-      final status = s['booking_status']?.toString().toLowerCase();
-      print(status);
-      return status == 'completed';
-    }).toList();
+      for (var s in res) {
+        final shipperId = s['shipper_id'];
+        final assignedAgent = s['assigned_agent'];
+        final assignedTruckOwner = s['assigned_truckowner'];
 
-    print("Fetched shipments count: ${res.length}");
-    for (var s in res) {
-      print(
-        "Shipment ID: ${s['shipment_id']}, booking_status: '${s['booking_status']}'",
-      );
-    }
+        // If I created this shipment
+        if (shipperId == customUserId) {
+          // If assigned to an agent who is NOT me AND not empty
+          if (assignedAgent != null &&
+              assignedAgent.toString().trim().isNotEmpty &&
+              assignedAgent != customUserId) {
+            managerIdsToFetch.add(assignedAgent);
+          }
+          // If assigned to a truck owner who is NOT me AND not empty
+          else if (assignedTruckOwner != null &&
+              assignedTruckOwner.toString().trim().isNotEmpty &&
+              assignedTruckOwner != customUserId) {
+            managerIdsToFetch.add(assignedTruckOwner);
+          }
+        }
+      }
 
-    print("Filtered completed shipments count: ${shipments.length}");
-    for (var s in shipments) {
-      print(
-        "Completed shipment ID: ${s['shipment_id']}, booking_status: '${s['booking_status']}'",
-      );
-    }
+      // Batch fetch manager names
+      final managerNames = await _supabaseService.getUserNames(managerIdsToFetch.toList());
 
-    filteredShipments = shipments;
-    await _prefs?.setString('shipments_cache', jsonEncode(shipments));
-    await fetchEditCounts();
-    await checkPdfStates();
-    _processShipmentData();
+      // Attach manager info to shipment map
+      for (var s in res) {
+        final shipperId = s['shipper_id'];
 
-    setState(() {
-      loading = false;
+        // Only add "managed_by" tag if I am the shipper/creator
+        if (shipperId == customUserId) {
+          String? managerId;
+          final String? agentId = s['assigned_agent']?.toString();
+          final String? truckOwnerId = s['assigned_truckowner']?.toString();
+
+          // Robust check: valid if NOT null, NOT empty, and NOT self
+          if (agentId != null && agentId.trim().isNotEmpty && agentId != customUserId) {
+            managerId = agentId;
+          }
+          else if (truckOwnerId != null && truckOwnerId.trim().isNotEmpty && truckOwnerId != customUserId) {
+            managerId = truckOwnerId;
+          }
+
+          if (managerId != null) {
+            s['managed_by_id'] = managerId;
+            s['managed_by_name'] = managerNames[managerId] ?? 'Unknown';
+          }
+        }
+      }
+      // -----------------------------------
+
+      final completedShipments = res.where((s) {
+        final status = s['booking_status']?.toString().toLowerCase() ?? '';
+        return status != 'pending';
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          shipments = completedShipments;
+          filteredShipments = shipments;
+          loading = false;
+        });
+      }
+
+      await saveShipmentToCache(shipments);
+      await fetchEditCounts();
+      await checkPdfStates();
+      await fetchInvoiceRequests();
+
+      applyFilters();
       _refreshController.refreshCompleted();
-    });
+    } catch (e) {
+      debugPrint("Error fetching shipments: $e");
+      if (mounted) setState(() => loading = false);
+      _refreshController.refreshFailed();
+    }
   }
 
-  void _processShipmentData() {
-    _groupedShipments = groupShipmentsByMonth(filteredShipments);
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Theme.of(context).primaryColor : null,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
 
-    _sortedMonths = _groupedShipments.keys.toList()
-      ..sort((a, b) {
-        try {
-          final da = DateFormat.yMMMM().parse(a);
-          final db = DateFormat.yMMMM().parse(b);
-          return db.compareTo(da);
-        } catch (e) {
-          return 0;
-        }
-      });
+  void _showMonthYearFilterDialog() {
+    final availableYears =
+    shipments
+        .map((s) => DateTime.tryParse(s['delivery_date'] ?? ''))
+        .where((d) => d != null)
+        .map((d) => d!.year)
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
 
-    // Default selection logic
-    if (selectedMonth == null && _sortedMonths.isNotEmpty) {
-      selectedMonth = _sortedMonths.first;
-    } else if (selectedMonth != null && !_sortedMonths.contains(selectedMonth)) {
-      selectedMonth = _sortedMonths.isNotEmpty ? _sortedMonths.first : null;
+    if (availableYears.isEmpty) {
+      availableYears.add(DateTime.now().year);
     }
+    final allMonths = DateFormat.MMMM().dateSymbols.MONTHS;
+    int tempYear = selectedYear ?? availableYears.first;
+    String? tempMonth = selectedMonth;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('filterByDate'.tr(), textAlign: TextAlign.center),
+              contentPadding: const EdgeInsets.only(top: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              content: SizedBox(
+                height: 300,
+                width: 300,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: allMonths.length,
+                        itemBuilder: (context, index) {
+                          final month = allMonths[index];
+                          final isSelected = tempMonth == month;
+                          return _buildFilterChip(
+                            label: month,
+                            isSelected: isSelected,
+                            onTap: () {
+                              setDialogState(() {
+                                tempMonth = isSelected ? null : month;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: availableYears.length,
+                        itemBuilder: (context, index) {
+                          final year = availableYears[index];
+                          final isSelected = tempYear == year;
+                          return _buildFilterChip(
+                            label: year.toString(),
+                            isSelected: isSelected,
+                            onTap: () {
+                              setDialogState(() {
+                                tempYear = year;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('cancel'.tr()),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      selectedYear = tempYear;
+                      selectedMonth = tempMonth;
+                      applyFilters();
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Text('apply'.tr()),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void searchShipments(String query) {
@@ -271,23 +452,29 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
 
   void applyFilters() {
     filteredShipments = shipments.where((s) {
-      final id = s['shipment_id']?.toString().toLowerCase() ?? '';
-      final pickup = s['pickup']?.toString().toLowerCase() ?? '';
-      final drop = s['drop']?.toString().toLowerCase() ?? '';
-      final q = searchQuery.toLowerCase();
-
+      final bookingStatus = s['booking_status']?.toString().toLowerCase() ?? '';
+      final deliveryDate = DateTime.tryParse(s['delivery_date'] ?? '');
       final matchQuery =
           searchQuery.isEmpty ||
-              id.contains(q) ||
-              pickup.contains(q) ||
-              drop.contains(q);
-
+              s.values.any(
+                    (value) => value.toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ),
+              );
       final matchStatus =
-          statusFilter == 'All' ||
-              s['booking_status'].toString().toLowerCase() ==
-                  statusFilter.toLowerCase();
-
-      return matchQuery && matchStatus;
+          statusFilter == 'All' || bookingStatus == statusFilter.toLowerCase();
+      bool matchDate = true;
+      if (deliveryDate != null) {
+        final matchYear =
+            selectedYear == null || deliveryDate.year == selectedYear;
+        final matchMonth =
+            selectedMonth == null ||
+                DateFormat.MMMM().format(deliveryDate) == selectedMonth;
+        matchDate = matchYear && matchMonth;
+      } else if (selectedYear != null || selectedMonth != null) {
+        matchDate = false;
+      }
+      return matchQuery && matchStatus && matchDate;
     }).toList();
 
     filteredShipments.sort((a, b) {
@@ -297,285 +484,55 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
           DateTime.tryParse(b['delivery_date'] ?? '') ?? DateTime.now();
       return bDate.compareTo(aDate);
     });
+
+    setState(() {});
   }
 
-  // Function for grouping shipments by month
-  Map<String, List<Map<String, dynamic>>> groupShipmentsByMonth(
-      List<Map<String, dynamic>> shipments,
-      ) {
-    Map<String, List<Map<String, dynamic>>> grouped = {};
+  void _showStatusFilterDialog() {
+    final List<String> statuses = [
+      'All',
+      'Accepted',
+      'En Route to Pickup',
+      'Arrived at Pickup',
+      'Loading',
+      'Picked Up',
+      'In Transit',
+      'Arrived at Drop',
+      'Unloading',
+      'Delivered',
+      'Completed',
+    ];
 
-    for (var shipment in shipments) {
-      final dateStr = shipment['delivery_date'];
-      if (dateStr == null || dateStr.isEmpty) continue;
-      try {
-        final date = DateTime.parse(dateStr);
-        final monthKey = DateFormat.yMMMM().format(date);
-        grouped.putIfAbsent(monthKey, () => []);
-        grouped[monthKey]!.add(shipment);
-      } catch (e) {}
-    }
-
-    final now = DateTime.now();
-    for (int i = 0; i < 6; i++) {
-      final monthDate = DateTime(now.year, now.month - i);
-      final monthKey = DateFormat.yMMMM().format(monthDate);
-      grouped.putIfAbsent(monthKey, () => []);
-    }
-
-    return grouped;
-  }
-
-  String getMonthLabel(String monthKey) {
-    final now = DateTime.now();
-    final currentMonth = DateFormat.yMMMM().format(
-      DateTime(now.year, now.month),
-    );
-    final prevMonth = DateFormat.yMMMM().format(
-      DateTime(now.year, now.month - 1),
-    );
-
-    if (monthKey == currentMonth) return "This Month";
-    if (monthKey == prevMonth) return "Previous Month";
-    return monthKey;
-  }
-
-  Widget buildSkeletonLoader() {
-    return ListView.builder(
-      itemCount: 5,
-      itemBuilder: (_, __) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Shimmer.fromColors(
-          baseColor: Colors.grey.shade300,
-          highlightColor: Colors.grey.shade100,
-          child: Card(
-            elevation: 2,
-            child: ListTile(
-              leading: CircleAvatar(backgroundColor: Colors.grey, radius: 20),
-              title: Container(
-                width: double.infinity,
-                height: 16,
-                color: Colors.grey,
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Container(width: 100, height: 12, color: Colors.grey),
-                  const SizedBox(height: 4),
-                  Container(width: 150, height: 12, color: Colors.grey),
-                ],
-              ),
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text('filterByStatus'.tr()),
+        content: SingleChildScrollView(
+          child: RadioGroup<String>(
+            groupValue: statusFilter,
+            onChanged: (val) {
+              if (val == null) return;
+              Navigator.pop(context);
+              setState(() {
+                statusFilter = val;
+                applyFilters();
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: statuses.map((status) {
+                return RadioListTile<String>(
+                  value: status,
+                  title: Text(status.tr()),
+                  activeColor: Colors.teal,
+                  visualDensity: VisualDensity.compact,
+                );
+              }).toList(),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inbox, size: 80, color: Colors.grey),
-          const SizedBox(height: 16),
-          Text(
-            'no_shipments_found'.tr(),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'try_refreshing_filters'.tr(),
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: fetchShipments,
-            icon: const Icon(Icons.refresh),
-            label: Text('refresh'.tr()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> fetchBankAndGst() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-
-    final response = await Supabase.instance.client
-        .from('user_profiles')
-        .select('bank_details, gst_number')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-    if (response != null) {
-      _gstController.text = response['gst_number'] ?? '';
-
-      final bankJson = response['bank_details'];
-      if (bankJson != null && bankJson.isNotEmpty) {
-        List banks = [];
-        if (bankJson is String) {
-          banks = jsonDecode(bankJson);
-        } else if (bankJson is List) {
-          banks = bankJson;
-        }
-
-        Map primaryBank = banks.firstWhere(
-              (b) => b['is_primary'] == true,
-          orElse: () => banks.first,
-        );
-
-        _bankNameController.text = primaryBank['bank_name'] ?? '';
-        _accountNumberController.text = primaryBank['account_number'] ?? '';
-        _ifscController.text = primaryBank['ifsc_code'] ?? '';
-        _branchController.text = primaryBank['branch'] ?? '';
-        _accountHolderController.text =
-            primaryBank['account_holder_name'] ?? '';
-      }
-    }
-  }
-
-  Future fetchBillingAddressForShipment(Map shipment) async {
-    final shipperId = shipment['shipper_id'];
-    if (shipperId == null) return null;
-    final response = await Supabase.instance.client
-        .from('user_profiles')
-        .select('billing_address')
-        .eq('custom_user_id', shipperId)
-        .maybeSingle();
-    if (response != null &&
-        response['billing_address'] != null &&
-        response['billing_address'] != '') {
-      final map = jsonDecode(response['billing_address']);
-      return BillingAddress.fromJson(map);
-    }
-    return null;
-  }
-
-  Future<List<CompanyAddress>> fetchCompanyAddresses() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return [];
-    final response = await Supabase.instance.client
-        .from('user_profiles')
-        .select('company_address1, company_address2, company_address3')
-        .eq('user_id', user.id)
-        .maybeSingle();
-    final addresses = <CompanyAddress>[];
-    if (response != null) {
-      for (var key in [
-        'company_address1',
-        'company_address2',
-        'company_address3',
-      ]) {
-        if (response[key] != null && response[key] != '') {
-          final addrMap = jsonDecode(response[key]);
-          addresses.add(CompanyAddress.fromJson(addrMap));
-        }
-      }
-    }
-    return addresses;
-  }
-
-  Future<CompanyAddress?> showCompanyAddressDialog(
-      BuildContext context,
-      List<CompanyAddress> addresses,
-      ) async {
-    return await showGeneralDialog<CompanyAddress>(
-      context: context,
-      barrierDismissible: false,
-      barrierLabel: 'company_address'.tr(),
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (ctx, anim1, anim2) {
-        return const SizedBox.shrink();
-      },
-      transitionBuilder: (ctx, anim, _, child) {
-        final curvedValue =
-            Curves.easeInOut.transform(anim.value) - 1.0;
-
-        return Transform(
-          transform: Matrix4.translationValues(0.0, curvedValue * -50, 0.0),
-          child: Opacity(
-            opacity: anim.value,
-            child: Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.location_city,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'select_company_address'.tr(),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Address list
-                    Flexible(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: addresses.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (ctx, index) {
-                          final addr = addresses[index];
-                          return ListTile(
-                            leading: const Icon(Icons.home_outlined),
-                            title: Text(
-                              "${addr.flatNo}, ${addr.streetName}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              "${addr.cityName}, ${addr.district}, ${addr.zipCode}",
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                            ),
-                            onTap: () => Navigator.pop(ctx, addr),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -584,26 +541,26 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       final shipmentId = shipment['shipment_id'].toString();
       final appDir = await getApplicationDocumentsDirectory();
       final filePath = '${appDir.path}/$shipmentId.pdf';
+
       if (await File(filePath).exists()) {
         pdfStates[shipmentId] = PdfState.downloaded;
       } else {
-        // --- THIS IS THE FIX ---
-        // The 'Invoice_link' is the FULL public URL. We don't need getPublicUrl.
         final String? pdfUrl = shipment['Invoice_link'] as String?;
         if (pdfUrl != null && pdfUrl.isNotEmpty) {
-          final response = await http.head(Uri.parse(pdfUrl)); // Use the URL directly
-          pdfStates[shipmentId] = response.statusCode == 200
-              ? PdfState.uploaded
-              : PdfState.notGenerated;
+          try {
+            final response = await http.head(Uri.parse(pdfUrl));
+            pdfStates[shipmentId] = response.statusCode == 200
+                ? PdfState.uploaded
+                : PdfState.notGenerated;
+          } catch (_) {
+            pdfStates[shipmentId] = PdfState.notGenerated;
+          }
         } else {
           pdfStates[shipmentId] = PdfState.notGenerated;
         }
-        // --- END OF FIX ---
       }
     }
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   Future generateInvoice(Map<String, dynamic> shipment) async {
@@ -624,6 +581,7 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       ).showSnackBar(SnackBar(content: Text('no_company_addresses'.tr())));
       return;
     }
+
     if (companyAddresses.length == 1) {
       _selectedCompanyAddress = companyAddresses.first;
     } else {
@@ -667,41 +625,33 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       taxType: _selectedTaxType == TaxType.withinState ? "CGST+SGST" : "IGST",
     );
 
-    // Save URL to shipment
     shipment['Invoice_link'] = invoiceUrl;
     shipment['hasInvoice'] = true;
-
     pdfStates[shipment['shipment_id'].toString()] = PdfState.uploaded;
-    if (mounted) {
-      setState(() {});
-    }
 
-    // Optionally: update backend with the link
+    if (mounted) setState(() {});
+
     final shipmentId = shipment['shipment_id'].toString();
     await Supabase.instance.client
         .from('shipment')
         .update({'Invoice_link': invoiceUrl})
         .eq('shipment_id', shipmentId);
 
-    // NEW: Update invoice_requests table
     try {
-      // Changed from update() to delete()
       await Supabase.instance.client
           .from('invoice_requests')
           .delete()
           .eq('shipment_id', shipmentId);
-      _invoiceRequests.remove(shipmentId); // Remove from local cache
+      _invoiceRequests.remove(shipmentId);
     } catch (e) {
-      print("Error updating invoice request status: $e");
+      debugPrint("Error updating invoice request status: $e");
     }
 
-    // --- NEW: SEND NOTIFICATION TO SHIPPER ---
     try {
       await _sendInvoiceGeneratedNotification(shipment);
     } catch (e) {
-      print("Error sending 'invoice generated' notification: $e");
+      debugPrint("Error sending 'invoice generated' notification: $e");
     }
-    // --- END NEW ---
 
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -709,14 +659,11 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     ).showSnackBar(SnackBar(content: Text('invoice_generated'.tr())));
   }
 
-  // --- THIS IS THE CORRECTED FUNCTION ---
   Future downloadInvoice(Map shipment) async {
     final shipmentId = shipment['shipment_id'].toString();
-
-    // The path is retrieved from the 'Invoice_link' column, which is the source of truth.
     String? pdfUrl = shipment['Invoice_link'] as String?;
+
     if (pdfUrl == null || pdfUrl.isEmpty) {
-      // As a fallback, check the database again
       final shipmentRow = await Supabase.instance.client
           .from('shipment')
           .select('Invoice_link')
@@ -725,7 +672,6 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       pdfUrl = shipmentRow?['Invoice_link'] as String?;
     }
 
-    // Check if pdfUrl is still null or empty
     if (pdfUrl == null || pdfUrl.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -734,12 +680,9 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       return;
     }
 
-    print("Attempting to download from URL: $pdfUrl");
-
     try {
       final response = await http.get(Uri.parse(pdfUrl));
 
-      print("Download response status code: ${response.statusCode}");
       if (response.statusCode == 200) {
         final appDir = await getApplicationDocumentsDirectory();
         final localPath = '${appDir.path}/$shipmentId.pdf';
@@ -747,6 +690,7 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         await file.writeAsBytes(response.bodyBytes, flush: true);
 
         pdfStates[shipmentId] = PdfState.downloaded;
+
         if (mounted) {
           setState(() {});
           ScaffoldMessenger.of(
@@ -754,18 +698,14 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
           ).showSnackBar(SnackBar(content: Text('pdf_downloaded'.tr())));
         }
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('pdf_could_not_be_downloaded'.tr())),
-          );
-        }
+        throw Exception('Server responded with ${response.statusCode}');
       }
     } catch (e) {
-      print("Error downloading PDF: $e");
+      debugPrint("Error downloading PDF: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF download failed: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('PDF download failed')));
       }
     }
   }
@@ -788,40 +728,32 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('PDF not found, re-downloading...')),
       );
+
       final shipment = shipments.firstWhere(
             (s) => s['shipment_id'] == shipmentId,
         orElse: () => <String, dynamic>{},
       );
 
-      if (shipment.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: Shipment data not found.')),
-        );
-        return;
-      }
-
-      await downloadInvoice(shipment);
-      if (await file.exists()) {
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PdfPreviewScreen(localPath: localPath),
-          ),
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF download failed.')),
-        );
+      if (shipment.isNotEmpty) {
+        await downloadInvoice(shipment);
+        if (await file.exists() && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PdfPreviewScreen(localPath: localPath),
+            ),
+          );
+        }
       }
     }
   }
 
-  Future<void> confirmAndDelete(BuildContext context, Map<String, dynamic> shipment) async {
+  Future<void> confirmAndDelete(
+      BuildContext context,
+      Map<String, dynamic> shipment,
+      ) async {
     final shipmentId = shipment['shipment_id'].toString();
-    if (!mounted) return;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -833,78 +765,72 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
             onPressed: () => Navigator.of(ctx).pop(false),
           ),
           ElevatedButton(
-            child: Text('Delete'),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Delete'),
           ),
         ],
       ),
     );
+
     if (result != true) return;
 
     try {
       final pdfPath = shipment['Invoice_link'] as String?;
-      if (pdfPath == null || pdfPath.isEmpty) {
-        throw Exception('Invoice link not found in shipment data');
-      }
+      if (pdfPath != null && pdfPath.isNotEmpty) {
+        final bucketPath = pdfPath.split('/invoices/').last;
+        await Supabase.instance.client.storage.from('invoices').remove([
+          bucketPath,
+        ]);
 
-      final bucketPath = pdfPath.split('/invoices/').last;
-      await Supabase.instance.client.storage
-          .from('invoices')
-          .remove([bucketPath]);
+        final appDir = await getApplicationDocumentsDirectory();
+        final localPath = '${appDir.path}/$shipmentId.pdf';
+        final file = File(localPath);
+        if (await file.exists()) await file.delete();
 
-      final appDir = await getApplicationDocumentsDirectory();
-      final localPath = '${appDir.path}/$shipmentId.pdf';
-      final file = File(localPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-      await Supabase.instance.client
-          .from('shipment')
-          .update({'Invoice_link': null})
-          .eq('shipment_id', shipmentId);
-      shipment['Invoice_link'] = null;
-      shipment['hasInvoice'] = false;
-      if (mounted) {
-        setState(() {
-          pdfStates[shipmentId] = PdfState.notGenerated;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invoice deleted')),
-        );
+        await Supabase.instance.client
+            .from('shipment')
+            .update({'Invoice_link': null})
+            .eq('shipment_id', shipmentId);
+
+        shipment['Invoice_link'] = null;
+        shipment['hasInvoice'] = false;
+
+        if (mounted) {
+          setState(() {
+            pdfStates[shipmentId] = PdfState.notGenerated;
+          });
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Invoice deleted')));
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting invoice: $e')),
-        );
-      }
-    }
-  }
-
-  Future deleteLocalInvoice(String shipmentId) async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final localPath = '${appDir.path}/$shipmentId.pdf';
-    final file = File(localPath);
-    if (await file.exists()) {
-      await file.delete();
-      pdfStates[shipmentId] = PdfState.notGenerated;
-      if (mounted) {
-        setState(() {});
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('pdf_deleted'.tr())));
+        ).showSnackBar(SnackBar(content: Text('Error deleting invoice: $e')));
       }
     }
   }
 
   void requestInvoice(Map<String, dynamic> shipment) async {
-    final companyId = shipment['assigned_agent'];
-    if (companyId == null) {
-      print("Cannot request invoice: assigned_agent is null");
+    final agentId = shipment['assigned_agent']?.toString();
+    final truckOwnerId = shipment['assigned_truck_owner']?.toString();
+
+    String? requestToId;
+    if (agentId != null && agentId.trim().isNotEmpty) {
+      requestToId = agentId;
+    } else if (truckOwnerId != null && truckOwnerId.trim().isNotEmpty) {
+      requestToId = truckOwnerId;
+    }
+
+    if (requestToId == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot request: No agent assigned')),
+        SnackBar(
+          content: Text('Cannot request: No agent or truck owner assigned'),
+        ),
       );
       return;
     }
@@ -919,25 +845,21 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     );
 
     try {
-      final response =
       await Supabase.instance.client.from('invoice_requests').insert({
         'shipment_id': shipment['shipment_id'],
         'requested_by': customUserId,
-        'requested_to': companyId,
-      }).select();
-      print("Invoice request logged in Supabase ✅: $response");
-      try {
-        await _sendInvoiceRequestNotification(shipment);
-      } catch (e) {
-        print("Error sending 'invoice request' notification: $e");
-      }
+        'requested_to': requestToId,
+      });
+
+      await _sendInvoiceRequestNotification(shipment, requestToId);
+
       if (mounted) {
         setState(() {
           _invoiceRequests.add(shipment['shipment_id']);
         });
       }
     } catch (e) {
-      print("Exception while requesting invoice: $e");
+      debugPrint("Exception while requesting invoice: $e");
     }
   }
 
@@ -955,33 +877,41 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
 
     try {
       final box = context.findRenderObject() as RenderBox?;
-
       await SharePlus.instance.share(
-          ShareParams(
-            text:'Here is the invoice for shipment $shipmentId: $publicUrl',
-            subject: 'Invoice for $shipmentId',
-            sharePositionOrigin: box != null
-                ? box.localToGlobal(Offset.zero) & box.size
-                : null,)
+        ShareParams(
+          text: 'Here is the invoice for shipment $shipmentId: $publicUrl',
+          subject: 'Invoice for $shipmentId',
+          sharePositionOrigin: box != null
+              ? box.localToGlobal(Offset.zero) & box.size
+              : null,
+        ),
       );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('invoice_shared_successfully'.tr())));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error sharing invoice: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error sharing invoice: $e')));
+      }
     }
   }
 
-  Future<void> _sendInvoiceRequestNotification(Map<String, dynamic> shipment) async {
-    final assignedAgentId = shipment['assigned_agent'] as String?;
-    if (assignedAgentId == null) return;
-
+  Future<void> _sendInvoiceRequestNotification(
+      Map<String, dynamic> shipment,
+      String receiverCustomId,
+      ) async {
     final shipmentId = shipment['shipment_id'];
+
+    // 1. Fetch Receiver UUID
+    final receiverProfile = await Supabase.instance.client
+        .from('user_profiles')
+        .select('user_id')
+        .eq('custom_user_id', receiverCustomId)
+        .maybeSingle();
+
+    final receiverUuid = receiverProfile?['user_id'] as String?;
+    if (receiverUuid == null) return;
+
+    // 2. Fetch Shipper Name
     final shipperProfile = await Supabase.instance.client
         .from('user_profiles')
         .select('name')
@@ -989,206 +919,229 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         .maybeSingle();
     final shipperName = shipperProfile?['name'] ?? 'A shipper';
 
-    await _sendNotification(
-      assignedAgentId,
-      "Invoice Requested",
-      "$shipperName requested an invoice for shipment $shipmentId.",
+    // 3. Notify Receiver
+    await NotificationService.sendNotification(
+      recipientUserId: receiverUuid,
+      title: "Invoice Requested",
+      message: "$shipperName requested an invoice for shipment $shipmentId.",
+      data: {'type': 'invoice_request', 'shipment_id': shipmentId},
     );
-  }
 
-  Future<void> _sendInvoiceGeneratedNotification(Map<String, dynamic> shipment) async {
-    final shipperId = shipment['shipper_id'] as String?;
-    if (shipperId == null) return;
-
-    final shipmentId = shipment['shipment_id'];
-
-    await _sendNotification(
-      shipperId,
-      "Invoice Ready",
-      "Your invoice for shipment $shipmentId is generated and ready to view.",
-    );
-  }
-
-  Future<void> _sendNotification(String receiverCustomId, String title, String message) async {
-    try {
-      await Supabase.instance.client.rpc('send-user-notification', params: {
-        'receiver_id': receiverCustomId,
-        'title': title,
-        'message': message,
-      });
-      print("Notification RPC called for User: $receiverCustomId");
-    } catch (e) {
-      print("Error calling RPC 'send-user-notification': $e");
-    }
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    IconData? icon,
-    TextInputType? keyboard,
-    void Function(String)? onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboard,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: icon != null ? Icon(icon) : null,
-          filled: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: Colors.blueAccent,
-              width: 1.5,
-            ), // theme accent
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_sortedMonths.isEmpty && filteredShipments.isNotEmpty) {
-      _processShipmentData();
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('shipment_history'.tr()),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () async {
-              final result = await showSearch(
-                context: context,
-                delegate: ShipmentSearchDelegate(shipments: shipments),
-              );
-              if (result != null) searchShipments(result);
-            },
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await fetchShipments();
-          _processShipmentData();
-        },
-        child: loading
-            ? buildSkeletonLoader()
-            : filteredShipments.isEmpty
-            ? buildEmptyState()
-            : Column(
-          children: [
-            _buildMonthDropdown(),
-            const Divider(thickness: 1, height: 1),
-            Expanded(
-              child: _buildShipmentList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMonthDropdown() {
-    if (_sortedMonths.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: "select_month".tr(),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 4,
-          ),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: selectedMonth,
-            isExpanded: true,
-            hint: Text("choose_month".tr()),
-            icon: const Icon(Icons.calendar_month, color: Colors.blue),
-            onChanged: (value) {
-              setState(() => selectedMonth = value);
-            },
-            items: _sortedMonths.map((m) {
-              return DropdownMenuItem(
-                value: m,
-                child: Text(getMonthLabel(m)),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildShipmentList() {
-    final shipmentsToShow = selectedMonth != null
-        ? (_groupedShipments[selectedMonth] ?? [])
-        : [];
-
-    if (shipmentsToShow.isEmpty) {
-      return Center(
-        child: Text(
-          "No shipments in $selectedMonth",
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
-        ),
+    // 4. Notify Self (Confirmation)
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId != null) {
+      await NotificationService.sendNotification(
+        recipientUserId: currentUserId,
+        title: "Invoice Requested",
+        message: "You requested an invoice for shipment $shipmentId.",
+        data: {'type': 'invoice_request_sent', 'shipment_id': shipmentId},
       );
     }
+  }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 50),
-      itemCount: shipmentsToShow.length,
-      itemBuilder: (_, i) {
-        final shipment = shipmentsToShow[i];
-        final shipmentId = shipment['shipment_id'].toString();
-        final isRequested = _invoiceRequests.contains(shipmentId);
+  Future<void> _sendInvoiceGeneratedNotification(
+      Map<String, dynamic> shipment,
+      ) async {
+    final shipperCustomId = shipment['shipper_id'] as String?;
+    if (shipperCustomId == null) return;
+    final shipmentId = shipment['shipment_id'];
 
-        return shipment_card.ShipmentCard(
-          shipment: shipment,
-          pdfStates: pdfStates,
-          isInvoiceRequested: isRequested,
-          customUserId: customUserId,
-          role: role,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ShipmentDetailsPage(
-                  shipment: shipment,
-                  isHistoryPage: true,
+    // 1. Fetch Shipper UUID
+    final shipperProfile = await Supabase.instance.client
+        .from('user_profiles')
+        .select('user_id')
+        .eq('custom_user_id', shipperCustomId)
+        .maybeSingle();
+
+    final shipperUuid = shipperProfile?['user_id'] as String?;
+    if (shipperUuid == null) return;
+
+    // 2. Notify Shipper
+    await NotificationService.sendNotification(
+      recipientUserId: shipperUuid,
+      title: "Invoice Ready",
+      message:
+      "Your invoice for shipment $shipmentId is generated and ready to view.",
+      data: {'type': 'invoice_generated', 'shipment_id': shipmentId},
+    );
+
+    // 3. Notify Self (Confirmation)
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId != null) {
+      await NotificationService.sendNotification(
+        recipientUserId: currentUserId,
+        title: "Invoice Generated",
+        message: "You generated an invoice for shipment $shipmentId.",
+        data: {'type': 'invoice_generated_sent', 'shipment_id': shipmentId},
+      );
+    }
+  }
+
+  Future<void> fetchBankAndGst() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final response = await Supabase.instance.client
+        .from('user_profiles')
+        .select('bank_details, gst_number')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    if (response != null) {
+      _gstController.text = response['gst_number'] ?? '';
+
+      final bankJson = response['bank_details'];
+      if (bankJson != null && bankJson.isNotEmpty) {
+        List banks = [];
+        if (bankJson is String) {
+          banks = jsonDecode(bankJson);
+        } else if (bankJson is List) {
+          banks = bankJson;
+        }
+
+        Map primaryBank = banks.firstWhere(
+              (b) => b['is_primary'] == true,
+          orElse: () => banks.first,
+        );
+
+        _bankNameController.text = primaryBank['bank_name'] ?? '';
+        _accountNumberController.text = primaryBank['account_number'] ?? '';
+        _ifscController.text = primaryBank['ifsc_code'] ?? '';
+        _branchController.text = primaryBank['branch'] ?? '';
+        _accountHolderController.text =
+            primaryBank['account_holder_name'] ?? '';
+      }
+    }
+  }
+
+  Future fetchBillingAddressForShipment(Map shipment) async {
+    final shipperId = shipment['shipper_id'];
+    if (shipperId == null) return null;
+
+    final response = await Supabase.instance.client
+        .from('user_profiles')
+        .select('billing_address')
+        .eq('custom_user_id', shipperId)
+        .maybeSingle();
+
+    if (response != null &&
+        response['billing_address'] != null &&
+        response['billing_address'] != '') {
+      final map = jsonDecode(response['billing_address']);
+      return BillingAddress.fromJson(map);
+    }
+    return null;
+  }
+
+  Future<List<CompanyAddress>> fetchCompanyAddresses() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return [];
+
+    final response = await Supabase.instance.client
+        .from('user_profiles')
+        .select('company_address1, company_address2, company_address3')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    final addresses = <CompanyAddress>[];
+    if (response != null) {
+      for (var key in [
+        'company_address1',
+        'company_address2',
+        'company_address3',
+      ]) {
+        if (response[key] != null && response[key] != '') {
+          final addrMap = jsonDecode(response[key]);
+          addresses.add(CompanyAddress.fromJson(addrMap));
+        }
+      }
+    }
+    return addresses;
+  }
+
+  Future<CompanyAddress?> showCompanyAddressDialog(
+      BuildContext context,
+      List<CompanyAddress> addresses,
+      ) async {
+    return await showGeneralDialog<CompanyAddress>(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'company_address'.tr(),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim, _, child) {
+        final curvedValue = Curves.easeInOut.transform(anim.value) - 1.0;
+        return Transform(
+          transform: Matrix4.translationValues(0.0, curvedValue * -50, 0.0),
+          child: Opacity(
+            opacity: anim.value,
+            child: Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 400),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.location_city,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'select_company_address'.tr(),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: addresses.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (ctx, index) {
+                          final addr = addresses[index];
+                          return ListTile(
+                            leading: const Icon(Icons.home_outlined),
+                            title: Text(
+                              "${addr.flatNo}, ${addr.streetName}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "${addr.cityName}, ${addr.district}, ${addr.zipCode}",
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                            ),
+                            onTap: () => Navigator.pop(ctx, addr),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
-          onPreviewInvoice: () => previewInvoice(context, shipmentId),
-          onDownloadInvoice: () async {
-            await downloadInvoice(shipment);
-          },
-          onRequestInvoice: () => requestInvoice(shipment),
-          onGenerateInvoice: () => _showGenerateInvoiceDialog(shipment),
-          onDeleteInvoice: () async {
-            await confirmAndDelete(context, shipment);
-          },
-          onShareInvoice: () async {
-            await shareInvoice(shipment);
-          },
+            ),
+          ),
         );
       },
     );
@@ -1210,10 +1163,10 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
       barrierDismissible: false,
       builder: (_) => StatefulBuilder(
         builder: (context, setDialogState) {
-
           void recalculateTotals() {
             final price = double.tryParse(_priceController.text) ?? 0.0;
-            final taxPercent = double.tryParse(_taxPercentageController.text) ?? 0.0;
+            final taxPercent =
+                double.tryParse(_taxPercentageController.text) ?? 0.0;
 
             if (taxPercent <= 0 || price <= 0) {
               setDialogState(() {
@@ -1230,7 +1183,9 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
           }
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 450, maxHeight: 600),
               child: Column(
@@ -1240,61 +1195,120 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.receipt_long, color: Theme.of(context).colorScheme.primary),
+                        Icon(
+                          Icons.receipt_long,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           "invoice_details".tr(),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
-
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader("company_information".tr(), Icons.business),
-                          _buildTextField(controller: _companyNameController, label: "company_name".tr()),
-                          _buildTextField(controller: _cMobileNumberController, label: "company_mobile_no".tr(), keyboard: TextInputType.phone),
-                          _buildTextField(controller: _gstController, label: "gst_number".tr()),
+                          _buildSectionHeader(
+                            "company_information".tr(),
+                            Icons.business,
+                          ),
+                          _buildTextField(
+                            controller: _companyNameController,
+                            label: "company_name".tr(),
+                          ),
+                          _buildTextField(
+                            controller: _cMobileNumberController,
+                            label: "company_mobile_no".tr(),
+                            keyboard: TextInputType.phone,
+                          ),
+                          _buildTextField(
+                            controller: _gstController,
+                            label: "gst_number".tr(),
+                          ),
 
                           const SizedBox(height: 16),
-                          _buildSectionHeader("bank_details".tr(), Icons.account_balance),
-                          _buildTextField(controller: _bankNameController, label: "bank_name".tr()),
-                          _buildTextField(controller: _accountNumberController, label: "account_number".tr(), keyboard: TextInputType.number),
-                          _buildTextField(controller: _ifscController, label: "ifsc_code".tr()),
-                          _buildTextField(controller: _branchController, label: "branch".tr()),
-                          _buildTextField(controller: _accountHolderController, label: "account_holder_name".tr()),
+                          _buildSectionHeader(
+                            "bank_details".tr(),
+                            Icons.account_balance,
+                          ),
+                          _buildTextField(
+                            controller: _bankNameController,
+                            label: "bank_name".tr(),
+                          ),
+                          _buildTextField(
+                            controller: _accountNumberController,
+                            label: "account_number".tr(),
+                            keyboard: TextInputType.number,
+                          ),
+                          _buildTextField(
+                            controller: _ifscController,
+                            label: "ifsc_code".tr(),
+                          ),
+                          _buildTextField(
+                            controller: _branchController,
+                            label: "branch".tr(),
+                          ),
+                          _buildTextField(
+                            controller: _accountHolderController,
+                            label: "account_holder_name".tr(),
+                          ),
 
                           const SizedBox(height: 16),
-                          _buildSectionHeader("customer_information".tr(), Icons.person_outline),
-                          _buildTextField(controller: _billToNameController, label: "customer_name".tr()),
-                          _buildTextField(controller: _billToMobileNumberController, label: "customer_mobile_no".tr(), keyboard: TextInputType.phone),
+                          _buildSectionHeader(
+                            "customer_information".tr(),
+                            Icons.person_outline,
+                          ),
+                          _buildTextField(
+                            controller: _billToNameController,
+                            label: "customer_name".tr(),
+                          ),
+                          _buildTextField(
+                            controller: _billToMobileNumberController,
+                            label: "customer_mobile_no".tr(),
+                            keyboard: TextInputType.phone,
+                          ),
 
                           const SizedBox(height: 16),
                           _buildSectionHeader("Invoice Data", Icons.receipt),
-                          _buildTextField(controller: _invoiceNumberController, label: "invoice_no".tr()),
+                          _buildTextField(
+                            controller: _invoiceNumberController,
+                            label: "invoice_no".tr(),
+                          ),
                           _buildTextField(
                             controller: _priceController,
                             label: "price".tr(),
-                            keyboard: const TextInputType.numberWithOptions(decimal: true),
+                            keyboard: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             onChanged: (_) => recalculateTotals(),
                           ),
 
                           const SizedBox(height: 16),
-                          _buildSectionHeader("tax_details".tr(), Icons.percent),
+                          _buildSectionHeader(
+                            "tax_details".tr(),
+                            Icons.percent,
+                          ),
                           _buildTextField(
                             controller: _taxPercentageController,
                             label: "tax_percentage".tr(),
-                            keyboard: const TextInputType.numberWithOptions(decimal: true),
+                            keyboard: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             onChanged: (_) => recalculateTotals(),
                           ),
 
@@ -1328,8 +1342,8 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 12),
+                          // Tax Summary
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -1339,18 +1353,35 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                             child: Column(
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text("Tax Amount:"),
-                                    Text("₹${_calculatedTax.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    Text(
+                                      "₹${_calculatedTax.toStringAsFixed(2)}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text("Total:", style: TextStyle(fontSize: 16)),
-                                    Text("₹${_calculatedTotal.toStringAsFixed(2)}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).primaryColor)),
+                                    const Text(
+                                      "Total:",
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                    Text(
+                                      "₹${_calculatedTotal.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -1360,7 +1391,7 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                       ),
                     ),
                   ),
-
+                  // Action Buttons
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Row(
@@ -1369,7 +1400,9 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                             child: Text("cancel".tr()),
@@ -1386,7 +1419,9 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                             child: Text("generate".tr()),
@@ -1404,6 +1439,36 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     );
   }
 
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    IconData? icon,
+    TextInputType? keyboard,
+    void Function(String)? onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboard,
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: icon != null ? Icon(icon) : null,
+          filled: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.blueAccent, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title, IconData icon) {
     return Column(
       children: [
@@ -1411,7 +1476,10 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
           children: [
             Icon(icon, size: 20, color: Colors.grey[600]),
             const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
           ],
         ),
         const Divider(),
@@ -1434,10 +1502,9 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         _invoiceNumberController.text.isEmpty ||
         _priceController.text.isEmpty ||
         _taxPercentageController.text.isEmpty) {
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('please_fill_required'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('please_fill_required'.tr())));
       return false;
     }
     return true;
@@ -1460,10 +1527,260 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     _calculatedTax = 0.0;
     _calculatedTotal = 0.0;
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('shipment_history'.tr()),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () async {
+              final result = await showSearch(
+                context: context,
+                delegate: ShipmentSearchDelegate(shipments: shipments),
+              );
+              if (result != null) searchShipments(result);
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // ---------------------------------------------------------
+          // 1. FILTER CONTROLS (ALWAYS VISIBLE)
+          // ---------------------------------------------------------
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: Row(
+              children: [
+                // --- Status Filter Chip ---
+                ActionChip(
+                  avatar: const Icon(Icons.tune, size: 18),
+                  label: Text(
+                    statusFilter == 'All' ? 'status'.tr() : statusFilter,
+                    style: TextStyle(
+                      fontWeight: statusFilter == 'All'
+                          ? FontWeight.normal
+                          : FontWeight.bold,
+                      color: statusFilter == 'All'
+                          ? null
+                          : Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  backgroundColor: statusFilter == 'All'
+                      ? null
+                      : Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  onPressed: _showStatusFilterDialog,
+                ),
+                const SizedBox(width: 8),
+
+                // --- Date Filter Chip ---
+                ActionChip(
+                  avatar: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(
+                    selectedYear != null
+                        ? '${selectedMonth ?? ''} ${selectedYear!}'
+                        : 'date'.tr(),
+                    style: TextStyle(
+                      fontWeight: selectedYear == null
+                          ? FontWeight.normal
+                          : FontWeight.bold,
+                      color: selectedYear == null
+                          ? null
+                          : Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  backgroundColor: selectedYear == null
+                      ? null
+                      : Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  onPressed: _showMonthYearFilterDialog,
+                ),
+
+                // --- Clear Filters Button (Optional, shows if filters are active) ---
+                if (statusFilter != 'All' || selectedYear != null) ...[
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    tooltip: "Clear Filters",
+                    onPressed: () {
+                      setState(() {
+                        statusFilter = 'All';
+                        selectedYear = null;
+                        selectedMonth = null;
+                        searchQuery = '';
+                        applyFilters();
+                      });
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Divider(thickness: 1, height: 1),
+
+          // ---------------------------------------------------------
+          // 2. CONTENT AREA (SCROLLABLE)
+          // ---------------------------------------------------------
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await fetchShipments();
+              },
+              child: loading
+                  ? buildSkeletonLoader()
+                  : filteredShipments.isEmpty
+                  ? buildEmptyState()
+                  : _buildShipmentList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShipmentList() {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 50),
+      itemCount: filteredShipments.length,
+      itemBuilder: (_, i) {
+        final shipment = filteredShipments[i];
+        final shipmentId = shipment['shipment_id'].toString();
+        final isRequested = _invoiceRequests.contains(shipmentId);
+
+        final status =
+            shipment['booking_status']?.toString().toLowerCase() ?? '';
+
+        return shipment_card.ShipmentCard(
+          shipment: shipment,
+          pdfStates: pdfStates,
+          isInvoiceRequested: isRequested,
+          customUserId: customUserId,
+          role: role,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ShipmentDetailsPage(shipment: shipment),
+              ),
+            );
+          },
+
+          // 👇 Invoice Actions ONLY if completed
+          onPreviewInvoice: status == "completed"
+              ? () => previewInvoice(context, shipmentId)
+              : null,
+
+          onDownloadInvoice: status == "completed"
+              ? () async => await downloadInvoice(shipment)
+              : null,
+
+          onRequestInvoice: status == "completed"
+              ? () => requestInvoice(shipment)
+              : null,
+
+          onGenerateInvoice: status == "completed"
+              ? () => _showGenerateInvoiceDialog(shipment)
+              : null,
+
+          onDeleteInvoice: status == "completed"
+              ? () async => await confirmAndDelete(context, shipment)
+              : null,
+
+          onShareInvoice: status == "completed"
+              ? () async => await shareInvoice(shipment)
+              : null,
+        );
+      },
+    );
+  }
+
+  Widget buildSkeletonLoader() {
+    return ListView.builder(
+      itemCount: 5,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Shimmer.fromColors(
+          baseColor: Colors.grey.shade300,
+          highlightColor: Colors.grey.shade100,
+          child: Card(
+            elevation: 2,
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Colors.grey,
+                radius: 20,
+              ),
+              title: Container(
+                width: double.infinity,
+                height: 16,
+                color: Colors.grey,
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  Container(width: 100, height: 12, color: Colors.grey),
+                  const SizedBox(height: 4),
+                  Container(width: 150, height: 12, color: Colors.grey),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Updated Empty State to be scrollable (so RefreshIndicator works)
+  Widget buildEmptyState() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.filter_alt_off, size: 80, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'no_shipments_found'.tr(),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'try_refreshing_filters'.tr(),
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    statusFilter = 'All';
+                    selectedYear = null;
+                    selectedMonth = null;
+                    applyFilters();
+                  });
+                },
+                child: const Text('Clear All Filters'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class ShipmentSearchDelegate extends SearchDelegate<String> {
   final List<Map<String, dynamic>> shipments;
+
   ShipmentSearchDelegate({required this.shipments});
 
   @override
@@ -1478,7 +1795,7 @@ class ShipmentSearchDelegate extends SearchDelegate<String> {
   );
 
   @override
-  Widget buildResults(BuildContext context) => Container();
+  Widget buildResults(BuildContext context) => buildSuggestions(context);
 
   @override
   Widget buildSuggestions(BuildContext context) {
@@ -1487,10 +1804,11 @@ class ShipmentSearchDelegate extends SearchDelegate<String> {
       return Center(
         child: Text(
           "type_shipment_search".tr(),
-          style: TextStyle(color: Colors.grey),
+          style: const TextStyle(color: Colors.grey),
         ),
       );
     }
+
     final results = shipments.where((s) {
       final id = s['shipment_id']?.toString().toLowerCase() ?? '';
       final pickup = s['pickup']?.toString().toLowerCase() ?? '';
@@ -1534,7 +1852,9 @@ class ShipmentSearchDelegate extends SearchDelegate<String> {
                   ),
               ],
             ),
-            onTap: () {},
+            onTap: () {
+              close(context, s['shipment_id'].toString());
+            },
           ),
         );
       },
@@ -1547,7 +1867,9 @@ class PdfPreviewScreen extends StatelessWidget {
   const PdfPreviewScreen({required this.localPath, Key? key}) : super(key: key);
 
   void sharePdf() {
-    SharePlus.instance.share(ShareParams(files: [XFile(localPath)], text: 'sharing_invoice_pdf'.tr()));
+    SharePlus.instance.share(
+      ShareParams(files: [XFile(localPath)], text: 'sharing_invoice_pdf'.tr()),
+    );
   }
 
   @override
@@ -1558,7 +1880,7 @@ class PdfPreviewScreen extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: sharePdf,
-            icon: Icon(Icons.share),
+            icon: const Icon(Icons.share),
             tooltip: 'share_pdf'.tr(),
           ),
         ],

@@ -5,7 +5,6 @@ import '../dashboard/widgets/feature_card.dart';
 import '../features/complains/mycomplain.dart';
 import '../features/shipment/shipper_form_page.dart';
 import '../features/tracking/shared_shipments_page.dart';
-import '../features/trips/myTrips.dart';
 import '../services/onesignal_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/chat_screen.dart';
@@ -330,16 +329,6 @@ class _ShipperDashboardState extends State<ShipperDashboard> {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ShipperFormPage()),
-          ),
-        ),
-        FeatureCard(
-          title: 'activeTrips'.tr(),
-          subtitle: 'monitorLiveLocations'.tr(),
-          icon: Icons.map_outlined,
-          color: Colors.orange,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MyShipments()),
           ),
         ),
         FeatureCard(

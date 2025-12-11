@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../cubits/shipment_cubit.dart';
 import 'shipment_card.dart';
-import 'package:easy_localization/easy_localization.dart';
 
 class ShipmentListView extends StatelessWidget {
   final List<Map<String, dynamic>> shipments;
@@ -14,90 +14,53 @@ class ShipmentListView extends StatelessWidget {
     required this.searchQuery,
   });
 
-  /// Confirmation Dialog — Updated for latest Flutter Material 3
-  void showAcceptConfirmationDialog(
-      BuildContext context,
-      VoidCallback onConfirm
-      ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('confirm_shipment'.tr()),
-        content: Text('confirm_accept_message'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('cancel'.tr()),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              onConfirm();
-            },
-            child: Text('yes_accept'.tr()),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // SEARCH LOGIC (unchanged)
-    final List<Map<String, dynamic>> filteredList = searchQuery.isEmpty
-        ? shipments
-        : shipments.where((trip) {
-      final id = (trip['shipment_id'] ?? '')
-          .toString()
-          .toLowerCase();
+    final filteredShipments = shipments.where((s) {
+      final query = searchQuery.toLowerCase();
+      final id = (s['shipment_id'] ?? '').toString().toLowerCase();
+      final pickup = (s['pickup'] ?? '').toString().toLowerCase();
+      final drop = (s['drop'] ?? '').toString().toLowerCase();
+      // Search by shipper name as well
+      final shipper = (s['shipper_name'] ?? '').toString().toLowerCase();
 
-      final source = (trip['pickup'] ?? '')
-          .toString()
-          .toLowerCase();
-
-      final dest = (trip['drop'] ?? '')
-          .toString()
-          .toLowerCase();
-
-      final shipperName = (trip['user_profiles']?['name'] ?? '')
-          .toString()
-          .toLowerCase();
-
-      final q = searchQuery.toLowerCase();
-
-      return id.contains(q) ||
-          source.contains(q) ||
-          dest.contains(q) ||
-          shipperName.contains(q);
+      return id.contains(query) ||
+          pickup.contains(query) ||
+          drop.contains(query) ||
+          shipper.contains(query);
     }).toList();
-    // NO MATCH UI
-    if (filteredList.isEmpty) {
-      return Center(
-        child: Text(
-          'no_shipments_match'.tr(),
-        ),
-      );
+
+    if (filteredShipments.isEmpty) {
+      if (searchQuery.isNotEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.search_off, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'no_results_found'.tr(),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ],
+          ),
+        );
+      }
+      return Center(child: Text('no_shipments'.tr()));
     }
-    // LIST VIEW
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: filteredList.length,
+      itemCount: filteredShipments.length,
       itemBuilder: (context, index) {
-        final trip = filteredList[index];
-
+        final trip = filteredShipments[index];
         return ShipmentCard(
           trip: trip,
           onAccept: () {
-            showAcceptConfirmationDialog(context, () {
-              context.read<ShipmentCubit>().acceptShipment(
-                shipmentId: trip['shipment_id'],
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('shipment accepted'.tr()),
-                ),
-              );
-            });
+            // Trigger the accept action in the Cubit
+            context.read<ShipmentCubit>().acceptShipment(
+              shipmentId: trip['shipment_id'],
+            );
           },
         );
       },

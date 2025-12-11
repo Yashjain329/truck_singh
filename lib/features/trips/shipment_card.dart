@@ -38,9 +38,58 @@ class ShipmentCard extends StatefulWidget {
 }
 
 class _ShipmentCardState extends State<ShipmentCard> {
-  // function to full trim address
+  IconData getStatusIcon(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return Icons.pending_actions;
+      case 'accepted':
+        return Icons.check_circle_outline;
+      case 'en route to pickup':
+        return Icons.local_shipping_outlined;
+      case 'arrived at pickup':
+        return Icons.location_on_outlined;
+      case 'loading':
+        return Icons.upload_file_outlined;
+      case 'picked up':
+        return Icons.task_alt;
+      case 'in transit':
+        return Icons.route_outlined;
+      case 'arrived at drop':
+        return Icons.pin_drop_outlined;
+      case 'unloading':
+        return Icons.download_outlined;
+      case 'delivered':
+        return Icons.delivery_dining;
+      case 'completed':
+        return Icons.verified_outlined;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  Color getStatusColor(String? status, BuildContext context) {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return Colors.orange.shade700;
+      case 'accepted':
+        return Colors.blue.shade700;
+      case 'en route to pickup':
+      case 'arrived at pickup':
+      case 'loading':
+      case 'picked up':
+      case 'in transit':
+      case 'arrived at drop':
+      case 'unloading':
+        return Colors.purple.shade700;
+      case 'delivered':
+      case 'completed':
+        return Colors.green.shade700;
+      default:
+        return Theme.of(context).textTheme.bodySmall?.color ?? Colors.black45;
+    }
+  }
+
   String trimAddress(String address) {
-    // Remove common redundant words
     String cleaned = address
         .replaceAll(
       RegExp(
@@ -70,77 +119,159 @@ class _ShipmentCardState extends State<ShipmentCard> {
   Widget build(BuildContext context) {
     final shipmentId = widget.shipment['shipment_id'] ?? 'Unknown';
     final completedAt = widget.shipment['delivery_date'] ?? '';
+    final status = widget.shipment['booking_status']?.toString();
+    final isCompleted = status?.toLowerCase() == 'completed';
 
-    return InkWell(
-      onTap: widget.onTap,
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        elevation: 3,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // Managed By data
+    final managedByName = widget.shipment['managed_by_name'];
+    final managedById = widget.shipment['managed_by_id'];
+    final isManaged = managedByName != null;
+
+    final statusColor = getStatusColor(status, context);
+    final statusIcon = getStatusIcon(status);
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      elevation: 3,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- STATUS HEADER ---
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(statusIcon, color: statusColor, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      status ?? 'Unknown Status',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                  if (!isCompleted)
+                    TextButton.icon(
+                      onPressed: widget.onTap,
+                      icon: const Icon(Icons.track_changes_outlined, size: 18),
+                      label: Text("track".tr()),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).primaryColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // --- MANAGED BY TAG ---
+            if (isManaged)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.amber.shade100,
+                child: Row(
+                  children: [
+                    Icon(Icons.supervised_user_circle, size: 18, color: Colors.amber.shade900),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Managed by $managedByName ($managedById)",
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // --- MAIN CONTENT ---
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "$shipmentId",
+                    shipmentId,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                "completed : $completedAt".tr(),
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.location_on, color: Colors.blue, size: 20),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'PICKUP: ${trimAddress(widget.shipment['pickup'] ?? '')}',
-                      style: const TextStyle(fontSize: 14),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                  const SizedBox(height: 6),
+                  if (completedAt.isNotEmpty && isCompleted)
+                    Text(
+                      "completed : $completedAt".tr(),
+                      style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
+                  const SizedBox(height: 12,),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        color: Colors.blue,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'PICKUP: ${trimAddress(widget.shipment['pickup'] ?? '')}',
+                          style: const TextStyle(fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.flag, color: Colors.red, size: 20),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'DROP: ${trimAddress(widget.shipment['drop'] ?? '')}',
-                      style: const TextStyle(fontSize: 14),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.flag, color: Colors.red, size: 20),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'DROP: ${trimAddress(widget.shipment['drop'] ?? '')}',
+                          style: const TextStyle(fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                  const SizedBox(height: 10),
 
-              const SizedBox(height: 10),
-              buildActionButtons(
-                widget.shipment,
-                context,
-                widget.customUserId,
-                widget.role,
+                  // Hide buttons if managed by someone else
+                  if (!isManaged)
+                    buildActionButtons(
+                      widget.shipment,
+                      context,
+                      widget.customUserId,
+                      widget.role,
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -160,13 +291,17 @@ class _ShipmentCardState extends State<ShipmentCard> {
     final hasInvoice =
         invoicePath != null && invoicePath.toString().trim().isNotEmpty;
     final state = widget.pdfStates[shipmentId] ?? PdfState.notGenerated;
+    final status = shipment['booking_status']?.toString().toLowerCase() ?? '';
 
-    print("buildActionButtons: role=$role, customUserId=$customUserId, shipperId=$shipperId, assignedCompanyId=$assignCompanyId, hasInvoice=$hasInvoice, state=$state");
-    print("Shipment: ${shipment['shipment_id']}, assigned_agent=${shipment['assigned_agent']}, shipper_id=${shipment['shipper_id']}");
+    if (status != 'completed') {
+      return const SizedBox.shrink();
+    }
+
     bool isCreator = (role == 'truckowner' && customUserId == shipperId);
-    bool isAssigned = (role == 'truckowner' || role == 'agent' || role == 'company') && (customUserId == assignCompanyId);
+    bool isAssigned =
+        (role == 'truckowner' || role == 'agent' || role == 'company') &&
+            (customUserId == assignCompanyId);
     bool canCreate = isCreator || isAssigned;
-
 
     if (canCreate) {
       if (hasInvoice) {
@@ -186,19 +321,22 @@ class _ShipmentCardState extends State<ShipmentCard> {
                     : "download".tr(),
               ),
               style: ElevatedButton.styleFrom(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 14)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                textStyle: const TextStyle(fontSize: 14),
+              ),
             ),
             IconButton(
-              onPressed:
-              state == PdfState.downloaded ? widget.onPreviewInvoice : null,
+              onPressed: state == PdfState.downloaded
+                  ? widget.onPreviewInvoice
+                  : null,
               icon: const Icon(Icons.visibility),
               tooltip: 'preview_pdf'.tr(),
             ),
             IconButton(
-              onPressed:
-              widget.onShareInvoice,
+              onPressed: widget.onShareInvoice,
               icon: const Icon(Icons.share),
               tooltip: 'share_invoice'.tr(),
             ),
@@ -217,24 +355,31 @@ class _ShipmentCardState extends State<ShipmentCard> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(6)),
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.info_outline,
-                          color: Colors.blue.shade700, size: 16),
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue.shade700,
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           "invoice_requested_by_shipper".tr(),
                           style: TextStyle(
-                              color: Colors.blue.shade800,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12),
+                            color: Colors.blue.shade800,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -247,8 +392,9 @@ class _ShipmentCardState extends State<ShipmentCard> {
                 icon: const Icon(Icons.receipt),
                 label: Text("generate_invoice".tr()),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white),
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
           ],
@@ -273,13 +419,17 @@ class _ShipmentCardState extends State<ShipmentCard> {
                     : "download".tr(),
               ),
               style: ElevatedButton.styleFrom(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 14)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                textStyle: const TextStyle(fontSize: 14),
+              ),
             ),
             IconButton(
-              onPressed:
-              state == PdfState.downloaded ? widget.onPreviewInvoice : null,
+              onPressed: state == PdfState.downloaded
+                  ? widget.onPreviewInvoice
+                  : null,
               icon: const Icon(Icons.visibility),
               tooltip: 'preview_pdf'.tr(),
             ),
@@ -300,12 +450,14 @@ class _ShipmentCardState extends State<ShipmentCard> {
         } else {
           return SizedBox(
             child: ElevatedButton.icon(
-                onPressed: widget.onRequestInvoice,
-                icon: const Icon(Icons.receipt_rounded),
-                label: Text("request_invoice".tr()),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.shade100,
-                    foregroundColor: Colors.orange.shade900)),
+              onPressed: widget.onRequestInvoice,
+              icon: const Icon(Icons.receipt_rounded),
+              label: Text("request_invoice".tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade100,
+                foregroundColor: Colors.orange.shade900,
+              ),
+            ),
           );
         }
       }
@@ -320,22 +472,17 @@ class _ShipmentCardState extends State<ShipmentCard> {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => Rating(
-                      shipmentId: shipmentId,
-                    ),
+                    builder: (context) => Rating(shipmentId: shipmentId),
                   ),
                 );
               },
               icon: const Icon(Icons.star),
-              label: Text(
-                "rate".tr(),
-              ),
+              label: Text("rate".tr()),
             ),
           ),
         ],
       );
-    }
-    else {
+    } else {
       return const SizedBox();
     }
   }

@@ -22,7 +22,6 @@ import '../features/laod_assignment/presentation/cubits/shipment_cubit.dart';
 import '../features/laod_assignment/presentation/screen/load_assignment_screen.dart';
 import '../features/shipment/shipper_form_page.dart';
 import '../features/laod_assignment/presentation/screen/allLoads.dart';
-import '../features/trips/myTrips.dart';
 import 'package:logistics_toolkit/features/tracking/shared_shipments_page.dart';
 import '../features/ratings/presentation/screen/trip_ratings.dart';
 import 'package:logistics_toolkit/features/Report%20Analysis/report_chart.dart';
@@ -373,16 +372,6 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
                 MaterialPageRoute(
                   builder: (context) => const SharedShipmentsPage(),
                 ),
-              ),
-            ),
-            FeatureCard(
-              title: 'activeTrips'.tr(),
-              subtitle: 'monitorLiveLocations'.tr(),
-              icon: Icons.map_outlined,
-              color: Colors.orange,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MyShipments()),
               ),
             ),
             FeatureCard(

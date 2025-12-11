@@ -7,7 +7,6 @@ import 'package:logistics_toolkit/features/mytruck/mytrucks.dart';
 import 'package:logistics_toolkit/features/notifications/presentation/screen/notification_center.dart';
 import 'package:logistics_toolkit/features/sos/company_driver_sos.dart';
 import 'package:logistics_toolkit/features/tracking/tracktruckspage.dart';
-import 'package:logistics_toolkit/features/trips/myTrips.dart';
 import 'package:logistics_toolkit/features/trips/myTrips_history.dart';
 import '../features/bilty/shipment_selection_page.dart';
 import '../features/chat/agent_chat_list_page.dart';
@@ -24,10 +23,6 @@ import '../features/truck_documents/truck_documents_page.dart';
 
 Future<void> openScreen(String? screen, context, Map params) async {
   switch (screen) {
-    case "my_shipments":
-      Navigator.push(context, MaterialPageRoute(builder: (_) => MyShipments()));
-      break;
-
     case "all_loads":
       Navigator.push(
         context,
@@ -55,7 +50,6 @@ Future<void> openScreen(String? screen, context, Map params) async {
         context,
         MaterialPageRoute(
           builder: (_) => TrackTrucksPage(truckOwnerId: truckOwnerId),
-        ),
       );
       break;
 

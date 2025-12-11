@@ -30,8 +30,9 @@ class GeminiService {
   Future<String> queryRaw(
       String userInput,
       List<ChatMessage> conversation,
-      String preferredLanguage, // NEW: Language preference from UI
+      String preferredLanguage, 
       ) async {
+    
     final currentUser = SupabaseService.getCurrentUser();
 
     // Handle unregistered users separately

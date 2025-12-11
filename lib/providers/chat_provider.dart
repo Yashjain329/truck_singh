@@ -151,9 +151,9 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> send(
-    String input, {
-    required void Function(String screen) onNavigate,
-  }) async {
+      String input, {
+        required void Function(String screen) onNavigate,
+      }) async {
     addUserMessage(input);
     //for start ai is typing
     _isTyping = true;
@@ -583,6 +583,7 @@ class ChatProvider extends ChangeNotifier {
           break;
 
         default:
+
           if (replyText.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
@@ -618,6 +619,7 @@ class ChatProvider extends ChangeNotifier {
       );
     } catch (e) {
       addBotMessage(
+
         ChatMessage(
           text: _localizeReply(
             langCode: _preferredLanguage,

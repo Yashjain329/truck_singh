@@ -26,31 +26,25 @@ class MyTripsServices {
       return [];
     }
 
-    String column;
-    switch (role) {
-      case 'shipper':
-        column = 'shipper_id';
-        break;
-      case 'truckowner':
-        column = 'assigned_agent';
-        break;
-      case 'agent':
-        column = 'assigned_agent';
-        break;
-      case 'driver':
-        column = 'assigned_driver';
-        break;
-      default:
-        return [];
+    // Use complex fetch for all roles to ensure creators see their shipments
+    // regardless of their current role (e.g. a Truck Owner who acted as a Shipper)
+    return _getShipmentsComplex(customId);
+  }
+
+  // Helper to fetch shipments where user is EITHER shipper, agent, or truckowner
+  Future<List<Map<String, dynamic>>> _getShipmentsComplex(String customId) async {
+    try {
+      final response = await _client
+          .from('shipment')
+          .select()
+          .or('shipper_id.eq.$customId,assigned_agent.eq.$customId,assigned_truckowner.eq.$customId')
+          .order('created_at');
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print("Error fetching complex shipments: $e");
+      return [];
     }
-
-    final response = await _client
-        .from('shipment')
-        .select()
-        .eq(column, customId)
-        .order('created_at');
-
-    return List<Map<String, dynamic>>.from(response);
   }
 
   Future<Map<String, int>> getRatingEditCounts() async {
@@ -66,5 +60,31 @@ class MyTripsServices {
       return editCounts;
     }
     return {};
+  }
+
+  // NEW: Batch fetch user names for "Managed By" tag
+  Future<Map<String, String>> getUserNames(List<String> userIds) async {
+    if (userIds.isEmpty) return {};
+    try {
+      // Remove duplicates
+      final uniqueIds = userIds.toSet().toList();
+
+      final response = await _client
+          .from('user_profiles')
+          .select('custom_user_id, name')
+      // Changed .in_() to .filter() to resolve "method not defined" error
+          .filter('custom_user_id', 'in', uniqueIds);
+
+      final Map<String, String> names = {};
+      for (var row in response) {
+        if (row['custom_user_id'] != null && row['name'] != null) {
+          names[row['custom_user_id']] = row['name'];
+        }
+      }
+      return names;
+    } catch (e) {
+      print('Error fetching user names: $e');
+      return {};
+    }
   }
 }
