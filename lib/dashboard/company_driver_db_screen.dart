@@ -21,6 +21,9 @@ import '../services/onesignal_notification_service.dart';
 import '../features/auth/services/supabase_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 
+import '../widgets/chat_screen.dart';
+import '../widgets/floating_chat_control.dart';
+
 class CompanyDriverDb extends StatefulWidget {
   const CompanyDriverDb({Key? key}) : super(key: key);
 
@@ -307,179 +310,215 @@ class _CompanyDriverDbState extends State<CompanyDriverDb> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _handleRefresh,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Column(
-                      children: [
-                        _buildCurrentTripCard(),
-                        const SizedBox(height: 20),
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: _getCrossAxisCount(
-                            constraints.maxWidth,
-                          ),
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 1.0,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: RefreshIndicator(
+              onRefresh: _handleRefresh,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Column(
                           children: [
-                            _buildFeatureCard(
-                              title: 'shipments_title'.tr(),
-                              subtitle: 'shipments_subtitle'.tr(),
-                              icon: Icons.local_shipping_outlined,
-                              color: AppColors.orange,
-                              onTap: () {
-                                final userCustomId =
-                                userProfile?['custom_user_id'];
-                                if (userCustomId != null) {
-                                  Navigator.push(
+                            _buildCurrentTripCard(),
+                            const SizedBox(height: 20),
+                            GridView.count(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisCount: _getCrossAxisCount(
+                                constraints.maxWidth,
+                              ),
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 1.0,
+                              children: [
+                                _buildFeatureCard(
+                                  title: 'shipments_title'.tr(),
+                                  subtitle: 'shipments_subtitle'.tr(),
+                                  icon: Icons.local_shipping_outlined,
+                                  color: AppColors.orange,
+                                  onTap: () {
+                                    final userCustomId =
+                                    userProfile?['custom_user_id'];
+                                    if (userCustomId != null) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              DriverStatusChanger(
+                                                driverId: userCustomId,
+                                              ),
+                                        ),
+                                      );
+                                    } else {
+                                      _showErrorSnackBar(
+                                        "driver_id_not_loaded".tr(),
+                                      );
+                                    }
+                                  },
+                                ),
+                                _buildFeatureCard(
+                                  title: 'my_trips_title'.tr(),
+                                  subtitle: 'my_trips_subtitle'.tr(),
+                                  icon: Icons.route_outlined,
+                                  color: Colors.blue,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                        const MyTripsHistory(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                _buildFeatureCard(
+                                  title: 'documents_title'.tr(),
+                                  subtitle: 'documents_subtitle'.tr(),
+                                  icon: Icons.person_outline,
+                                  color: Colors.green,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                        const DriverDocumentsPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                _buildFeatureCard(
+                                  title: 'truckDocuments'.tr(),
+                                  subtitle: 'documents_subtitle'.tr(),
+                                  icon: Icons.local_shipping_outlined,
+                                  color: Colors.blue,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                        const TruckDocumentsPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                _buildFeatureCard(
+                                  title: 'complaints_title'.tr(),
+                                  subtitle: 'complaints_subtitle'.tr(),
+                                  icon: Icons.report_problem_outlined,
+                                  color: Colors.amber,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                        const ComplaintHistoryPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                FeatureCard(
+                                  title: 'ratings'.tr(),
+                                  subtitle: 'viewRatings'.tr(),
+                                  icon: Icons.star_outline,
+                                  color: Colors.orange,
+                                  onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => DriverStatusChanger(
-                                        driverId: userCustomId,
-                                      ),
+                                      builder: (context) =>
+                                      const TripRatingsPage(),
                                     ),
-                                  );
-                                } else {
-                                  _showErrorSnackBar(
-                                    "driver_id_not_loaded".tr(),
-                                  );
-                                }
-                              },
-                            ),
-                            _buildFeatureCard(
-                              title: 'my_trips_title'.tr(),
-                              subtitle: 'my_trips_subtitle'.tr(),
-                              icon: Icons.route_outlined,
-                              color: Colors.blue,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                    const MyTripsHistory(),
                                   ),
-                                );
-                              },
-                            ),
-                            _buildFeatureCard(
-                              title: 'documents_title'.tr(),
-                              subtitle: 'documents_subtitle'.tr(),
-                              icon: Icons.person_outline,
-                              color: Colors.green,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                    const DriverDocumentsPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildFeatureCard(
-                              title: 'truckDocuments'.tr(),
-                              subtitle: 'documents_subtitle'.tr(),
-                              icon: Icons.local_shipping_outlined,
-                              color: Colors.blue,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                    const TruckDocumentsPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildFeatureCard(
-                              title: 'complaints_title'.tr(),
-                              subtitle: 'complaints_subtitle'.tr(),
-                              icon: Icons.report_problem_outlined,
-                              color: Colors.amber,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                    const ComplaintHistoryPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                            FeatureCard(
-                              title: 'ratings'.tr(),
-                              subtitle: 'viewRatings'.tr(),
-                              icon: Icons.star_outline,
-                              color: Colors.orange,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const TripRatingsPage()),
-                              ),
-                            ),
-                            _buildFeatureCard(
-                              title: 'sos_title'.tr(),
-                              subtitle: 'sos_subtitle'.tr(),
-                              icon: Icons.sos_outlined,
-                              color: Colors.red,
-                              onTap: () {
-                                // --- START CORRECT CODE ---
-                                // Check if there's an active shipment loaded
-                                if (_activeShipment == null) {
-                                  _showErrorSnackBar("You are not on an active shipment."); // Correct error message
-                                  return;
-                                }
-                                // Get the AGENT ID from the active shipment
-                                final agentId = _activeShipment!['assigned_agent'];
+                                ),
+                                _buildFeatureCard(
+                                  title: 'sos_title'.tr(),
+                                  subtitle: 'sos_subtitle'.tr(),
+                                  icon: Icons.sos_outlined,
+                                  color: Colors.red,
+                                  onTap: () {
+                                    // --- START CORRECT CODE ---
+                                    // Check if there's an active shipment loaded
+                                    if (_activeShipment == null) {
+                                      _showErrorSnackBar(
+                                        "You are not on an active shipment.",
+                                      ); // Correct error message
+                                      return;
+                                    }
+                                    // Get the AGENT ID from the active shipment
+                                    final agentId =
+                                    _activeShipment!['assigned_agent'];
 
-                                if (agentId != null && agentId.isNotEmpty) {
-                                  // Navigate and pass the AGENT ID
-                                  Navigator.push(
+                                    if (agentId != null && agentId.isNotEmpty) {
+                                      // Navigate and pass the AGENT ID
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              CompanyDriverEmergencyScreen(
+                                                agentId:
+                                                agentId, // Pass agentId correctly
+                                              ),
+                                        ),
+                                      );
+                                    } else {
+                                      // Show error if no agent is assigned to the shipment
+                                      _showErrorSnackBar(
+                                        "No agent assigned to the current shipment.",
+                                      ); // Correct error message
+                                    }
+                                    // --- END CORRECT CODE ---
+                                  },
+                                ),
+                                _buildFeatureCard(
+                                  title: 'my_chats_title'.tr(),
+                                  subtitle: 'my_chats_subtitle'.tr(),
+                                  icon: Icons.chat_bubble_outline,
+                                  color: Colors.blue,
+                                  onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => CompanyDriverEmergencyScreen(
-                                        agentId: agentId, // Pass agentId correctly
-                                      ),
+                                      builder: (context) =>
+                                      const DriverChatListPage(),
                                     ),
-                                  );
-                                } else {
-                                  // Show error if no agent is assigned to the shipment
-                                  _showErrorSnackBar("No agent assigned to the current shipment."); // Correct error message
-                                }
-                                // --- END CORRECT CODE ---
-                              },
-                            ),
-                            _buildFeatureCard(
-                              title: 'my_chats_title'.tr(),
-                              subtitle: 'my_chats_subtitle'.tr(),
-                              icon: Icons.chat_bubble_outline,
-                              color: Colors.blue,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const DriverChatListPage()),
-                              ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 10,
+            right: 12,
+            child: FloatingChatControl(
+              onOpenChat: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      onNavigate: (s) {
+                        Navigator.of(context).pushNamed('/$s');
+                      },
                     ),
                   ),
                 );
               },
+              listening: false,
             ),
           ),
-        ),
+        ],
       ),
     );
   }

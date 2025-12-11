@@ -1,4 +1,3 @@
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -37,7 +36,6 @@ class ChatMessage {
         "language": actionParameters!["language"],
     };
   }
-
 }
 
 class ChatProvider extends ChangeNotifier {
@@ -48,14 +46,24 @@ class ChatProvider extends ChangeNotifier {
   List<ChatMessage> messages = [];
   bool ttsEnabled = true;
   bool speaking = false;
- // bool loading = false;   // check krnege iski need h ki ni
 
   //New : Add typing indicator variable
   bool _isTyping = false;
+
   bool get isTyping => _isTyping;
 
+  // NEW: Language preference
+  String _preferredLanguage = 'hinglish'; //Default
+  String get preferredLanguage => _preferredLanguage;
+
+  // 🔥 NEW: Track if user manually changed language
+  bool _languageManuallySet = false;
+
   ChatProvider({required this.gemini, required this.supabase}) {
-    _tts.setStartHandler(() => speaking = true);
+    _tts.setStartHandler(() {
+      speaking = true;
+      notifyListeners();
+    });
     _tts.setCompletionHandler(() {
       speaking = false;
       notifyListeners();
@@ -66,20 +74,39 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
-  // this is for format language in the response.
-  String _localizeReply({
-    required String langCode,
-    required String hiText,
-    required String enText,
-  }) {
-    // Gemini se "hi" aaega Hindi/Hinglish ke liye, "en" English ke liye
-    if (langCode == 'hi') {
-      return hiText;
-    } else {
-      return enText;
+  /// 🔥 NEW: Sync chatbot language with app language (call this from ChatScreen)
+  void syncWithAppLanguage(BuildContext context) {
+    // Only sync if user hasn't manually changed language
+    if (!_languageManuallySet) {
+      final appLangCode = context.locale.languageCode;
+
+      // Map app language to chatbot language
+      if (appLangCode == 'hi') {
+        _preferredLanguage = 'hindi';
+      } else if (appLangCode == 'en') {
+        _preferredLanguage = 'english';
+      } else {
+        _preferredLanguage = 'hinglish'; // Default
+      }
+
+      notifyListeners();
+      print('Chatbot language synced with app: $_preferredLanguage');
     }
   }
 
+  /// NEW: Set preferred language for chatbot responses
+  void setPreferredLanguage(String language) {
+    _preferredLanguage = language;
+    _languageManuallySet = true; // Mark as manually set
+    notifyListeners();
+    print('Chatbot Language Set: $language');
+  }
+
+  /// 🔥 NEW: Reset to app language
+  void resetToAppLanguage(BuildContext context) {
+    _languageManuallySet = false;
+    syncWithAppLanguage(context);
+  }
 
   void toggleTts() {
     ttsEnabled = !ttsEnabled;
@@ -88,7 +115,9 @@ class ChatProvider extends ChangeNotifier {
 
   // add message in the chatList  from userChat
   void addUserMessage(String text) {
-    messages.add(ChatMessage(text: text, isUser: true,timestamp: DateTime.now()));
+    messages.add(
+      ChatMessage(text: text, isUser: true, timestamp: DateTime.now()),
+    );
     notifyListeners();
   }
 
@@ -102,18 +131,22 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _speak(String text, {String? msgActionLang}) async {
     try {
-      final langCode = msgActionLang ?? 'en';
-      await _tts.setLanguage(langCode);
+      //Map chatbot language to TTS locale
+      String ttsLocale = 'en-US';
+      if (msgActionLang == 'hindi') {
+        ttsLocale = 'hi-IN';
+      } else if (msgActionLang == 'hinglish') {
+        ttsLocale = 'hi-IN';
+      }
+      await _tts.setLanguage(ttsLocale);
       await _tts.speak(text);
     } catch (e) {
-      print(e);
+      print('TTS Error: $e');
     }
   }
 
   // NEW: Method to simulate typing
   Future<void> _simulateTyping({int milliseconds = 800}) async {
-    // _isTyping = true;
-    // notifyListeners();
     await Future.delayed(Duration(milliseconds: milliseconds));
   }
 
@@ -122,18 +155,15 @@ class ChatProvider extends ChangeNotifier {
     required void Function(String screen) onNavigate,
   }) async {
     addUserMessage(input);
-
     //for start ai is typing
     _isTyping = true;
     notifyListeners();
 
     await _simulateTyping(milliseconds: 600);
-    //loading = true;
-    //notifyListeners();
 
     try {
       // isme messages jo hai history hai.
-      final raw = await gemini.queryRaw(input, messages);
+      final raw = await gemini.queryRaw(input, messages, _preferredLanguage);
       final parsed = parseBotOutput(raw);
 
       //
@@ -145,280 +175,360 @@ class ChatProvider extends ChangeNotifier {
       // Decide if message should include an action button (open_screen)
       String? buttonLabel;
       String? buttonScreen;
-      if (parsed.action == 'open_screen'){
+      if (parsed.action == 'open_screen') {
         final screen = params['screen']?.toString() ?? '';
 
-        if (screen == "track_trucks") {
-          final user = await SupabaseService.getCurrentUser();
-          print('User in tracktruck:$user');
-          final customUid = await SupabaseService.getCustomUserId(user!.id);
-          print('customUid in trackTruck:$customUid');
-
-          params['truckOwnerId'] = customUid;
+        if (screen == "track_trucks" || screen == "shipments") {
+          final user = SupabaseService.getCurrentUser();
+          if (user != null) {
+          final customUid = await SupabaseService.getCustomUserId(user.id);
+            if (screen == "track_trucks") {
+              params['truckOwnerId'] = customUid;
+            }
+            if(screen == "shipments"){
+              print('useridhai$customUid');
+              params['driverId'] = customUid;
+            }
+          }
         }
 
+        if(screen == "emergency"){
+          try {
+            final response = await ShipmentService.getActiveShipmentForDriver();
+            if (response == null || response.isEmpty) {
+              replyText = _localizeReply(
+                  langCode: parsed.language,
+                  english: "You are not currently on an active shipment. Emergency/SOS is only available during active trips. You can ask: 'Show my shipments' or 'Open my trips'.",
+                  hindi: "आप वर्तमान में किसी सक्रिय शिपमेंट पर नहीं हैं। आपातकालीन/SOS केवल सक्रिय यात्राओं के दौरान उपलब्ध है। आप पूछ सकते हैं: 'मेरी शिपमेंट दिखाओ' या 'मेरी यात्राएँ खोलें'।",
+                hinglish: "Aap currently kisi active shipment par nahi hain. Emergency/SOS sirf active trips ke dauran hi available hai. Aap puch sakte ho: 'Meri shipments dikhao' ya 'Meri trips kholo'.",
+              );
+              buttonScreen = null;
+              buttonLabel = null;
+            }else{
+              // Get the AGENT ID from the active shipment
+              final agentId = response["assigned_agent"];
+              if(agentId != null && agentId.isNotEmpty){
+                params['agentId'] = agentId;
+
+                // ✅ Set button to open emergency screen
+                buttonLabel = _getButtonLabel(screen, parsed.language);
+                buttonScreen = screen;
+
+                // ✅ Success message
+                replyText = _localizeReply(
+                  langCode: parsed.language,
+                  english: "Opening emergency assistance. You can contact your assigned agent for help.",
+                  hindi: "आपातकालीन सहायता खोल रहे हैं। आप सहायता के लिए अपने असाइन किए गए एजेंट से संपर्क कर सकते हैं।",
+                  hinglish: "Emergency assistance khol rahe hain. Aap help ke liye apne assigned agent se contact kar sakte ho.",
+                );
+              }else{
+                // ✅ Shipment exists but no agent assigned
+                replyText = _localizeReply(
+                  langCode: parsed.language,
+                  english: "No agent is assigned to your current shipment. Please contact support.",
+                  hindi: "आपकी वर्तमान शिपमेंट को कोई एजेंट असाइन नहीं है। कृपया सपोर्ट से संपर्क करें।",
+                  hinglish: "Aapki current shipment ko koi agent assign nahi hai. Kripya support se contact karein.",
+                );
+                buttonLabel = null;
+                buttonScreen = null;
+              }
+            }
+          }catch(e){
+            print('Error fetching active shipment for emergency: $e');
+            replyText = _localizeReply(
+              langCode: parsed.language,
+              english: "Unable to check your shipment status. Please try again.",
+              hindi: "आपकी शिपमेंट स्थिति की जाँच करने में असमर्थ। कृपया पुनः प्रयास करें।",
+              hinglish: "Aapki shipment status check karne mein unable. Kripya dobara try karein.",
+            );
+            buttonLabel = null;
+            buttonScreen = null;
+          }
+        }
+
+
         if (screen.isNotEmpty) {
-          buttonLabel = 'open ${screen}';
+          buttonLabel = _getButtonLabel(screen, parsed.language);
           buttonScreen = screen;
         }
       }
 
       //Simulate more typing for complex queries
-      if(parsed.action != 'unknown' && parsed.action != 'open_screen'){
+      if (parsed.action != 'unknown' && parsed.action != 'open_screen') {
         await _simulateTyping(milliseconds: 400);
       }
-
 
       //if the action requires a DB query, do it here
       switch (parsed.action) {
 
-      //GET ACTIVE SHIPMENTS
+      case 'get_assigned_shipments':
+      final response = await ShipmentService.getActiveShipmentForDriver();
+      if(response == null) return;
+      final activeShipmentId = response['shipment_id'];
+      final status = response['booking_status'];
+      final drop = params["drop"] = response["drop"];
+      final pickup =  params["pickup"] = response["pickup"];
+      replyText = _localizeReply(
+      langCode: parsed.language,
+      english:
+      'You assigned shipment.\nShipment IDs: $activeShipmentId\nstatus: $status\ndrop: $drop\npickup: $pickup',
+      hindi:
+      'आपके पास असाइन शिपमेंट हैं।\nशिपमेंट आईडी: $activeShipmentId\nस्थिति: $status\nडिलीवरी स्थान: $drop\nउठाने का स्थान: $pickup',
+      hinglish:
+      'Aapke paas assigned shipments hain.\nShipment IDs: $activeShipmentId\nstatus: $status\ndrop: $drop\npickup: $pickup',
+      );
+      break;
+
         case 'get_active_shipments':
           final response = await ShipmentService.getAllMyShipments();
           final count = (response as List).length;
-          final active_shipment_ids = filterIdsByMap(response, 'shipment_id');
+          final activeShipmentIds = filterIdsByMap(response, 'shipment_id');
           replyText = _localizeReply(
             langCode: parsed.language,
-            hiText: 'Aapki $count shipments abhi active hain.\nActive Shipments IDs: ${active_shipment_ids.join(",")}',
-            enText: 'You currently have $count active shipments.\nActive shipment IDs: ${active_shipment_ids.join(",")}',
+            english:
+                'You currently have $count active shipments.\nShipment IDs: ${activeShipmentIds.join(", ")}',
+            hindi:
+                'आपके पास वर्तमान में $count सक्रिय शिपमेंट हैं।\nशिपमेंट आईडी: ${activeShipmentIds.join(", ")}',
+            hinglish:
+                'Aapke paas currently $count active shipments hain.\nShipment IDs: ${activeShipmentIds.join(", ")}',
           );
           break;
 
-      //GET COMPLETED SHIPMENTS
         case 'get_completed_shipments':
           final response = await ShipmentService.getAllMyCompletedShipments();
           final completed = (response as List).length;
           replyText = _localizeReply(
             langCode: parsed.language,
-            hiText: 'Aapke $completed shipments complete ho chuke hain.',
-            enText: '$completed of your shipments have been completed.',
+            english: '$completed of your shipments have been completed.',
+            hindi: 'आपकी $completed शिपमेंट पूरी हो चुकी हैं।',
+            hinglish: 'Aapki $completed shipments complete ho chuki hain.',
           );
           break;
 
-      //GET SHARED SHIPMENTS
         case 'get_shared_shipments':
           final response = await ShipmentService.getSharedShipments();
-          final shipmentIds = response.map((singleShipment) => singleShipment['shipment_id']).toList();
+          final shipmentIds = response.map((s) => s['shipment_id']).toList();
           if (shipmentIds.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Koi bhi shipment shared nahi hai.',
-              enText: 'You do not have any shared shipments.',
+              english: 'You do not have any shared shipments.',
+              hindi: 'आपके पास कोई साझा शिपमेंट नहीं है।',
+              hinglish: 'Aapke paas koi shared shipments nahi hain.',
             );
           } else {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText:
-              'Aapke paas ${shipmentIds.length} shipments abhi shared hain.\nShipments IDs: ${shipmentIds.join(",")}',
-              enText:
-              'You currently have ${shipmentIds.length} shared shipments.\nShipment IDs: ${shipmentIds.join(",")}',
+              english:
+                  'You have ${shipmentIds.length} shared shipments.\nShipment IDs: ${shipmentIds.join(", ")}',
+              hindi:
+                  'आपके पास ${shipmentIds.length} साझा शिपमेंट हैं।\nशिपमेंट आईडी: ${shipmentIds.join(", ")}',
+              hinglish:
+                  'Aapke paas ${shipmentIds.length} shared shipments hain.\nShipment IDs: ${shipmentIds.join(", ")}',
             );
           }
           break;
 
-
-      //GET ALL TRUCKS
         case 'get_my_trucks':
           final response = await ShipmentService.getAllTrucks();
-          final truckNumbers = response.map((single_truck) => single_truck['truck_number']).toList() ;
+          final truckNumbers = response.map((t) => t['truck_number']).toList();
           if (truckNumbers.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Aapke paas abhi 0 trucks registered hain.',
-              enText: 'You currently have 0 registered trucks.',
+              english: 'You currently have 0 registered trucks.',
+              hindi: 'आपके पास वर्तमान में 0 पंजीकृत ट्रक हैं।',
+              hinglish: 'Aapke paas currently 0 registered trucks hain.',
             );
           } else {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText:
-              '${response.length} trucks hain.\nTrucks Numbers: ${truckNumbers.join(",")}',
-              enText:
-              'You have ${response.length} trucks.\nTruck numbers: ${truckNumbers.join(",")}',
+              english:
+                  'You have ${response.length} trucks.\nTruck Numbers: ${truckNumbers.join(", ")}',
+              hindi:
+                  'आपके पास ${response.length} ट्रक हैं।\nट्रक नंबर: ${truckNumbers.join(", ")}',
+              hinglish:
+                  'Aapke paas ${response.length} trucks hain.\nTruck Numbers: ${truckNumbers.join(", ")}',
             );
           }
           break;
 
-      //GET AVAILABLE TRUCKS
         case 'get_available_trucks':
           final response = await ShipmentService.getAvailableTrucks();
-          final truckNumbers = response.map((single_truck) => single_truck['truck_number']).toList() ;
+          final truckNumbers = response.map((t) => t['truck_number']).toList();
           if (truckNumbers.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Abhi koi bhi truck khali nahi hai.',
-              enText: 'There are currently no available (empty) trucks.',
+              english: 'There are currently no available trucks.',
+              hindi: 'वर्तमान में कोई उपलब्ध ट्रक नहीं है।',
+              hinglish: 'Currently koi available trucks nahi hain.',
             );
           } else {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText:
-              '${response.length} trucks abhi khali hain.\nTrucks Numbers: ${truckNumbers.join(",")}',
-              enText:
-              '${response.length} trucks are currently available.\nTruck numbers: ${truckNumbers.join(",")}',
+              english:
+                  '${response.length} trucks are currently available.\nTruck Numbers: ${truckNumbers.join(", ")}',
+              hindi:
+                  '${response.length} ट्रक वर्तमान में उपलब्ध हैं।\nट्रक नंबर: ${truckNumbers.join(", ")}',
+              hinglish:
+                  '${response.length} trucks currently available hain.\nTruck Numbers: ${truckNumbers.join(", ")}',
             );
           }
           break;
 
-      //GET SHIPMENTS BY STATUS
         case 'get_shipments_by_status':
-
-          //for pending status
-          if(params["status"] == "Pending"){
-
+          if (params["status"] == "Pending") {
             final response = await ShipmentService.getPendingShipments();
-            print("STATUS FROM CHAT PROVIDERa: '${params["status"]}'");
-
-            final totalShipments = response.map((shipment) => shipment['shipment_id']).toList() ;
-
+            final totalShipments = response
+                .map((s) => s['shipment_id'])
+                .toList();
             final statusLabel = params['status'];
 
             if (totalShipments.isEmpty) {
               replyText = _localizeReply(
                 langCode: parsed.language,
-                hiText:
-                'Abhi 0 shipments "$statusLabel" status me hain.',
-                enText:
-                'You currently have 0 shipments with status "$statusLabel".',
+                english:
+                    'You currently have 0 shipments with status "$statusLabel".',
+                hindi:
+                    'आपके पास वर्तमान में "$statusLabel" स्थिति वाली 0 शिपमेंट हैं।',
+                hinglish:
+                    'Aapke paas currently "$statusLabel" status ki 0 shipments hain.',
               );
             } else {
               replyText = _localizeReply(
                 langCode: parsed.language,
-                hiText:
-                '${totalShipments.length} shipments abhi "$statusLabel" status me hain in shipments ko driver assigned nahi hai.\nShipment IDs: ${totalShipments.join(",")}',
-                enText:
-                'You currently have ${totalShipments.length} shipments with status "$statusLabel" And not assigned driver.\nShipment IDs: ${totalShipments.join(",")}',
+                english:
+                    'You have ${totalShipments.length} shipments with status "$statusLabel" (driver not assigned).\nShipment IDs: ${totalShipments.join(", ")}',
+                hindi:
+                    'आपके पास "$statusLabel" स्थिति वाली ${totalShipments.length} शिपमेंट हैं (ड्राइवर असाइन नहीं)।\nशिपमेंट आईडी: ${totalShipments.join(", ")}',
+                hinglish:
+                    'Aapke paas "$statusLabel" status ki ${totalShipments.length} shipments hain (driver assigned nahi).\nShipment IDs: ${totalShipments.join(", ")}',
               );
             }
-
-            // for all the status only pending are restrict
-          }
-          else {
+          } else {
             final response = await ShipmentService.getShipmentByStatus(
               status: params["status"],
             );
-
-            print("STATUS FROM CHAT PROVIDERa: '${params["status"]}'");
-
-
-            final totalShipments = response.map((
-                shipment) => shipment['shipment_id']).toList();
-            print("STATUS FROM CHAT PROVIDERb: '${totalShipments.length}'");
-
+            final totalShipments = response
+                .map((s) => s['shipment_id'])
+                .toList();
             final statusLabel = params['status'];
 
             if (totalShipments.isEmpty) {
               replyText = _localizeReply(
                 langCode: parsed.language,
-                hiText:
-                'Abhi 0 shipments "$statusLabel" status me hain.',
-                enText:
-                'You currently have 0 shipments with status "$statusLabel".',
+                english:
+                    'You currently have 0 shipments with status "$statusLabel".',
+                hindi:
+                    'आपके पास वर्तमान में "$statusLabel" स्थिति वाली 0 शिपमेंट हैं।',
+                hinglish:
+                    'Aapke paas currently "$statusLabel" status ki 0 shipments hain.',
               );
             } else {
               replyText = _localizeReply(
                 langCode: parsed.language,
-                hiText:
-                '${totalShipments
-                    .length} shipments abhi "$statusLabel" status me hain.\nShipment IDs: ${totalShipments
-                    .join(",")}',
-                enText:
-                'You currently have ${totalShipments
-                    .length} shipments with status "$statusLabel".\nShipment IDs: ${totalShipments
-                    .join(",")}',
+                english:
+                    'You have ${totalShipments.length} shipments with status "$statusLabel".\nShipment IDs: ${totalShipments.join(", ")}',
+                hindi:
+                    'आपके पास "$statusLabel" स्थिति वाली ${totalShipments.length} शिपमेंट हैं।\nशिपमेंट आईडी: ${totalShipments.join(", ")}',
+                hinglish:
+                    'Aapke paas "$statusLabel" status ki ${totalShipments.length} shipments hain.\nShipment IDs: ${totalShipments.join(", ")}',
               );
             }
           }
           break;
 
-      //  GET STATUS BY SHIPMENT ID
         case 'get_status_by_shipment_id':
           final id = params['shipment_id'];
-
-          print("shipmentid in the chatprobider : $id");
-
           if (id == null || id.isEmpty) {
-            replyText = "Shipment ID batao.";
+            replyText = _localizeReply(
+              langCode: parsed.language,
+              english: 'Please provide the shipment ID.',
+              hindi: 'कृपया शिपमेंट आईडी प्रदान करें।',
+              hinglish: 'Kripya shipment ID provide karein.',
+            );
             break;
           }
 
-          final shipmentId = id;
-
           try {
             final status = await ShipmentService.getStatusByShipmentId(
-              shipmentId: shipmentId,
+              shipmentId: id,
             );
-
             if (status == null) {
               replyText = _localizeReply(
                 langCode: parsed.language,
-                hiText: '$shipmentId ka koi status nahi mila.',
-                enText: 'No status found for $shipmentId.',
+                english: 'No status found for $id.',
+                hindi: '$id के लिए कोई स्थिति नहीं मिली।',
+                hinglish: '$id ke liye koi status nahi mila.',
               );
             } else {
               replyText = _localizeReply(
                 langCode: parsed.language,
-                hiText: '$shipmentId ka status: $status hai.',
-                enText: 'The status of $shipmentId is: $status.',
+                english: 'The status of $id is: $status.',
+                hindi: '$id की स्थिति है: $status।',
+                hinglish: '$id ka status hai: $status.',
               );
             }
           } catch (e) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Status fetch karne me error aaya.',
-              enText: 'There was an error while fetching the status.',
+              english: 'Error fetching status.',
+              hindi: 'स्थिति प्राप्त करने में त्रुटि।',
+              hinglish: 'Status fetch karne mein error.',
             );
           }
           break;
 
-      //GET ALL DRIVERS
         case 'get_all_drivers':
           final response = await ShipmentService.getAllDrivers();
-          final driverNumbers = response.map((driver) => driver['driver_custom_id']).toList() ;
+          final driverNumbers = response
+              .map((d) => d['driver_custom_id'])
+              .toList();
           if (driverNumbers.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Abhi 0 drivers registered hain.',
-              enText: 'There are currently 0 registered drivers.',
+              english: 'There are currently 0 registered drivers.',
+              hindi: 'वर्तमान में 0 पंजीकृत ड्राइवर हैं।',
+              hinglish: 'Currently 0 registered drivers hain.',
             );
           } else {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText:
-              '${driverNumbers.length} drivers hain.\nDriver Numbers: ${driverNumbers.join(",")}',
-              enText:
-              'You have ${driverNumbers.length} drivers.\nDriver IDs: ${driverNumbers.join(",")}',
+              english:
+                  'You have ${driverNumbers.length} drivers.\nDriver IDs: ${driverNumbers.join(", ")}',
+              hindi:
+                  'आपके पास ${driverNumbers.length} ड्राइवर हैं।\nड्राइवर आईडी: ${driverNumbers.join(", ")}',
+              hinglish:
+                  'Aapke paas ${driverNumbers.length} drivers hain.\nDriver IDs: ${driverNumbers.join(", ")}',
             );
           }
           break;
 
-      //GET DRIVER DETAILS
         case 'get_driver_details':
           final driverId = params['driver_id'];
           if (driverId == null) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Driver ID empty hai.',
-              enText: 'Driver ID is empty.',
+              english: 'Driver ID is empty.',
+              hindi: 'ड्राइवर आईडी खाली है।',
+              hinglish: 'Driver ID khali hai.',
             );
-            return;
+            break;
           }
-          final response =
-          await ShipmentService.getDriverDetails(userId: driverId);
+          final response = await ShipmentService.getDriverDetails(
+            userId: driverId,
+          );
           final name = response['name'];
           final email = response['email'];
           final role = response['role'];
 
           replyText = _localizeReply(
             langCode: parsed.language,
-            hiText:
-            'Driver details:\nNaam: $name\nEmail: $email\nRole: $role',
-            enText:
-            'Driver details:\nName: $name\nEmail: $email\nRole: $role',
+            english: 'Driver details:\nName: $name\nEmail: $email\nRole: $role',
+            hindi: 'ड्राइवर विवरण:\nनाम: $name\nईमेल: $email\nभूमिका: $role',
+            hinglish:
+                'Driver details:\nNaam: $name\nEmail: $email\nRole: $role',
           );
           break;
 
-
-      //GET TRACK TRUCKS
         case 'track_trucks':
           final response = await ShipmentService.getTrackTrucks(
             truckId: params['truck_number'],
@@ -426,64 +536,62 @@ class ChatProvider extends ChangeNotifier {
           if (response == null) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Truck nahi mila.',
-              enText: 'Truck not found.',
+              english: 'Truck not found.',
+              hindi: 'ट्रक नहीं मिला।',
+              hinglish: 'Truck nahi mila.',
             );
           } else {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText: 'Aapka truck abhi $response me hai.',
-              enText: 'Your truck is currently at $response.',
+              english: 'Your truck is currently at $response.',
+              hindi: 'आपका ट्रक वर्तमान में $response पर है।',
+              hinglish: 'Aapka truck currently $response par hai.',
             );
           }
           break;
 
-      //GET MARKETPLACE SHIPMENTS
         case 'get_marketplace_shipment':
-          final list =
-          await ShipmentService.getAvailableMarketplaceShipments();
-          final marketPlaceShipmentsIds =
-          filterIdsByMap(list, "shipment_id");
+          final list = await ShipmentService.getAvailableMarketplaceShipments();
+          final marketplaceIds = filterIdsByMap(list, "shipment_id");
 
           replyText = _localizeReply(
             langCode: parsed.language,
-            hiText:
-            '${list.length} marketplace shipments available hain.\nMarket Place Shipments: ${marketPlaceShipmentsIds.join(",")}',
-            enText:
-            'There are ${list.length} marketplace shipments available.\nShipment IDs: ${marketPlaceShipmentsIds.join(",")}',
+            english:
+                'There are ${list.length} marketplace shipments available.\nShipment IDs: ${marketplaceIds.join(", ")}',
+            hindi:
+                '${list.length} मार्केटप्लेस शिपमेंट उपलब्ध हैं।\nशिपमेंट आईडी: ${marketplaceIds.join(", ")}',
+            hinglish:
+                '${list.length} marketplace shipments available hain.\nShipment IDs: ${marketplaceIds.join(", ")}',
           );
           break;
 
-
-          // OPEN SCREEN
         case 'open_screen':
           final screen = params['screen']?.toString() ?? '';
           replyText = parsed.reply.isNotEmpty
               ? parsed.reply
               : _localizeReply(
-            langCode: parsed.language,
-            hiText: '$screen screen open kar raha hoon.',
-            enText: 'Opening $screen screen.',
-          );
+                  langCode: parsed.language,
+                  english: 'Opening $screen screen.',
+                  hindi: '$screen स्क्रीन खोल रहे हैं।',
+                  hinglish: '$screen screen khol rahe hain.',
+                );
 
           if (screen.isNotEmpty) {
-            buttonLabel = _localizeReply(
-              langCode: parsed.language,
-              hiText: 'Go to $screen',
-              enText: 'Go to $screen',
-            );
+            buttonLabel = _getButtonLabel(screen, parsed.language);
             buttonScreen = screen;
           }
           break;
+
         default:
-          // unknown: model may already have included a helpful reply
           if (replyText.isEmpty) {
             replyText = _localizeReply(
               langCode: parsed.language,
-              hiText:
-              'Mujhe ye request clear nahi hui, aap shipments, trucks ya drivers se related sawal puch sakte ho.',
-              enText:
-              'I could not clearly understand this request. You can ask about your shipments, trucks or drivers.',
+              english:
+                  'I could not understand this request. You can ask about shipments, trucks, or drivers.',
+              hindi:
+                  'मैं इस अनुरोध को समझ नहीं सका। आप शिपमेंट, ट्रक या ड्राइवरों के बारे में पूछ सकते हैं।',
+              hinglish:
+                  'Main is request ko samajh nahi saka. Aap shipments, trucks ya drivers ke baare mein puch sakte ho.',
             );
           }
           break;
@@ -496,46 +604,78 @@ class ChatProvider extends ChangeNotifier {
           actionParameters: {
             'language': parsed.language,
             'action': parsed.action,
-            'truckOwnerId':params['truckOwnerId']
+            // ✅ Sab parameters include karo
+            if (params['truckOwnerId'] != null)
+              'truckOwnerId': params['truckOwnerId'],
+            if (params['driverId'] != null)
+              'driverId': params['driverId'],
+            if (params['agentId'] != null)
+              'agentId': params['agentId'],
           },
           actionButtonLabel: buttonLabel,
           actionButtonScreen: buttonScreen,
         ),
       );
-
-      // If action is open_screen, also auto-navigate (optional). We'll not auto-navigate to avoid surprising user.
-      // If you want auto navigation uncomment next lines:
-      // if (parsed.action == 'open_screen' && buttonScreen != null) {
-      //   onNavigate(buttonScreen);
-      // }
     } catch (e) {
       addBotMessage(
-        ChatMessage(text: _localizeReply(
-          langCode: 'en',
-          hiText:
-          'Mujhe samajhne me dikkat aa rahi hai, dubara simple shabdon me likho.',
-          enText:
-          'I am having trouble understanding this, please try again in simpler words.',
-        )
-          , isUser: false),
+        ChatMessage(
+          text: _localizeReply(
+            langCode: _preferredLanguage,
+            english:
+                'I am having trouble understanding this. Please try again in simpler words.',
+            hindi:
+                'मुझे इसे समझने में परेशानी हो रही है। कृपया सरल शब्दों में पुनः प्रयास करें।',
+            hinglish:
+                'Mujhe ise samajhne mein pareshani ho rahi hai. Kripya simple shabdon mein dobara try karein.',
+          ),
+          isUser: false,
+        ),
       );
-      print(e);
+      print('Send Error: $e');
     } finally {
       _isTyping = false;
-       // loading = false;
       notifyListeners();
     }
   }
 
+  // this is for format language in the response.
+  String _localizeReply({
+    required String langCode,
+    required String english,
+    required String hindi,
+    required String hinglish,
+  }) {
+    // Gemini se "hi" aaega Hindi/Hinglish ke liye, "en" English ke liye
+    switch (langCode) {
+      case 'hindi':
+        return hindi;
+      case 'hinglish':
+        return hindi;
+      default:
+        return english;
+    }
+  }
+
+  String _getButtonLabel(String screen, String language) {
+    final labels = {
+      'english': 'Open $screen',
+      'hindi': '$screen खोलें',
+      'hinglish': '$screen kholen',
+    };
+    return labels[language] ?? labels['english']!;
+  }
+
   //NEW : Clear chat method
-  void clearChat(){
+  void clearChat() {
     messages.clear();
     _isTyping = false;
     notifyListeners();
   }
 }
 
-
+extension on Future<Map<String, dynamic>> {
+  operator [](String other) {}
+}
 
 List<String> filterIdsByMap(List<Map<String, dynamic>> shipments, String key) {
   return shipments

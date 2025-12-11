@@ -1,21 +1,18 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logistics_toolkit/features/Report%20Analysis/report_chart.dart';
-import 'package:logistics_toolkit/features/auth/services/supabase_service.dart';
 import 'package:logistics_toolkit/features/driver_documents/driver_documents_page.dart';
 import 'package:logistics_toolkit/features/laod_assignment/presentation/screen/allLoads.dart';
 import 'package:logistics_toolkit/features/mytruck/mytrucks.dart';
 import 'package:logistics_toolkit/features/notifications/presentation/screen/notification_center.dart';
-import 'package:logistics_toolkit/features/settings/presentation/screen/notificationDetails_page.dart';
+import 'package:logistics_toolkit/features/sos/company_driver_sos.dart';
 import 'package:logistics_toolkit/features/tracking/tracktruckspage.dart';
 import 'package:logistics_toolkit/features/trips/myTrips.dart';
 import 'package:logistics_toolkit/features/trips/myTrips_history.dart';
-import 'package:logistics_toolkit/services/shipment_service.dart';
-
 import '../features/bilty/shipment_selection_page.dart';
 import '../features/chat/agent_chat_list_page.dart';
 import '../features/complains/mycomplain.dart';
+import '../features/driver_status/driver_status_changer.dart';
 import '../features/laod_assignment/presentation/cubits/shipment_cubit.dart';
 import '../features/laod_assignment/presentation/screen/load_assignment_screen.dart';
 import '../features/mydrivers/mydriver.dart';
@@ -54,13 +51,12 @@ Future<void> openScreen(String? screen, context, Map params) async {
         return;
       }
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                TrackTrucksPage(truckOwnerId: truckOwnerId),
-          ),
-        );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TrackTrucksPage(truckOwnerId: truckOwnerId),
+        ),
+      );
       break;
 
     case "my_trucks":
@@ -126,7 +122,6 @@ Future<void> openScreen(String? screen, context, Map params) async {
       );
       break;
 
-
     case "setting":
       Navigator.push(
         context,
@@ -156,7 +151,6 @@ Future<void> openScreen(String? screen, context, Map params) async {
       break;
 
     case "create_shipments":
-
       print('createshipments call ho gya hai bro');
       Navigator.push(
         context,
@@ -165,7 +159,6 @@ Future<void> openScreen(String? screen, context, Map params) async {
       break;
 
     case "find_shipments":
-
       print("findShipment call ho gya hai bro ");
 
       Navigator.push(
@@ -175,6 +168,29 @@ Future<void> openScreen(String? screen, context, Map params) async {
             create: (context) => ShipmentCubit(),
             child: const LoadAssignmentScreen(),
           ),
+        ),
+      );
+      break;
+
+    case "shipments":
+      final driverId = params['driverId'];
+      print('driverrid:$driverId');
+      if (driverId == null) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DriverStatusChanger(driverId: driverId),
+        ),
+      );
+      break;
+
+    case "emergency":
+      final agentId = params['agentId'];
+      if (agentId == null) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CompanyDriverEmergencyScreen(agentId: agentId),
         ),
       );
       break;

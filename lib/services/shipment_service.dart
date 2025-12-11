@@ -1,5 +1,6 @@
 import 'dart:developer' as dev;
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import "../services/user_data_service.dart";
 
@@ -321,8 +322,30 @@ class ShipmentService {
   }
 
 
+  static Future<Map<String, dynamic>?> getActiveShipmentForDriver() async {
+    try {
+      final customUserId = await UserDataService.getCustomUserId();
+      if (customUserId == null) {
+        throw Exception("User not logged in or has no custom ID");
+      }
 
+      final response = await _supabase
+          .from('shipment')
+          .select()
+          .eq('assigned_driver', customUserId)
+      // FIXED: Use the correct filter syntax for your package version
+          .neq('booking_status','Completed')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
 
+      if(response == null) return null;
+
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      rethrow;
+    }
+  }
 
 
 }
