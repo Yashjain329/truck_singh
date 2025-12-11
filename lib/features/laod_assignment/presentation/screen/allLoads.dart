@@ -4,14 +4,14 @@ import 'package:logistics_toolkit/services/shipment_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../mytruck/mytrucks.dart';
 
-class allLoadsPage extends StatefulWidget {
-  const allLoadsPage({Key? key}) : super(key: key);
+class AllLoadsPage extends StatefulWidget {
+  const AllLoadsPage({Key? key}) : super(key: key);
 
   @override
-  State<allLoadsPage> createState() => _allLoadsPageState();
+  State<AllLoadsPage> createState() => _AllLoadsPageState();
 }
 
-class _allLoadsPageState extends State<allLoadsPage>
+class _AllLoadsPageState extends State<AllLoadsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Map<String, dynamic>> _allShipments = [];
@@ -100,33 +100,6 @@ class _allLoadsPageState extends State<allLoadsPage>
     }
   }
 
-  Future<void> markAsCompleted(String shipmentId, String? assignedTruck) async {
-    try {
-      await ShipmentService.updateStatus(shipmentId, 'completed'.tr());
-
-      // --- Add this block ---
-      if (assignedTruck != null) {
-        await TruckService().updateTruck(assignedTruck, {'status': 'available'});
-      }
-      // --- End block ---
-
-      await _fetchShipments();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('shipment_completed_success'.tr())),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('error_completing_shipment: $e'.tr())),
-        );
-      }
-    }
-  }
-
-
   void navigateToDriverSelection(String shipmentId) async {
     final selectedDriverId = await Navigator.push(
       context,
@@ -192,7 +165,6 @@ class _allLoadsPageState extends State<allLoadsPage>
                 tabs: [
                   Tab(text: 'pending'.tr()),
                   Tab(text: 'assigned'.tr()),
-                  Tab(text: 'completed'.tr()),
                 ],
               ),
             ],
@@ -210,7 +182,6 @@ class _allLoadsPageState extends State<allLoadsPage>
               child: _buildShipmentList('pending'),
             ),
             _buildShipmentList('assigned'),
-            _buildShipmentList('completed'),
           ],
         ),
       ),
@@ -227,10 +198,6 @@ class _allLoadsPageState extends State<allLoadsPage>
     } else if (status == 'assigned') {
       shipments = _allShipments
           .where((s) => s['assigned_driver'] != null && s['booking_status'] != 'Completed')
-          .toList();
-    } else if (status == 'completed') {
-      shipments = _allShipments
-          .where((s) => s['booking_status'] == 'Completed')
           .toList();
     } else {
       shipments = [];
@@ -274,10 +241,6 @@ class _allLoadsPageState extends State<allLoadsPage>
       case 'assigned':
         headerColor = Colors.blue.withValues(alpha: 0.15);
         headerText = 'Driver assigned';
-        break;
-      case 'completed':
-        headerColor = Colors.green.withValues(alpha: 0.15);
-        headerText = 'completed';
         break;
       default:
         headerColor = Colors.grey.withValues(alpha: 0.15);
@@ -434,10 +397,6 @@ class _allLoadsPageState extends State<allLoadsPage>
     final shipmentId = trip['shipment_id'];
     final bool isTruckAssigned = trip['assigned_truck'] != null;
 
-    if (status == 'completed') {
-      return const SizedBox.shrink();
-    }
-
     if (!isTruckAssigned) {
       return SizedBox(
         width: double.infinity,
@@ -476,21 +435,6 @@ class _allLoadsPageState extends State<allLoadsPage>
               backgroundColor: trip['assigned_driver'] == null
                   ? Colors.orange
                   : Colors.grey,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => markAsCompleted(shipmentId,trip['assigned_truck']),
-            icon: const Icon(Icons.check_circle_outline),
-            label: Text('complete'.tr()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

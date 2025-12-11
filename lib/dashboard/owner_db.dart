@@ -27,7 +27,6 @@ import '../features/ratings/presentation/screen/trip_ratings.dart';
 import 'package:logistics_toolkit/features/Report%20Analysis/report_chart.dart';
 
 import '../widgets/floating_chat_control.dart';
-import '../widgets/open_screen.dart';
 
 class DashboardState {
   final bool isLoading;
@@ -187,7 +186,7 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
                     builder: (_) => ChatScreen(
                       onNavigate: (s) {
                         //openScreen(s, context, {});
-                       Navigator.of(context).pushNamed('/$s');
+                        Navigator.of(context).pushNamed('/$s');
                       },
                     ),
                   ),
@@ -198,7 +197,6 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
           ),
         ],
       ),
-
     );
   }
 
@@ -337,14 +335,17 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
                   ),
                 ),
               ),
-            ), FeatureCard(
+            ),
+            FeatureCard(
               title: 'createShipment'.tr(),
               subtitle: 'postNewLoad'.tr(),
               icon: Icons.add_box_rounded,
               color: Colors.teal,
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ShipperFormPage()),
+                MaterialPageRoute(
+                  builder: (context) => const ShipperFormPage(),
+                ),
               ),
             ),
             FeatureCard(
@@ -357,7 +358,7 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
                 MaterialPageRoute(
                   builder: (_) => BlocProvider(
                     create: (context) => ShipmentCubit(),
-                    child: const allLoadsPage(),
+                    child: const AllLoadsPage(),
                   ),
                 ),
               ),
@@ -464,7 +465,9 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
               color: Colors.green,
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ShipmentSelectionPage(),),
+                MaterialPageRoute(
+                  builder: (context) => const ShipmentSelectionPage(),
+                ),
               ),
             ),
             FeatureCard(
@@ -474,7 +477,9 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
               color: Colors.orange,
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const TripRatingsPage()),
+                MaterialPageRoute(
+                  builder: (context) => const TripRatingsPage(),
+                ),
               ),
             ),
             FeatureCard(
@@ -492,6 +497,7 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
       },
     );
   }
+
   Widget _buildBottomAppBar() {
     return BottomAppBar(
       elevation: 10.0,
@@ -501,9 +507,7 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const ReportAnalysisPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const ReportAnalysisPage()),
             );
           },
           icon: const Icon(Icons.analytics_outlined),

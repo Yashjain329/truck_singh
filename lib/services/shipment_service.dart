@@ -1,20 +1,15 @@
-import 'dart:developer' as dev;
-
-import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import "../services/user_data_service.dart";
+import 'package:logistics_toolkit/services/user_data_service.dart';
 
 class ShipmentService {
   static final _supabase = Supabase.instance.client;
-
-  // Removed _enrichShipperData as data is now fetched directly
 
   static Future<List<Map<String, dynamic>>>
   getAvailableMarketplaceShipments() async {
     try {
       final response = await _supabase
           .from('shipment')
-          .select('*') // Simplified query: select all columns including 'shipper_name'
+          .select('*')
           .eq('booking_status', 'Pending');
 
       return List<Map<String, dynamic>>.from(response);
@@ -32,31 +27,9 @@ class ShipmentService {
       if (companyId == null) {
         throw Exception("Could not find company ID for the current user.");
       }
-
-      // 1. Fetch the user's role to determine where to store the ID
-      final userProfile = await _supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('custom_user_id', companyId)
-          .maybeSingle();
-
-      final String role = userProfile?['role']?.toString().toLowerCase() ?? '';
-
-      // 2. Determine which column to update based on role or ID prefix
-      final Map<String, dynamic> updateData = {
-        'booking_status': 'Accepted',
-      };
-
-      if (role.contains('truck') || role.contains('owner') || companyId.startsWith('TRUK')) {
-        updateData['assigned_truckowner'] = companyId;
-      } else {
-        // Default to agent for 'agent' role or others
-        updateData['assigned_agent'] = companyId;
-      }
-
       await _supabase
           .from('shipment')
-          .update(updateData)
+          .update({'booking_status': 'Accepted', 'assigned_agent': companyId})
           .eq('shipment_id', shipmentId);
     } catch (e) {
       print("Error accepting marketplace shipment: $e");
@@ -75,7 +48,7 @@ class ShipmentService {
       final response = await _supabase
           .from('shipment')
           .select('*') // Simplified query
-          .or('assigned_agent.eq.$customUserId,assigned_truckowner.eq.$customUserId');
+          .eq('assigned_agent', customUserId);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -95,7 +68,7 @@ class ShipmentService {
       final response = await _supabase
           .from('shipment')
           .select('*') // Simplified query
-          .or('assigned_agent.eq.$customUserId,assigned_truckowner.eq.$customUserId')
+          .eq('assigned_agent', customUserId)
           .isFilter('assigned_driver', null)
           .neq('booking_status', 'Completed');
 
@@ -118,7 +91,7 @@ class ShipmentService {
       final response = await _supabase
           .from('shipment')
           .select('*') // Simplified query
-          .or('assigned_agent.eq.$customUserId,assigned_truckowner.eq.$customUserId')
+          .eq('assigned_agent', customUserId)
           .eq('booking_status', status);
 
       return List<Map<String, dynamic>>.from(response);
@@ -138,7 +111,7 @@ class ShipmentService {
       final response = await _supabase
           .from('shipment')
           .select('*') // Simplified query
-          .or('assigned_agent.eq.$customUserId,assigned_truckowner.eq.$customUserId')
+          .eq('assigned_agent', customUserId)
           .eq('booking_status', 'Completed');
 
       return List<Map<String, dynamic>>.from(response);
@@ -156,14 +129,17 @@ class ShipmentService {
       print(truckNumber);
       await _supabase
           .from('shipment')
-          .update({'assigned_truck': truckNumber}).eq('shipment_id', shipmentId);
+          .update({'assigned_truck': truckNumber})
+          .eq('shipment_id', shipmentId);
     } catch (e) {
       print("Error assigning truck: $e");
       rethrow;
     }
   }
 
-  static Future<String?> getStatusByShipmentId({required String shipmentId}) async {
+  static Future<String?> getStatusByShipmentId({
+    required String shipmentId,
+  }) async {
     try {
       if (shipmentId.isEmpty) {
         throw Exception("Invalid ShipmentId");
@@ -188,7 +164,8 @@ class ShipmentService {
     try {
       await _supabase
           .from('shipment')
-          .update({'assigned_driver': driverUserId}).eq('shipment_id', shipmentId);
+          .update({'assigned_driver': driverUserId})
+          .eq('shipment_id', shipmentId);
     } catch (e) {
       print("Error assigning driver: $e");
       rethrow;
@@ -199,7 +176,8 @@ class ShipmentService {
     try {
       await _supabase
           .from('shipment')
-          .update({'booking_status': newStatus}).eq('shipment_id', shipmentId);
+          .update({'booking_status': newStatus})
+          .eq('shipment_id', shipmentId);
     } catch (e) {
       print("Error updating shipment status: $e");
       rethrow;
@@ -247,9 +225,7 @@ class ShipmentService {
 
   static Future<List<Map<String, dynamic>>> getSharedShipments() async {
     try {
-      final response = await _supabase.rpc(
-        'get_shipments_shared_with_me',
-      );
+      final response = await _supabase.rpc('get_shipments_shared_with_me');
 
       if (response != null && response is List) {
         return List<Map<String, dynamic>>.from(response);
@@ -262,9 +238,7 @@ class ShipmentService {
     }
   }
 
-  static Future<String?> getTrackTrucks({
-    required String truckId,
-  }) async {
+  static Future<String?> getTrackTrucks({required String truckId}) async {
     try {
       final customUserId = await UserDataService.getCustomUserId();
       if (customUserId == null) {
@@ -306,8 +280,9 @@ class ShipmentService {
     }
   }
 
-  static Future<Map<String, dynamic>> getDriverDetails(
-      {required String userId}) async {
+  static Future<Map<String, dynamic>> getDriverDetails({
+    required String userId,
+  }) async {
     try {
       if (userId.isEmpty) {
         throw Exception("Driver custom Id is null");

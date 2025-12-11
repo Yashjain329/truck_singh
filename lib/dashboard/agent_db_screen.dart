@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:logistics_toolkit/config/theme.dart';
-import 'package:logistics_toolkit/widgets/open_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/widgets/feature_card.dart';
 import '../widgets/chat_screen.dart';
@@ -177,7 +176,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                   MaterialPageRoute(
                     builder: (_) => ChatScreen(
                       onNavigate: (s) {
-                       // openScreen(s, context, {});
+                        // openScreen(s, context, {});
                         Navigator.of(context).pushNamed('/$s');
                       },
                     ),
@@ -241,7 +240,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
       _fc('findShipments', 'availableLoads', Icons.search_outlined, () => _push(BlocProvider(create: (_) => ShipmentCubit(), child: const LoadAssignmentScreen()))),
       _fc('createShipment', 'postNewLoad', Icons.add_box_rounded, () => _push(const ShipperFormPage())),
       _fc('myChats', 'viewConversations', Icons.chat_bubble_outline, () => _push(const AgentChatListPage())),
-      _fc('loadBoard', 'browsePostLoads', Icons.view_list_outlined, () => _push(BlocProvider(create: (_) => ShipmentCubit(), child: const allLoadsPage()))),
+      _fc('loadBoard', 'browsePostLoads', Icons.view_list_outlined, () => _push(BlocProvider(create: (_) => ShipmentCubit(), child: const AllLoadsPage()))),
       _fc('sharedtrips', 'sharedtracking', Icons.share_location, () => _push(const SharedShipmentsPage())),
       _fc('myTrucks', 'addTrackVehicles', Icons.local_shipping_outlined, () => _push(const Mytrucks())),
       _fc('myDrivers', 'addTrackDrivers', Icons.people_outlined, () => _push(const MyDriverPage())),

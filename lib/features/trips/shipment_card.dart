@@ -260,8 +260,10 @@ class _ShipmentCardState extends State<ShipmentCard> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Hide buttons if managed by someone else
-                  if (!isManaged)
+                  // Show buttons if:
+                  // 1. It is NOT managed by someone else, OR
+                  // 2. The current user is the SHIPPER (Shippers can see buttons even for managed loads)
+                  if (!isManaged || (widget.role == 'shipper' && widget.customUserId == widget.shipment['shipper_id']))
                     buildActionButtons(
                       widget.shipment,
                       context,
@@ -293,9 +295,12 @@ class _ShipmentCardState extends State<ShipmentCard> {
     final state = widget.pdfStates[shipmentId] ?? PdfState.notGenerated;
     final status = shipment['booking_status']?.toString().toLowerCase() ?? '';
 
+    // --- UPDATED VISIBILITY LOGIC ---
+    // If shipment is NOT completed, hide buttons for EVERYONE (including Shipper).
     if (status != 'completed') {
       return const SizedBox.shrink();
     }
+    // --------------------------------
 
     bool isCreator = (role == 'truckowner' && customUserId == shipperId);
     bool isAssigned =

@@ -29,6 +29,7 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
   DateTime? _lastUpdated;
   String? _driverId;
   BitmapDescriptor? _truckIcon;
+  String? _shipmentStatus;
 
   double _heading = 0.0;
 
@@ -78,6 +79,7 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
           .single();
 
       _driverId = data['driver_id'];
+      _shipmentStatus = data['booking_status'];
 
       final pickupLat = data['pickup_latitude'];
       final pickupLng = data['pickup_longitude'];
@@ -98,6 +100,8 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
         );
       }
 
+      await _fetchTruckLocation();
+
       if (mounted) _setMarkers();
 
       await _drawRoute();
@@ -109,7 +113,9 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
     } catch (e) {
       _errorMessage = "Failed to fetch data: $e";
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -125,36 +131,6 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
     } else {
       return 'Last updated: ${DateFormat('dd MMM HH:mm').format(time)}';
     }
-  }
-
-  LatLng? _findNearestPointOnRoute(LatLng truck, List<LatLng> routePoints) {
-    LatLng? nearestPoint;
-    double minDistance = double.infinity;
-
-    for (var point in routePoints) {
-      final distance = _calculateDistance(truck, point);
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestPoint = point;
-      }
-    }
-
-    return nearestPoint;
-  }
-
-  double _calculateDistance(LatLng p1, LatLng p2) {
-    const R = 6371e3;
-    final lat1 = p1.latitude * pi / 180;
-    final lat2 = p2.latitude * pi / 180;
-    final dLat = (p2.latitude - p1.latitude) * pi / 180;
-    final dLng = (p2.longitude - p1.longitude) * pi / 180;
-
-    final a =
-        sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-
-    return R * c;
   }
 
   Future<void> _fetchTruckLocation() async {
@@ -193,34 +169,39 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
 
     _realtimeChannel!
         .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'driver_locations',
-          callback: (payload) {
-            final lat = (payload.newRecord['last_latitude'] as num?)
-                ?.toDouble();
-            final lng = (payload.newRecord['last_longitude'] as num?)
-                ?.toDouble();
-            final updatedAt = payload.newRecord['updated_at'];
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'driver_locations',
+      callback: (payload) {
+        final lat = (payload.newRecord['last_latitude'] as num?)
+            ?.toDouble();
+        final lng = (payload.newRecord['last_longitude'] as num?)
+            ?.toDouble();
+        final updatedAt = payload.newRecord['updated_at'];
 
-            _heading =
-                (payload.newRecord['heading'] as num?)?.toDouble() ?? _heading;
+        _heading =
+            (payload.newRecord['heading'] as num?)?.toDouble() ?? _heading;
 
-            if (lat == null || lng == null) return;
+        if (lat == null || lng == null) return;
 
-            setState(() {
-              _truckLocation = LatLng(lat, lng);
-              _lastUpdated = DateTime.tryParse(updatedAt ?? '');
-              _updateMarkers();
+        setState(() {
+          final previousLocation = _truckLocation;
+          _truckLocation = LatLng(lat, lng);
+          _lastUpdated = DateTime.tryParse(updatedAt ?? '');
+          _updateMarkers();
 
-              if (_followTruck && _mapController != null) {
-                _mapController!.animateCamera(
-                  CameraUpdate.newLatLng(_truckLocation!),
-                );
-              }
-            });
-          },
-        )
+          if (previousLocation != _truckLocation) {
+            _drawRoute();
+          }
+
+          if (_followTruck && _mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLng(_truckLocation!),
+            );
+          }
+        });
+      },
+    )
         .subscribe();
   }
 
@@ -267,72 +248,68 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
 
   Future<void> _updateMarkers() async {
     _setMarkers();
+    LatLng? effectiveOrigin;
+    LatLng? effectiveDestination;
+    print(_shipmentStatus);
 
-    if (_truckLocation != null && _bluePolylines.isNotEmpty) {
-      final routePoints = _bluePolylines.first.points;
-      final nearest = _findNearestPointOnRoute(_truckLocation!, routePoints);
 
-      if (nearest != null) {
-        final polylinePoints = PolylinePoints(
-          apiKey: AppConfig.googleMapsApiKey,
+    if (_shipmentStatus == 'Accepted' || _shipmentStatus == 'En Route to Pickup') {
+      effectiveOrigin = _truckLocation;
+      effectiveDestination = _pickupLocation;
+    } else {
+      effectiveOrigin = _truckLocation;
+      effectiveDestination = _dropLocation;
+    }
+
+    if (effectiveOrigin == null) {
+      effectiveOrigin = _pickupLocation;
+      effectiveDestination = _dropLocation;
+    }
+
+    if (effectiveOrigin == null || effectiveDestination == null) return;
+
+    final polylinePoints = PolylinePoints(apiKey: AppConfig.googleMapsApiKey);
+
+    final routesResponse = await polylinePoints.getRouteBetweenCoordinatesV2(
+      request: RoutesApiRequest(
+        origin: PointLatLng(
+          effectiveOrigin.latitude,
+          effectiveOrigin.longitude,
+        ),
+        destination: PointLatLng(
+          effectiveDestination.latitude,
+          effectiveDestination.longitude,
+        ),
+        travelMode: TravelMode.driving,
+        routingPreference: RoutingPreference.trafficAware,
+      ),
+    );
+
+    if (routesResponse.routes.isNotEmpty && mounted) {
+      final route = routesResponse.routes.first;
+
+      final rawPoints = route.polylinePoints ?? [];
+      final points = rawPoints
+          .map((p) => LatLng(p.latitude, p.longitude))
+          .toList();
+
+      setState(() {
+        _bluePolylines.removeWhere(
+              (p) => p.polylineId.value == "deviation_red",
         );
 
-        final routesResponse = await polylinePoints.getRouteBetweenCoordinatesV2(
-          request: RoutesApiRequest(
-            origin: PointLatLng(
-              _truckLocation!.latitude,
-              _truckLocation!.longitude,
-            ),
-            destination: PointLatLng(
-              nearest.latitude,
-              nearest.longitude,
-            ),
-            travelMode: TravelMode.driving,
-            routingPreference: RoutingPreference.trafficAware,
+        _bluePolylines.add(
+          Polyline(
+            polylineId: const PolylineId("deviation_red"),
+            color: Colors.red,
+            width: 4,
+            points: points,
+            patterns: [PatternItem.dash(20), PatternItem.gap(10)],
           ),
         );
-
-        if (routesResponse.routes.isNotEmpty && mounted) {
-          final route = routesResponse.routes.first;
-
-          final rawPoints = route.polylinePoints ?? [];
-          final points = rawPoints
-              .map((p) => LatLng(p.latitude, p.longitude))
-              .toList();
-
-          setState(() {
-            _bluePolylines.removeWhere(
-                  (p) => p.polylineId.value == "deviation_red",
-            );
-
-            _bluePolylines.add(
-              Polyline(
-                polylineId: const PolylineId("deviation_red"),
-                color: Colors.red,
-                width: 4,
-                points: points,
-                patterns: [
-                  PatternItem.dash(20),
-                  PatternItem.gap(10),
-                ],
-              ),
-            );
-
-            _markers.add(
-              Marker(
-                markerId: const MarkerId("rejoin_point"),
-                position: nearest,
-                icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueOrange,
-                ),
-              ),
-            );
-          });
-        }
-      }
+      });
     }
   }
-
 
   Future<void> _drawRoute() async {
     if (_pickupLocation == null || _dropLocation == null) return;
@@ -354,26 +331,24 @@ class _ShipmentTrackingPageState extends State<ShipmentTrackingPage> {
       ),
     );
 
-    if (routesResponse.routes.isNotEmpty) {
+    if (routesResponse.routes.isNotEmpty && mounted) {
       final route = routesResponse.routes.first;
       final List<PointLatLng> rawPoints = route.polylinePoints ?? [];
       final points = rawPoints
           .map((p) => LatLng(p.latitude, p.longitude))
           .toList();
 
-      if (mounted) {
-        setState(() {
-          _bluePolylines.clear();
-          _bluePolylines.add(
-            Polyline(
-              polylineId: const PolylineId("route_blue"),
-              color: Colors.blue,
-              width: 5,
-              points: points,
-            ),
-          );
-        });
-      }
+      setState(() {
+        _bluePolylines.clear();
+        _bluePolylines.add(
+          Polyline(
+            polylineId: const PolylineId("route_blue"),
+            color: Colors.blue,
+            width: 5,
+            points: points,
+          ),
+        );
+      });
     }
   }
 

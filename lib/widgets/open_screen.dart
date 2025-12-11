@@ -26,7 +26,7 @@ Future<void> openScreen(String? screen, context, Map params) async {
     case "all_loads":
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => allLoadsPage()),
+        MaterialPageRoute(builder: (_) =>  AllLoadsPage()),
       );
       break;
 
@@ -50,7 +50,7 @@ Future<void> openScreen(String? screen, context, Map params) async {
         context,
         MaterialPageRoute(
           builder: (_) => TrackTrucksPage(truckOwnerId: truckOwnerId),
-      );
+      ));
       break;
 
     case "my_trucks":

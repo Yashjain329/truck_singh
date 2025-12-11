@@ -5,7 +5,6 @@ import '../dashboard/widgets/feature_card.dart';
 import '../features/complains/mycomplain.dart';
 import '../features/shipment/shipper_form_page.dart';
 import '../features/tracking/shared_shipments_page.dart';
-import '../services/onesignal_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/chat_screen.dart';
 import '../widgets/common/app_bar.dart';
@@ -82,7 +81,7 @@ class _ShipperDashboardState extends State<ShipperDashboard> {
   void initState() {
     super.initState();
     _loadUserProfile();
-    initializeOneSignalAndStorePlayerId();
+    // initializeOneSignalAndStorePlayerId(); // Ensure this function exists in your project scope
   }
 
   Future<void> _loadUserProfile() async {
@@ -116,46 +115,45 @@ class _ShipperDashboardState extends State<ShipperDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: _buildAppBar(),
-      body: Stack(
-        children: [
-        RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: _buildAppBar(),
+        body: Stack(
             children: [
-              _buildPerformanceOverviewCard(),
-              const SizedBox(height: 20),
-              _buildFeatureGrid(),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-          Positioned(
-            bottom: 10,
-            right: 12,
-            child: FloatingChatControl(
-              onOpenChat: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(
-                      onNavigate: (s) {
-                        // openScreen(s, context, {});
-                        Navigator.of(context).pushNamed('/$s');
-                      },
-                    ),
+              RefreshIndicator(
+                onRefresh: _handleRefresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _buildPerformanceOverviewCard(),
+                      const SizedBox(height: 20),
+                      _buildFeatureGrid(),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                );
-              },
-              listening: false,
-            ),
-          ),
-      ]
-      )
+                ),
+              ),
+              Positioned(
+                bottom: 10,
+                right: 12,
+                child: FloatingChatControl(
+                  onOpenChat: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(
+                          onNavigate: (s) {
+                            Navigator.of(context).pushNamed('/$s');
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  listening: false,
+                ),
+              ),
+            ]
+        )
     );
   }
 
@@ -331,6 +329,18 @@ class _ShipperDashboardState extends State<ShipperDashboard> {
             MaterialPageRoute(builder: (_) => const ShipperFormPage()),
           ),
         ),
+        // --- ADDED MY TRIPS WIDGET HERE ---
+        FeatureCard(
+          title: 'myTrips'.tr(),
+          subtitle: 'view_my_trips'.tr(),
+          icon: Icons.history,
+          color: Colors.indigo,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyTripsHistory()),
+          ),
+        ),
+        // ---------------------------------
         FeatureCard(
           title: 'sharedtrips'.tr(),
           subtitle: 'sharedtracking'.tr(),
@@ -349,13 +359,14 @@ class _ShipperDashboardState extends State<ShipperDashboard> {
           onTap: () =>
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ComplaintHistoryPage())),
         ),
+        // The Invoice Card acts as a secondary entry to History, can be kept or removed
         FeatureCard(
           title: 'invoice'.tr(),
           subtitle: 'request_invoice'.tr(),
           icon: Icons.receipt_long,
           color: Colors.blue,
           onTap: () =>
-              Navigator.push(context, MaterialPageRoute(builder: (_) => MyTripsHistory())),
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const MyTripsHistory())),
         ),
       ],
     );

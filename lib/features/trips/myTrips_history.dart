@@ -219,14 +219,15 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
     try {
       final res = await _supabaseService.getShipmentsForUser(userId);
 
-      // --- LOGIC FOR MANAGED SHIPMENTS (UPDATED) ---
+      // --- LOGIC FOR MANAGED SHIPMENTS ---
       // Identify shipments created by this user but managed by someone else (agent/truckowner)
       Set<String> managerIdsToFetch = {};
 
       for (var s in res) {
         final shipperId = s['shipper_id'];
         final assignedAgent = s['assigned_agent'];
-        final assignedTruckOwner = s['assigned_truckowner'];
+        // Use correct key fallback
+        final assignedTruckOwner = s['assigned_truck_owner'] ?? s['assigned_truckowner'];
 
         // If I created this shipment
         if (shipperId == customUserId) {
@@ -256,7 +257,7 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         if (shipperId == customUserId) {
           String? managerId;
           final String? agentId = s['assigned_agent']?.toString();
-          final String? truckOwnerId = s['assigned_truckowner']?.toString();
+          final String? truckOwnerId = (s['assigned_truck_owner'] ?? s['assigned_truckowner'])?.toString();
 
           // Robust check: valid if NOT null, NOT empty, and NOT self
           if (agentId != null && agentId.trim().isNotEmpty && agentId != customUserId) {
@@ -1653,6 +1654,9 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
         final status =
             shipment['booking_status']?.toString().toLowerCase() ?? '';
 
+        // CHECK ROLE
+        final bool isShipper = role == 'shipper';
+
         return shipment_card.ShipmentCard(
           shipment: shipment,
           pdfStates: pdfStates,
@@ -1668,28 +1672,31 @@ class _MyTripsHistoryPageState extends State<MyTripsHistory> {
             );
           },
 
-          // 👇 Invoice Actions ONLY if completed
-          onPreviewInvoice: status == "completed"
+          // 👇 Invoice Actions: Enabled for Shipper on ALL shipments (active or completed)
+          onPreviewInvoice: (isShipper)
               ? () => previewInvoice(context, shipmentId)
               : null,
 
-          onDownloadInvoice: status == "completed"
+          onDownloadInvoice: (isShipper)
               ? () async => await downloadInvoice(shipment)
               : null,
 
-          onRequestInvoice: status == "completed"
+          // REQUEST: Only SHIPPERS can request (enabled for all statuses)
+          onRequestInvoice: (isShipper)
               ? () => requestInvoice(shipment)
               : null,
 
-          onGenerateInvoice: status == "completed"
+          // GENERATE: Only NON-SHIPPERS (Transporters/Agents) can generate (restricted to completed)
+          onGenerateInvoice: (status == "completed" && !isShipper)
               ? () => _showGenerateInvoiceDialog(shipment)
               : null,
 
-          onDeleteInvoice: status == "completed"
+          // DELETE: Only NON-SHIPPERS (Transporters/Agents) can delete (restricted to completed)
+          onDeleteInvoice: (status == "completed" && !isShipper)
               ? () async => await confirmAndDelete(context, shipment)
               : null,
 
-          onShareInvoice: status == "completed"
+          onShareInvoice: (isShipper)
               ? () async => await shareInvoice(shipment)
               : null,
         );

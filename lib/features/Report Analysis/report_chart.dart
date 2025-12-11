@@ -1,6 +1,6 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class ShipmentUtils {
@@ -205,8 +205,8 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
       final raw = await supabase
           .from('shipment')
           .select(
-            'shipment_id, pickup, drop, booking_status, assigned_driver, updated_at, delivery_date',
-          )
+        'shipment_id, pickup, drop, booking_status, assigned_driver, updated_at, delivery_date',
+      )
           .eq('assigned_agent', customUserId)
           .order('updated_at', ascending: false)
           .range(start, end);
@@ -239,7 +239,7 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
 
   void _onScroll() {
     if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent &&
+        _scrollController.position.maxScrollExtent &&
         !isLoading &&
         shipments.length >= shipmentLimit) {
       fetchAgentShipment(loadMore: true);
@@ -269,28 +269,28 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
     return shipments.where((shipment) {
       final byStatus =
           selectedStatus == 'All' ||
-          shipment['booking_status'] == selectedStatus;
+              shipment['booking_status'] == selectedStatus;
 
       final byMonth =
           selectedMonth == 'All' ||
-          (shipment['updated_at'] != null &&
-              ShipmentUtils.monthName(shipment['updated_at']) == selectedMonth);
+              (shipment['updated_at'] != null &&
+                  ShipmentUtils.monthName(shipment['updated_at']) == selectedMonth);
 
       final byLocation =
           selectedLocation == 'All' ||
-          ShipmentUtils.extractCity(shipment['drop']) == selectedLocation;
+              ShipmentUtils.extractCity(shipment['drop']) == selectedLocation;
 
       final byChart =
           activeChartFilter.isEmpty ||
-          shipment['booking_status'] == activeChartFilter;
+              shipment['booking_status'] == activeChartFilter;
 
       final bySearch =
           searchQuery.isEmpty ||
-          shipment.values.any(
-            (v) =>
+              shipment.values.any(
+                    (v) =>
                 v != null &&
-                v.toString().toLowerCase().contains(searchQuery.toLowerCase()),
-          );
+                    v.toString().toLowerCase().contains(searchQuery.toLowerCase()),
+              );
 
       return byStatus && byMonth && byLocation && byChart && bySearch;
     }).toList();
@@ -401,6 +401,7 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
     }
 
     final total = statusCounts.values.fold(0, (p, c) => p + c);
+    final chartKeys = statusCounts.entries.where((e) => e.value > 0).map((e) => e.key).toList();
 
     return Column(
       children: [
@@ -428,15 +429,18 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
               // NEW FL CHART API
               pieTouchData: PieTouchData(
                 touchCallback: (event, touchResponse) {
-                  if (touchResponse != null &&
-                      touchResponse.touchedSection != null) {
+                  if (event is FlTapDownEvent &&
+                      touchResponse?.touchedSection != null) {
                     final index =
-                        touchResponse.touchedSection!.touchedSectionIndex;
-                    final key = statusCounts.keys.elementAt(index);
+                        touchResponse?.touchedSection!.touchedSectionIndex;
 
-                    setState(() {
-                      activeChartFilter = (activeChartFilter == key) ? '' : key;
-                    });
+                    // Make sure the index is valid for our list of rendered keys
+                    if (index! >= 0 && index < chartKeys.length) {
+                      final key = chartKeys[index];
+                      setState(() {
+                        activeChartFilter = (activeChartFilter == key) ? '' : key;
+                      });
+                    }
                   }
                 },
               ),
