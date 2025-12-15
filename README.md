@@ -1,9 +1,9 @@
 <p align="center">
   <a href="https://flutter.dev/"><img src="https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
-  <a href="https://github.com/Yashjain329/imgshape/stargazers"><img src="https://img.shields.io/github/stars/Yashjain329/imgshape?style=social"></a>
-  <img src="https://img.shields.io/github/forks/Yashjain329/imgshape?style=social">
-  <img src="https://img.shields.io/github/last-commit/Yashjain329/imgshape">
+  <a href="https://github.com/Yashjain329/truck_singh/stargazers"><img src="https://img.shields.io/github/stars/Yashjain329/truck_singh?style=social"></a>
+  <img src="https://img.shields.io/github/forks/Yashjain329/truck_singh?style=social">
+  <img src="https://img.shields.io/github/last-commit/Yashjain329/truck_singh">
 </p>
 
 # 🚚 Truck Singh
@@ -321,3 +321,4 @@ This project is licensed under the **MIT License**.
 See the [LICENSE](LICENSE) file for full details.
 
 ---
+
