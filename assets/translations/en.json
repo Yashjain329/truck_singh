@@ -1737,14 +1737,25 @@
   "hours_ago": "{0} hour(s) ago",
   "days_ago": "{0} day(s) ago",
   "months_ago": "{0} month(s) ago",
-  "years_ago": "{0} year(s) ago"
+  "years_ago": "{0} year(s) ago",
+
+  "enter_field": "Enter {field}",
+  "select_unit": "Select unit",
+
+  "step_truck_type": "Choose your preferred truck type",
+  "step_shipment_details": "Enter shipment details",
+  "step_pickup_delivery": "Set pickup & delivery locations",
+  "step_schedule": "Schedule your shipment",
 
 
+  "month1": "Month",
+  "location2": "Location",
 
 
+  "To Pay": "To Pay",
+  "Paid": "Paid",
+  "Partial": "Partial",
 
-
-
-
+  "Returned": "Returned"
 
 }

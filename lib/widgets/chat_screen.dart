@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,10 +12,7 @@ import '../config/theme.dart';
 class ChatScreen extends StatefulWidget {
   final Function(String screen) onNavigate;
 
-  const ChatScreen({
-    required this.onNavigate,
-    super.key,
-  });
+  const ChatScreen({required this.onNavigate, super.key});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -61,9 +57,7 @@ class _ChatScreenState extends State<ChatScreen>
     _typingController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
-    )
-      ..repeat(reverse: true);
-
+    )..repeat(reverse: true);
 
     _controller.addListener(() {
       if (_controller.text.isNotEmpty && !_hasUserTyped) {
@@ -77,11 +71,10 @@ class _ChatScreenState extends State<ChatScreen>
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      final provider = Provider.of<ChatProvider>(context,listen:false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<ChatProvider>(context, listen: false);
       provider.syncWithAppLanguage(context);
-    }
-    );
+    });
   }
 
   @override
@@ -126,7 +119,7 @@ class _ChatScreenState extends State<ChatScreen>
           if (kDebugMode) debugPrint('Speech error: $error');
           if (!mounted) return;
           setState(() {
-            _lastError = error?.errorMsg ?? error.toString();
+            _lastError = error.errorMsg;
             _listening = false;
             _speechAvailable = false;
           });
@@ -186,8 +179,10 @@ class _ChatScreenState extends State<ChatScreen>
           listenFor: const Duration(seconds: 30),
           pauseFor: const Duration(seconds: 3),
           localeId: _voiceLanguage == 'hi' ? 'hi_IN' : 'en_US',
-          cancelOnError: true,
-          partialResults: true,
+          listenOptions: stt.SpeechListenOptions(
+            cancelOnError: true,
+            partialResults: true,
+          ),
         );
       } catch (e) {
         if (kDebugMode) debugPrint('Error starting listen: $e');
@@ -240,13 +235,14 @@ class _ChatScreenState extends State<ChatScreen>
   void _scrollDown() {
     Future.delayed(const Duration(milliseconds: 200), () {
       if (_scroll.hasClients) {
-        _scroll.animateTo(_scroll.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut);
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
     });
   }
-
 
   // NEW: Show language selection dialog for CHATBOT RESPONSE language
   Future<void> _showChatbotLanguageDialog() async {
@@ -254,75 +250,73 @@ class _ChatScreenState extends State<ChatScreen>
 
     showDialog(
       context: context,
-      builder: (BuildContext context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                Icon(Icons.chat_bubble_outline, color: AppColors.teal),
-                const SizedBox(width: 12),
-                Text(
-                  'Chatbot Language',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+      builder: (BuildContext context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.chat_bubble_outline, color: AppColors.teal),
+            const SizedBox(width: 12),
+            Text(
+              'Chatbot Language',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Choose how the chatbot should respond to you:',
-                  style: GoogleFonts.poppins(fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                _buildLanguageOption(
-                  context,
-                  title: 'English',
-                  subtitle: 'Pure English responses',
-                  icon: Icons.language,
-                  value: 'english',
-                  currentValue: provider.preferredLanguage,
-                  onTap: () {
-                    provider.setPreferredLanguage('english');
-                    Navigator.pop(context);
-                    _showLanguageChangedSnackbar('English');
-                  },
-                ),
-                const SizedBox(height: 8),
-                _buildLanguageOption(
-                  context,
-                  title: 'हिंदी (Hindi)',
-                  subtitle: 'Pure Hindi in Devanagari script',
-                  icon: Icons.translate,
-                  value: 'hindi',
-                  currentValue: provider.preferredLanguage,
-                  onTap: () {
-                    provider.setPreferredLanguage('hindi');
-                    Navigator.pop(context);
-                    _showLanguageChangedSnackbar('हिंदी');
-                  },
-                ),
-                const SizedBox(height: 8),
-                _buildLanguageOption(
-                  context,
-                  title: 'Hinglish',
-                  subtitle: 'Hindi in English letters (Recommended)',
-                  icon: Icons.mic,
-                  value: 'hinglish',
-                  currentValue: provider.preferredLanguage,
-                  onTap: () {
-                    provider.setPreferredLanguage('hinglish');
-                    Navigator.pop(context);
-                    _showLanguageChangedSnackbar('Hinglish');
-                  },
-                ),
-              ],
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Choose how the chatbot should respond to you:',
+              style: GoogleFonts.poppins(fontSize: 13),
             ),
-          ),
+            const SizedBox(height: 16),
+            _buildLanguageOption(
+              context,
+              title: 'English',
+              subtitle: 'Pure English responses',
+              icon: Icons.language,
+              value: 'english',
+              currentValue: provider.preferredLanguage,
+              onTap: () {
+                provider.setPreferredLanguage('english');
+                Navigator.pop(context);
+                _showLanguageChangedSnackbar('English');
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildLanguageOption(
+              context,
+              title: 'हिंदी (Hindi)',
+              subtitle: 'Pure Hindi in Devanagari script',
+              icon: Icons.translate,
+              value: 'hindi',
+              currentValue: provider.preferredLanguage,
+              onTap: () {
+                provider.setPreferredLanguage('hindi');
+                Navigator.pop(context);
+                _showLanguageChangedSnackbar('हिंदी');
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildLanguageOption(
+              context,
+              title: 'Hinglish',
+              subtitle: 'Hindi in English letters (Recommended)',
+              icon: Icons.mic,
+              value: 'hinglish',
+              currentValue: provider.preferredLanguage,
+              onTap: () {
+                provider.setPreferredLanguage('hinglish');
+                Navigator.pop(context);
+                _showLanguageChangedSnackbar('Hinglish');
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -330,66 +324,64 @@ class _ChatScreenState extends State<ChatScreen>
   Future<void> _showVoiceLanguageDialog() async {
     showDialog(
       context: context,
-      builder: (BuildContext context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                Icon(Icons.mic, color: AppColors.orange),
-                const SizedBox(width: 12),
-                Text(
-                  'Voice Input Language',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+      builder: (BuildContext context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.mic, color: AppColors.orange),
+            const SizedBox(width: 12),
+            Text(
+              'Voice Input Language',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Choose language for voice input (speech recognition):',
-                  style: GoogleFonts.poppins(fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                _buildLanguageOption(
-                  context,
-                  title: 'English',
-                  subtitle: 'Speak in English',
-                  icon: Icons.language,
-                  value: 'en',
-                  currentValue: _voiceLanguage,
-                  onTap: () {
-                    setState(() => _voiceLanguage = 'en');
-                    Navigator.pop(context);
-                    _showLanguageChangedSnackbar('English Voice Input');
-                  },
-                ),
-                const SizedBox(height: 8),
-                _buildLanguageOption(
-                  context,
-                  title: 'हिंदी (Hindi)',
-                  subtitle: 'Speak in Hindi',
-                  icon: Icons.translate,
-                  value: 'hi',
-                  currentValue: _voiceLanguage,
-                  onTap: () {
-                    setState(() => _voiceLanguage = 'hi');
-                    Navigator.pop(context);
-                    _showLanguageChangedSnackbar('हिंदी Voice Input');
-                  },
-                ),
-              ],
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Choose language for voice input (speech recognition):',
+              style: GoogleFonts.poppins(fontSize: 13),
             ),
-          ),
+            const SizedBox(height: 16),
+            _buildLanguageOption(
+              context,
+              title: 'English',
+              subtitle: 'Speak in English',
+              icon: Icons.language,
+              value: 'en',
+              currentValue: _voiceLanguage,
+              onTap: () {
+                setState(() => _voiceLanguage = 'en');
+                Navigator.pop(context);
+                _showLanguageChangedSnackbar('English Voice Input');
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildLanguageOption(
+              context,
+              title: 'हिंदी (Hindi)',
+              subtitle: 'Speak in Hindi',
+              icon: Icons.translate,
+              value: 'hi',
+              currentValue: _voiceLanguage,
+              onTap: () {
+                setState(() => _voiceLanguage = 'hi');
+                Navigator.pop(context);
+                _showLanguageChangedSnackbar('हिंदी Voice Input');
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-
-  Widget _buildLanguageOption(BuildContext context, {
+  Widget _buildLanguageOption(
+    BuildContext context, {
     required String title,
     required String subtitle,
     required IconData icon,
@@ -405,11 +397,12 @@ class _ChatScreenState extends State<ChatScreen>
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.teal.withOpacity(0.1) : Colors
-              .transparent,
+          color: isSelected
+              ? AppColors.teal.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppColors.teal : Colors.grey.withOpacity(0.3),
+            color: isSelected ? AppColors.teal : Colors.grey.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -418,8 +411,9 @@ class _ChatScreenState extends State<ChatScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.teal : Colors.grey.withOpacity(
-                    0.2),
+                color: isSelected
+                    ? AppColors.teal
+                    : Colors.grey.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -437,8 +431,9 @@ class _ChatScreenState extends State<ChatScreen>
                     title,
                     style: GoogleFonts.poppins(
                       fontSize: 15,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight
-                          .w500,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                       color: isSelected ? AppColors.teal : Colors.black87,
                     ),
                   ),
@@ -453,11 +448,7 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
             if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: AppColors.teal,
-                size: 24,
-              ),
+              Icon(Icons.check_circle, color: AppColors.teal, size: 24),
           ],
         ),
       ),
@@ -488,10 +479,10 @@ class _ChatScreenState extends State<ChatScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.teal.withOpacity(0.1),
+              color: AppColors.teal.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.teal.withOpacity(0.3),
+                color: AppColors.teal.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -530,7 +521,7 @@ class _ChatScreenState extends State<ChatScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.teal.withOpacity(0.3),
+                  color: AppColors.teal.withValues(alpha: 0.3),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -547,10 +538,7 @@ class _ChatScreenState extends State<ChatScreen>
           // Typing bubble with animated dots
           Container(
             constraints: BoxConstraints(
-              maxWidth: MediaQuery
-                  .of(context)
-                  .size
-                  .width * 0.6,
+              maxWidth: MediaQuery.of(context).size.width * 0.6,
             ),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -562,7 +550,7 @@ class _ChatScreenState extends State<ChatScreen>
                 bottomRight: Radius.circular(18),
               ),
               border: Border.all(
-                color: AppColors.teal.withOpacity(0.2),
+                color: AppColors.teal.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -573,11 +561,7 @@ class _ChatScreenState extends State<ChatScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // AI thinking text
-                    Icon(
-                      Icons.auto_awesome,
-                      size: 16,
-                      color: AppColors.teal,
-                    ),
+                    Icon(Icons.auto_awesome, size: 16, color: AppColors.teal),
                     const SizedBox(width: 6),
                     Text(
                       'AI is thinking',
@@ -642,15 +626,15 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ChatProvider>(context);
-    final isDark = Theme
-        .of(context)
-        .brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: AppColors.teal, // exact teal color
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: AppColors.teal, // exact teal color
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+    );
 
     return SafeArea(
       child: Scaffold(
@@ -671,7 +655,7 @@ class _ChatScreenState extends State<ChatScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.teal.withOpacity(
+                          color: AppColors.teal.withValues(alpha:
                             provider.isTyping ? 0.8 : 0.4,
                           ),
                           blurRadius: provider.isTyping ? 12 : 8,
@@ -682,8 +666,9 @@ class _ChatScreenState extends State<ChatScreen>
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       child: Icon(
-                        provider.isTyping ? Icons.auto_awesome : Icons
-                            .smart_toy,
+                        provider.isTyping
+                            ? Icons.auto_awesome
+                            : Icons.smart_toy,
                         color: Colors.white,
                         size: 24,
                       ),
@@ -706,11 +691,10 @@ class _ChatScreenState extends State<ChatScreen>
                       ),
                     ),
                     Text(
-                      'Language: ${_getLanguageDisplayName(
-                          provider.preferredLanguage)}',
+                      'Language: ${_getLanguageDisplayName(provider.preferredLanguage)}',
                       style: GoogleFonts.poppins(
                         fontSize: 11,
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
@@ -733,152 +717,154 @@ class _ChatScreenState extends State<ChatScreen>
           backgroundColor: AppColors.teal,
           elevation: 2,
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(16),
-            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
           ),
         ),
         body: Container(
           decoration: BoxDecoration(
             gradient: isDark
                 ? LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.darkBackground.withOpacity(0.8),
-                AppColors.darkBackground,
-              ],
-            )
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.darkBackground.withValues(alpha: 0.8),
+                      AppColors.darkBackground,
+                    ],
+                  )
                 : LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.background.withOpacity(0.9),
-                AppColors.background,
-              ],
-            ),
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.background.withValues(alpha: 0.9),
+                      AppColors.background,
+                    ],
+                  ),
           ),
           child: Column(
             children: [
               Expanded(
                 child: provider.messages.isEmpty && !provider.isTyping
                     ? SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 30),
+                        padding: const EdgeInsets.all(20),
                         child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            AnimatedBuilder(
-                              animation: _typingController,
-                              builder: (context, child) {
-                                return Icon(
-                                  Icons.chat_bubble_outline,
-                                  size: 64,
-                                  color: AppColors.teal.withOpacity(
-                                    0.3 + (_typingController.value * 0.4),
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 30),
+                              child: Column(
+                                children: [
+                                  AnimatedBuilder(
+                                    animation: _typingController,
+                                    builder: (context, child) {
+                                      return Icon(
+                                        Icons.chat_bubble_outline,
+                                        size: 64,
+                                        color: AppColors.teal.withValues(alpha:
+                                          0.3 + (_typingController.value * 0.4),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'How can I help you today?',
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? AppColors.darkText
-                                    : AppColors.textColor,
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'How can I help you today?',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.darkText
+                                          : AppColors.textColor,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'I\'m here to assist with your logistics needs',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: isDark
+                                          ? AppColors.darkText.withValues(alpha: 0.6)
+                                          : AppColors.textColor.withValues(alpha:
+                                              0.5,
+                                            ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'I\'m here to assist with your logistics needs',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: isDark
-                                    ? AppColors.darkText.withOpacity(0.6)
-                                    : AppColors.textColor.withOpacity(0.5),
+                            if (!_hasUserTyped) ...[
+                              const SizedBox(height: 20),
+                              Text(
+                                'Try asking:',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? AppColors.darkText
+                                      : AppColors.textColor.withValues(alpha: 0.8),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              _buildPromptChips(isDark),
+                              const SizedBox(height: 30),
+                              Text(
+                                'Or type your question below',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? AppColors.darkText.withValues(alpha: 0.5)
+                                      : AppColors.textColor.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 100),
+                              Text(
+                                'Press send to get assistance',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? AppColors.darkText.withValues(alpha: 0.5)
+                                      : AppColors.textColor.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
-                      ),
-                      if (!_hasUserTyped) ...[
-                        const SizedBox(height: 20),
-                        Text(
-                          'Try asking:',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? AppColors.darkText
-                                : AppColors.textColor.withOpacity(0.8),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildPromptChips(isDark),
-                        const SizedBox(height: 30),
-                        Text(
-                          'Or type your question below',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: isDark
-                                ? AppColors.darkText.withOpacity(0.5)
-                                : AppColors.textColor.withOpacity(0.5),
-                          ),
-                        ),
-                      ] else
-                        ...[
-                          const SizedBox(height: 100),
-                          Text(
-                            'Press send to get assistance',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: isDark
-                                  ? AppColors.darkText.withOpacity(0.5)
-                                  : AppColors.textColor.withOpacity(0.5),
-                            ),
-                          ),
-                        ],
-                    ],
-                  ),
-                )
+                      )
                     : ListView.builder(
-                  controller: _scroll,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: provider.messages.length +
-                      (provider.isTyping ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index < provider.messages.length) {
-                      final msg = provider.messages[index];
-                      return _buildMessageBubble(msg, isDark);
-                    } else {
-                      return _buildTypingIndicator();
-                    }
-                  },
-                ),
+                        controller: _scroll,
+                        padding: const EdgeInsets.all(16),
+                        itemCount:
+                            provider.messages.length +
+                            (provider.isTyping ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index < provider.messages.length) {
+                            final msg = provider.messages[index];
+                            return _buildMessageBubble(msg, isDark);
+                          } else {
+                            return _buildTypingIndicator();
+                          }
+                        },
+                      ),
               ),
               Container(
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ],
                   border: Border.all(
-                    color: AppColors.orange.withOpacity(0.3),
+                    color: AppColors.orange.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -891,7 +877,7 @@ class _ChatScreenState extends State<ChatScreen>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: _listening
-                              ? AppColors.orange.withOpacity(0.2)
+                              ? AppColors.orange.withValues(alpha: 0.2)
                               : Colors.transparent,
                         ),
                         child: IconButton(
@@ -905,7 +891,8 @@ class _ChatScreenState extends State<ChatScreen>
                             size: 22,
                           ),
                           onPressed: _toggleListen,
-                          tooltip: 'Tap to speak, Long press to change voice language',
+                          tooltip:
+                              'Tap to speak, Long press to change voice language',
                         ),
                       ),
                     ),
@@ -926,8 +913,8 @@ class _ChatScreenState extends State<ChatScreen>
                           hintText: 'Type your message...',
                           hintStyle: GoogleFonts.poppins(
                             color: isDark
-                                ? AppColors.darkText.withOpacity(0.5)
-                                : AppColors.textColor.withOpacity(0.5),
+                                ? AppColors.darkText.withValues(alpha: 0.5)
+                                : AppColors.textColor.withValues(alpha: 0.5),
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
@@ -942,10 +929,7 @@ class _ChatScreenState extends State<ChatScreen>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [
-                            AppColors.teal,
-                            AppColors.tealBlue,
-                          ],
+                          colors: [AppColors.teal, AppColors.tealBlue],
                         ),
                       ),
                       child: IconButton(
@@ -967,13 +951,13 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-
   Widget _buildMessageBubble(ChatMessage msg, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment:
-        msg.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: msg.isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!msg.isUser) ...[
@@ -1025,33 +1009,33 @@ class _ChatScreenState extends State<ChatScreen>
               decoration: BoxDecoration(
                 gradient: msg.isUser
                     ? LinearGradient(
-                  colors: [
-                    AppColors.orange,
-                    AppColors.orange.withOpacity(0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
+                        colors: [
+                          AppColors.orange,
+                          AppColors.orange.withValues(alpha: 0.8),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
                     : LinearGradient(
-                  colors: [
-                    isDark
-                        ? AppColors.darkSurface.withOpacity(0.8)
-                        : Colors.white,
-                    isDark ? AppColors.darkSurface : Colors.white70,
-                  ],
-                ),
+                        colors: [
+                          isDark
+                              ? AppColors.darkSurface.withValues(alpha: 0.8)
+                              : Colors.white,
+                          isDark ? AppColors.darkSurface : Colors.white70,
+                        ],
+                      ),
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
                 ],
                 border: Border.all(
                   color: msg.isUser
-                      ? AppColors.orange.withOpacity(0.3)
-                      : AppColors.teal.withOpacity(0.3),
+                      ? AppColors.orange.withValues(alpha: 0.3)
+                      : AppColors.teal.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -1117,7 +1101,7 @@ class _ChatScreenState extends State<ChatScreen>
                           'AI',
                           style: GoogleFonts.poppins(
                             fontSize: 10,
-                            color: AppColors.teal.withOpacity(0.5),
+                            color: AppColors.teal.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -1135,14 +1119,10 @@ class _ChatScreenState extends State<ChatScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [AppColors.orange, AppColors.orange.withOpacity(0.8)],
+                  colors: [AppColors.orange, AppColors.orange.withValues(alpha: 0.8)],
                 ),
               ),
-              child: const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 16,
-              ),
+              child: const Icon(Icons.person, color: Colors.white, size: 16),
             ),
           ],
         ],
@@ -1159,17 +1139,14 @@ class _ChatScreenState extends State<ChatScreen>
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
+        color: isActive ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
       ),
       child: IconButton(
         icon: Icon(
           icon,
           size: 20,
-          color: isActive ? Colors.white : Colors.white.withOpacity(0.9),
+          color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.9),
         ),
         onPressed: onTap,
         tooltip: tooltip,
@@ -1191,5 +1168,3 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 }
-
-

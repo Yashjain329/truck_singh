@@ -113,7 +113,7 @@ class LocationTrackingManager {
     });
   }
 
-  void _onLocationError(error) {
+  void _onLocationError(dynamic error) {
     NotificationHelper.updateNotification(
       'Tracking Error',
       'Unable to fetch location.',

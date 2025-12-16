@@ -161,7 +161,8 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
         trucks = await supabase
             .from('trucks')
             .select(
-            'id, truck_number, truck_admin, make, model, year, vehicle_type')
+              'id, truck_number, truck_admin, make, model, year, vehicle_type',
+            )
             .eq('truck_admin', _loggedInUserId!)
             .order('truck_number');
         print('Raw trucks data from database: $trucks');
@@ -183,7 +184,8 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
             trucks = await supabase
                 .from('trucks')
                 .select(
-                'id, truck_number, truck_admin, make, model, year, vehicle_type')
+                  'id, truck_number, truck_admin, make, model, year, vehicle_type',
+                )
                 .inFilter('truck_number', truckNumbers)
                 .order('truck_number');
           }
@@ -220,75 +222,75 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
 
       final trucksWithDocuments = trucks
           .map((truck) {
-        final truckIdValue = truck['id'];
-        print(
-          'Processing truck: ${truck['truck_number']}, id value: $truckIdValue',
-        );
-        if (truckIdValue == null) {
-          print(
-            'WARNING: Truck ID is null for truck: ${truck['truck_number']}',
-          );
-          return null;
-        }
-
-        final truckId = truckIdValue is int
-            ? truckIdValue
-            : int.parse(truckIdValue.toString());
-        final truckNumber = truck['truck_number'];
-        if (truckNumber == null || truckNumber.isEmpty) return null;
-
-        final docsForThisTruck = uploadedDocs
-            .where((doc) => doc['truck_id'] == truckId)
-            .toList();
-
-        final docStatus = <String, Map<String, dynamic>>{};
-        for (var type in _vehicleDocuments.keys) {
-          final doc = docsForThisTruck.firstWhere(
-                (d) => d['doc_type'] == type,
-            orElse: () => <String, dynamic>{},
-          );
-
-          // Use stable status codes
-          final statusValue = doc.isEmpty ? 'not_uploaded' : 'uploaded';
-
-          if (doc.isNotEmpty) {
-            print('Document found for $truckNumber-$type: uploaded');
-          }
-          String? publicUrl;
-          if (doc['file_path'] != null &&
-              doc['file_path'].toString().isNotEmpty) {
-            try {
-              publicUrl = supabase.storage
-                  .from('truck-documents')
-                  .getPublicUrl(doc['file_path']);
-            } catch (e) {
-              print('Error generating public URL: $e');
-              publicUrl = doc['file_path'];
+            final truckIdValue = truck['id'];
+            print(
+              'Processing truck: ${truck['truck_number']}, id value: $truckIdValue',
+            );
+            if (truckIdValue == null) {
+              print(
+                'WARNING: Truck ID is null for truck: ${truck['truck_number']}',
+              );
+              return null;
             }
-          }
 
-          docStatus[type] = {
-            'status': statusValue,
-            'file_url': publicUrl,
-            'file_path': doc['file_path'],
-            'uploaded_at': doc['uploaded_at'],
-            'verified_at': null,
-            'verified_by': null,
-            'uploaded_by_id': doc['custom_user_id'],
-            'uploaded_by_role': null,
-          };
-        }
+            final truckId = truckIdValue is int
+                ? truckIdValue
+                : int.parse(truckIdValue.toString());
+            final truckNumber = truck['truck_number'];
+            if (truckNumber == null || truckNumber.isEmpty) return null;
 
-        return {
-          'id': truckId,
-          'truck_number': truckNumber,
-          'truck_admin': truck['truck_admin'] ?? 'Unknown',
-          'truck_type': truck['vehicle_type'] ?? truck['make'] ?? 'Unknown',
-          'model': truck['model'] ?? 'Unknown',
-          'year': truck['year']?.toString() ?? 'Unknown',
-          'documents': docStatus,
-        };
-      })
+            final docsForThisTruck = uploadedDocs
+                .where((doc) => doc['truck_id'] == truckId)
+                .toList();
+
+            final docStatus = <String, Map<String, dynamic>>{};
+            for (var type in _vehicleDocuments.keys) {
+              final doc = docsForThisTruck.firstWhere(
+                (d) => d['doc_type'] == type,
+                orElse: () => <String, dynamic>{},
+              );
+
+              // Use stable status codes
+              final statusValue = doc.isEmpty ? 'not_uploaded' : 'uploaded';
+
+              if (doc.isNotEmpty) {
+                print('Document found for $truckNumber-$type: uploaded');
+              }
+              String? publicUrl;
+              if (doc['file_path'] != null &&
+                  doc['file_path'].toString().isNotEmpty) {
+                try {
+                  publicUrl = supabase.storage
+                      .from('truck-documents')
+                      .getPublicUrl(doc['file_path']);
+                } catch (e) {
+                  print('Error generating public URL: $e');
+                  publicUrl = doc['file_path'];
+                }
+              }
+
+              docStatus[type] = {
+                'status': statusValue,
+                'file_url': publicUrl,
+                'file_path': doc['file_path'],
+                'uploaded_at': doc['uploaded_at'],
+                'verified_at': null,
+                'verified_by': null,
+                'uploaded_by_id': doc['custom_user_id'],
+                'uploaded_by_role': null,
+              };
+            }
+
+            return {
+              'id': truckId,
+              'truck_number': truckNumber,
+              'truck_admin': truck['truck_admin'] ?? 'Unknown',
+              'truck_type': truck['vehicle_type'] ?? truck['make'] ?? 'Unknown',
+              'model': truck['model'] ?? 'Unknown',
+              'year': truck['year']?.toString() ?? 'Unknown',
+              'documents': docStatus,
+            };
+          })
           .where((truck) => truck != null)
           .cast<Map<String, dynamic>>()
           .toList();
@@ -327,9 +329,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
     } else {
       _filteredTrucks = _trucks.where((truck) {
         final docs = truck['documents'] as Map<String, Map<String, dynamic>>;
-        return docs.values.any(
-              (doc) => doc['status'] == _selectedStatusFilter,
-        );
+        return docs.values.any((doc) => doc['status'] == _selectedStatusFilter);
       }).toList();
     }
   }
@@ -343,7 +343,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
 
     // Find the truck and get its ID
     final truck = _trucks.firstWhere(
-          (t) => t['truck_number'] == truckNumber,
+      (t) => t['truck_number'] == truckNumber,
       orElse: () => {},
     );
 
@@ -456,19 +456,18 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       };
 
       // CHANGED: Reverted to 'truck_documents_old'
-      await supabase.from('truck_documents_old').insert(insertData);
+      await supabase
+          .from('truck_documents_old')
+          .upsert(insertData, onConflict: 'truck_id, doc_type');
       if (_loggedInUserId != null) {
         final uploaderName = _loggedInUserName ?? _loggedInUserId!;
         NotificationService.sendPushNotificationToUser(
           recipientId: _loggedInUserId!,
           title: 'Document Uploaded'.tr(),
           message:
-          'You have successfully uploaded $docType for truck $truckNumber.'
-              .tr(),
-          data: {
-            'type': 'truck_document_upload',
-            'truck_number': truckNumber,
-          },
+              'You have successfully uploaded $docType for truck $truckNumber.'
+                  .tr(),
+          data: {'type': 'truck_document_upload', 'truck_number': truckNumber},
         );
         final driverIds = await _getDriversForTruck(truckNumber);
         for (final driverId in driverIds) {
@@ -476,8 +475,8 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
             recipientId: driverId,
             title: 'Truck Document Updated'.tr(),
             message:
-            '$uploaderName has uploaded a new document ($docType) for your assigned truck $truckNumber.'
-                .tr(),
+                '$uploaderName has uploaded a new document ($docType) for your assigned truck $truckNumber.'
+                    .tr(),
             data: {
               'type': 'truck_document_update',
               'truck_number': truckNumber,
@@ -496,21 +495,6 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
         _uploadingTruckNumber = null;
         _uploadingDocType = null;
       });
-    }
-  }
-
-  Future<void> _verifyDocument(String truckNumber, String docType) async {
-    if (_userRole != UserRole.agent) {
-      _showErrorSnackBar('only_agents_can_verify'.tr());
-      return;
-    }
-
-    try {
-      _showErrorSnackBar(
-        'verification_not_implemented'.tr(),
-      );
-    } catch (e) {
-      _showErrorSnackBar('Error verifying document: ${e.toString()}');
     }
   }
 
@@ -567,97 +551,98 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-          // Status Filter
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
               children: [
-                Text(
-                  'filter'.tr(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _statusFilters.map((statusCode) {
-                        final isSelected =
-                            _selectedStatusFilter == statusCode;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(
-                              _getStatusFilterLabel(statusCode),
-                            ),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedStatusFilter = statusCode;
-                                _applyStatusFilter();
-                              });
-                            },
-                            backgroundColor:
-                            isSelected ? AppColors.teal : null,
-                            selectedColor: AppColors.teal,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : null,
-                            ),
+                // Status Filter
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'filter'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _statusFilters.map((statusCode) {
+                              final isSelected =
+                                  _selectedStatusFilter == statusCode;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: FilterChip(
+                                  label: Text(
+                                    _getStatusFilterLabel(statusCode),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      _selectedStatusFilter = statusCode;
+                                      _applyStatusFilter();
+                                    });
+                                  },
+                                  backgroundColor: isSelected
+                                      ? AppColors.teal
+                                      : null,
+                                  selectedColor: AppColors.teal,
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? Colors.white : null,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        );
-                      }).toList(),
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                // Trucks List
+                Expanded(
+                  child: _filteredTrucks.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.local_shipping_outlined,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _userRole == UserRole.driver
+                                    ? 'no_trucks_driver'.tr()
+                                    : 'no_trucks_other'.tr(),
+                                style: const TextStyle(fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (_userRole == UserRole.driver)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    'driver_hint'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _filteredTrucks.length,
+                          itemBuilder: (context, index) {
+                            final truck = _filteredTrucks[index];
+                            return _buildTruckCard(truck);
+                          },
+                        ),
                 ),
               ],
             ),
-          ),
-          // Trucks List
-          Expanded(
-            child: _filteredTrucks.isEmpty
-                ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.local_shipping_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _userRole == UserRole.driver
-                        ? 'no_trucks_driver'.tr()
-                        : 'no_trucks_other'.tr(),
-                    style: const TextStyle(fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_userRole == UserRole.driver)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        'driver_hint'.tr(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _filteredTrucks.length,
-              itemBuilder: (context, index) {
-                final truck = _filteredTrucks[index];
-                return _buildTruckCard(truck);
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -666,8 +651,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
     final truckType = truck['truck_type'] as String;
     final model = truck['model'] as String;
     final year = truck['year'] as String;
-    final documents =
-    truck['documents'] as Map<String, Map<String, dynamic>>;
+    final documents = truck['documents'] as Map<String, Map<String, dynamic>>;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -711,11 +695,11 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
   }
 
   Widget _buildDocumentTile(
-      String truckNumber,
-      String docType,
-      Map<String, dynamic> docConfig,
-      Map<String, dynamic> docStatus,
-      ) {
+    String truckNumber,
+    String docType,
+    Map<String, dynamic> docConfig,
+    Map<String, dynamic> docStatus,
+  ) {
     final status = (docStatus['status'] ?? 'not_uploaded') as String;
     final fileUrl = docStatus['file_url'];
     final isUploading =
@@ -726,7 +710,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       canUpload = true;
     } else if (_userRole == UserRole.truckOwner) {
       final truck = _trucks.firstWhere(
-            (t) => t['truck_number'] == truckNumber,
+        (t) => t['truck_number'] == truckNumber,
         orElse: () => {},
       );
       canUpload = truck.isNotEmpty && truck['truck_admin'] == _loggedInUserId;
@@ -778,8 +762,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
                 ),
                 Text(
                   docConfig['description'],
-                  style:
-                  TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -829,12 +812,12 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
   }
 
   Widget _buildActionButtons(
-      String truckNumber,
-      String docType,
-      String status,
-      String? fileUrl,
-      bool canUpload,
-      ) {
+    String truckNumber,
+    String docType,
+    String status,
+    String? fileUrl,
+    bool canUpload,
+  ) {
     List<Widget> actionButtons = [];
 
     // Upload button for not uploaded documents
@@ -847,8 +830,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.teal,
               foregroundColor: Colors.white,
-              padding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               textStyle: const TextStyle(fontSize: 10),
               minimumSize: const Size(60, 32),
             ),
@@ -860,7 +842,11 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
 
     // View button for uploaded/verified documents
     if (status != 'not_uploaded' && fileUrl != null) {
-      actionButtons.add(
+      actionButtons.addAll([
+        IconButton(
+          icon: const Icon(Icons.upload_file, color: Colors.orange, size: 18),
+          onPressed: () => _uploadDocument(truckNumber, docType),
+        ),
         IconButton(
           tooltip: 'view'.tr(),
           icon: Icon(
@@ -887,9 +873,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
                 _showSuccessSnackBar('opening_document'.tr());
               } else {
                 print('Cannot launch URL: $properUrl');
-                _showErrorSnackBar(
-                  'cannot_open_url'.tr(),
-                );
+                _showErrorSnackBar('cannot_open_url'.tr());
               }
             } catch (e) {
               print('Error opening document: $e');
@@ -898,21 +882,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
             }
           },
         ),
-      );
-    }
-
-    if (status == 'uploaded' && _userRole == UserRole.agent) {
-      actionButtons.add(
-        IconButton(
-          tooltip: 'verify'.tr(),
-          icon: const Icon(
-            Icons.verified_outlined,
-            color: Colors.green,
-            size: 18,
-          ),
-          onPressed: () => _verifyDocument(truckNumber, docType),
-        ),
-      );
+      ]);
     }
 
     if (status == 'not_uploaded' && !canUpload) {
@@ -924,8 +894,7 @@ class _TruckDocumentsPageState extends State<TruckDocumentsPage>
       actionButtons.add(
         Container(
           height: 32,
-          padding:
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.grey.shade200,
             borderRadius: BorderRadius.circular(4),

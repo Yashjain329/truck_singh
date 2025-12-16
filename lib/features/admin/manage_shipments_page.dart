@@ -349,7 +349,7 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              '${trimAddress(shipment['pickup'] ?? '')}',
+                              trimAddress(shipment['pickup'] ?? ''),
                               style: Theme.of(context).textTheme.bodyMedium,
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -364,7 +364,7 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              '${trimAddress(shipment['drop'] ?? '')}',
+                              trimAddress(shipment['drop'] ?? ''),
                               style: Theme.of(context).textTheme.bodyMedium,
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,

@@ -115,7 +115,7 @@ class _ChatPageState extends State<ChatPage> {
     final theme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: theme.background, // 🔥 FIX DARK MODE BACKGROUND
+      backgroundColor: theme.surface, // 🔥 FIX DARK MODE BACKGROUND
       appBar: AppBar(
         title: Text(widget.chatTitle),
         backgroundColor: theme.surface, // 🔥 FIX APPBAR FOR DARK MODE
@@ -188,7 +188,7 @@ class _ChatPageState extends State<ChatPage> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       constraints: const BoxConstraints(maxWidth: 260),
       decoration: BoxDecoration(
-        color: mine ? theme.primary : theme.surfaceVariant, // 🔥 FIXED
+        color: mine ? theme.primary : theme.surfaceContainerHighest, // 🔥 FIXED
         borderRadius: BorderRadius.circular(16),
       ),
       child: child,
@@ -249,11 +249,11 @@ class _ChatPageState extends State<ChatPage> {
                 filled: true,
                 fillColor: theme.surface, // 🔥 FIX INPUT FIELD
                 hintStyle:
-                TextStyle(color: theme.onSurface.withOpacity(0.6)),
+                TextStyle(color: theme.onSurface.withValues(alpha: 0.6)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide(
-                      color: theme.outline.withOpacity(0.4)), // visible in dark mode
+                      color: theme.outline.withValues(alpha: 0.4)), // visible in dark mode
                 ),
               ),
               style: TextStyle(color: theme.onSurface),
@@ -276,7 +276,7 @@ class _ChatPageState extends State<ChatPage> {
 
   TextStyle _meta() {
     final theme = Theme.of(context).colorScheme;
-    return TextStyle(fontSize: 10, color: theme.onSurface.withOpacity(0.5));
+    return TextStyle(fontSize: 10, color: theme.onSurface.withValues(alpha: 0.5));
   }
 
   TextStyle _text(bool mine) {

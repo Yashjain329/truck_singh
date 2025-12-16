@@ -31,12 +31,11 @@ class ScheduleStep extends StatelessWidget {
     required this.onPickupDatePick,
   }) : super(key: key);
 
-  /// Required Text Field (Material 3 compliant)
   Widget _requiredTextField(
-    TextEditingController controller,
-    String label, {
-    bool isNumeric = false,
-  }) {
+      TextEditingController controller,
+      String label, {
+        bool isNumeric = false,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -51,15 +50,20 @@ class ScheduleStep extends StatelessWidget {
           controller: controller,
           keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
           decoration: InputDecoration(
-            hintText: 'Enter $label',
+            hintText: 'enter_field'.tr(namedArgs: {
+              "field": label,
+            }),
             border: const OutlineInputBorder(),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 14,
               horizontal: 12,
             ),
           ),
-          validator: (val) =>
-              val == null || val.trim().isEmpty ? 'Enter $label' : null,
+          validator: (val) => val == null || val.trim().isEmpty
+              ? 'enter_field'.tr(namedArgs: {
+            "field": label,
+          })
+              : null,
           onChanged: (_) => onChanged(),
         ),
       ],
@@ -75,7 +79,6 @@ class ScheduleStep extends StatelessWidget {
         children: [
           progressBar,
 
-          /// Title
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
@@ -86,7 +89,6 @@ class ScheduleStep extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          /// Delivery Date
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
@@ -99,26 +101,22 @@ class ScheduleStep extends StatelessWidget {
             title: Text(
               selectedDate == null
                   ? 'selectDeliveryDate'.tr()
-                  : 'deliveryPrefix'.tr(
-                      namedArgs: {
-                        "date": DateFormat(
-                          'MMM dd, yyyy',
-                        ).format(selectedDate!),
-                      },
-                    ),
+                  : 'deliveryPrefix'.tr(namedArgs: {
+                "date": DateFormat('MMM dd, yyyy')
+                    .format(selectedDate!),
+              }),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: selectedDate == null
                 ? Text('tapChooseDate'.tr())
                 : Text(
-                    '${selectedDate!.difference(DateTime.now()).inDays + 1} days from now',
-                  ),
+              '${selectedDate!.difference(DateTime.now()).inDays + 1} days from now',
+            ),
             onTap: onDatePick,
           ),
 
           const Divider(height: 1),
 
-          /// Pickup Date
           ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.green.shade100,
@@ -127,24 +125,22 @@ class ScheduleStep extends StatelessWidget {
             title: Text(
               pickupDate == null
                   ? 'selectPickupDate'.tr()
-                  : 'pickupPrefix'.tr(
-                      namedArgs: {
-                        "date": DateFormat('MMM dd, yyyy').format(pickupDate!),
-                      },
-                    ),
+                  : 'pickupPrefix'.tr(namedArgs: {
+                "date":
+                DateFormat('MMM dd, yyyy').format(pickupDate!),
+              }),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: pickupDate == null
                 ? Text('tapChoosePickupDate'.tr())
                 : Text(
-                    '${pickupDate!.difference(DateTime.now()).inDays} days from now',
-                  ),
+              '${pickupDate!.difference(DateTime.now()).inDays} days from now',
+            ),
             onTap: onPickupDatePick,
           ),
 
           const Divider(height: 1),
 
-          /// Pickup Time
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
@@ -157,7 +153,8 @@ class ScheduleStep extends StatelessWidget {
             title: Text(
               pickupTime == null
                   ? 'selectPickupTime'.tr()
-                  : 'pickupTimePrefix'.tr(namedArgs: {"time": pickupTime!}),
+                  : 'pickupTimePrefix'
+                  .tr(namedArgs: {"time": pickupTime!}),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: Text('preferredPickupTime'.tr()),
@@ -166,12 +163,13 @@ class ScheduleStep extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          /// Material Inside
-          _requiredTextField(materialController, 'materialInside'.tr()),
+          _requiredTextField(
+            materialController,
+            'materialInside'.tr(),
+          ),
 
           const SizedBox(height: 16),
 
-          /// Special Instructions
           Text(
             'specialInstructions'.tr(),
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
@@ -198,7 +196,6 @@ class ScheduleStep extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          /// Make Shipment Private
           CheckboxListTile(
             value: isPrivate,
             onChanged: onPrivateChanged,
@@ -206,10 +203,6 @@ class ScheduleStep extends StatelessWidget {
             subtitle: Text('makeShipmentPrivateSub'.tr()),
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
-            checkboxShape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-            ),
-            visualDensity: const VisualDensity(vertical: -1, horizontal: -3),
           ),
         ],
       ),

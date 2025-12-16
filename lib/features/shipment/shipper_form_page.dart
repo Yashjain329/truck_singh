@@ -569,17 +569,18 @@ class _ShipperFormPageState extends State<ShipperFormPage>
   String _stepDescription() {
     switch (_currentStep) {
       case 0:
-        return "Choose your preferred truck type";
+        return "step_truck_type".tr();
       case 1:
-        return "Enter shipment details";
+        return "step_shipment_details".tr();
       case 2:
-        return "Set pickup & delivery locations";
+        return "step_pickup_delivery".tr();
       case 3:
-        return "Schedule your shipment";
+        return "step_schedule".tr();
       default:
         return "";
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -659,7 +660,7 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                               _previousStep();
                             },
                             icon: const Icon(Icons.arrow_back),
-                            label: const Text("Back"),
+                            label: Text("back".tr()),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.grey.shade600,
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -692,8 +693,9 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                           )
                               : const Icon(Icons.send),
                           label: Text(
-                            _isSubmitting ? "Submitting..." : "Submit",
+                            _isSubmitting ? "submitting".tr() : "submit".tr(),
                           ),
+
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
                             _isFormValid && !_isSubmitting
@@ -715,7 +717,8 @@ class _ShipperFormPageState extends State<ShipperFormPage>
                           }
                               : null,
                           icon: const Icon(Icons.arrow_forward),
-                          label: const Text("Next"),
+                          label: Text("next".tr()),
+
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _stepValid[_currentStep]
                                 ? Colors.orange.shade600

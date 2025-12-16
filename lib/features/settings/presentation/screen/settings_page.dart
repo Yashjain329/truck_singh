@@ -1352,7 +1352,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final TextEditingController mobileController = TextEditingController(
       text: mobile_number ?? "",
     );
-    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
@@ -1361,7 +1361,7 @@ class _SettingsPageState extends State<SettingsPage> {
           title: Text('editProfile'.tr()),
           content: SingleChildScrollView(
             child: Form(
-              key: _formKey,
+              key: formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1511,7 +1511,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ElevatedButton(
               child: Text("update".tr()),
               onPressed: () async {
-                if (!_formKey.currentState!.validate()) return;
+                if (!formKey.currentState!.validate()) return;
 
                 final updatedName = nameController.text.trim();
                 final updatedMobile = mobileController.text.trim();
@@ -1523,7 +1523,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       .update({"name": updatedName})
                       .eq("user_id", user!.id);
                   setStateDialog(() => name = updatedName);
-                  this.setState(() => name = updatedName);
+                  setState(() => name = updatedName);
                 }
 
                 // ✅ Update mobile number if changed
@@ -1536,7 +1536,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     mobile_number = updatedMobile;
                     mobile_no_verified = false;
                   });
-                  this.setState(() {
+                  setState(() {
                     mobile_number = updatedMobile;
                     mobile_no_verified = false;
                   });
@@ -1570,7 +1570,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         .eq("user_id", user!.id);
 
                     setStateDialog(() => profile_picture = publicUrl);
-                    this.setState(() => profile_picture = publicUrl);
+                    setState(() => profile_picture = publicUrl);
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text("imageUploadFailed: $e")),
@@ -1749,7 +1749,7 @@ class _SettingsPageState extends State<SettingsPage> {
           if (role == 'agent' || role == 'truck_owner')
             SettingsTile(
               icon: Icons.account_balance,
-              title: 'bank_details'.tr() + '(${bankDetails.length})',
+              title: '${'bank_details'.tr()}(${bankDetails.length})',
               onTap: _showBankDetailsList,
             ),
           SettingsTile(

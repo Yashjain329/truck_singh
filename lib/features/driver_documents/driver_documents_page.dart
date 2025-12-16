@@ -771,6 +771,16 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
       );
     }
 
+
+    if (statusLower == 'approved') {
+      buttons.add(
+        IconButton(
+          icon: const Icon(Icons.upload_file, color: Colors.orange, size: 18),
+          onPressed: () => _uploadDocument(driverId, docType),
+        ),
+      );
+    }
+
     if (statusLower != 'not_uploaded' && fileUrl != null) {
       buttons.add(
         IconButton(

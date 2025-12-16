@@ -30,7 +30,7 @@ BotAction parseBotOutput(String raw){
           action: map['action']?.toString() ?? 'unknown',
           parameters: Map<String,dynamic>.from(map['parameters'] ?? {}),
           reply: map['reply']?.toString() ?? '',
-          language: map['language'].toString() ?? 'en'
+          language: map['language'].toString()
       );
 
     }

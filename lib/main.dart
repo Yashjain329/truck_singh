@@ -136,7 +136,7 @@ class _RootPageState extends State<RootPage> {
         print('🔄 Current home widget: ${_home.runtimeType}');
         if (_loginPageCheckCount > 0) {
           print(
-            '🔄 Login page check count: ${_loginPageCheckCount} (${_loginPageCheckCount * 0.5}s on login)',
+            '🔄 Login page check count: $_loginPageCheckCount (${_loginPageCheckCount * 0.5}s on login)',
           );
         }
       }

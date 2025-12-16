@@ -53,7 +53,7 @@ class ShipmentListItem extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  shipment['booking_status'] ?? '',
+                  (shipment['booking_status'] ?? '').toString().tr(),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -70,15 +70,13 @@ class ShipmentListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Driver: ${shipment['assigned_driver'] ?? ""}',
-                overflow: TextOverflow.ellipsis,
+                '${'driver'.tr()}: ${shipment['assigned_driver'] ?? ""}',
               ),
               Text(
-                'Route: ${shipment['pickup'] ?? "?"} → ${ShipmentUtils.extractCity(shipment['drop'])}',
-                overflow: TextOverflow.ellipsis,
+                '${'route'.tr()}: ${shipment['pickup'] ?? "?"} → ${ShipmentUtils.extractCity(shipment['drop'])}',
               ),
               Text(
-                'Date: ${ShipmentUtils.formattedDate(shipment['updated_at'])}',
+                '${'date'.tr()}: ${ShipmentUtils.formattedDate(shipment['updated_at'])}',
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -301,17 +299,20 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
       spacing: 8,
       children: [
         FilterChip(
-          label: Text('Status: $selectedStatus'),
+          label: Text('${'status'.tr()}: ${selectedStatus.tr()}'),
+
           selected: selectedStatus != 'All',
           onSelected: (_) => _selectStatus(),
         ),
         FilterChip(
-          label: Text('Month: $selectedMonth'),
+          label: Text('${'month1'.tr()}: ${selectedMonth.tr()}'),
+
           selected: selectedMonth != 'All',
           onSelected: (_) => _selectMonth(),
         ),
         FilterChip(
-          label: Text('Location: $selectedLocation'),
+          label: Text('${'location2'.tr()}: ${selectedLocation.tr()}'),
+
           selected: selectedLocation != 'All',
           onSelected: (_) => _selectLocation(),
         ),
@@ -345,7 +346,9 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
           for (final status in ['All', ...shipmentStatuses])
             SimpleDialogOption(
               onPressed: () => Navigator.pop(context, status),
-              child: Text(status),
+              child: Text(status.tr()),
+
+
             ),
         ],
       ),
@@ -456,7 +459,8 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
             for (final e in statusCounts.entries)
               if (e.value > 0)
                 FilterChip(
-                  label: Text('${e.key} (${e.value})'),
+                  label: Text('${e.key.tr()} (${e.value})'),
+
                   selected: activeChartFilter == e.key,
                   backgroundColor: statusColors[e.key]!.withValues(alpha: 0.18),
                   selectedColor: statusColors[e.key],
@@ -630,7 +634,7 @@ class _ReportAnalysisPageState extends State<ReportAnalysisPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Shipments (${data.length})',
+                      '${'shipments'.tr()} (${data.length})',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.blueAccent,

@@ -30,64 +30,19 @@ class _ComplaintPageState extends State<ComplaintPage> {
   Map<String, dynamic>? _senderProfile;
   Map<String, dynamic>? _recipientProfile;
   Map<String, dynamic>? _shipmentDetails;
-  Map<String, String?> _cachedAssignedUsers = {};
+
+  // Cache structure to hold IDs for specific roles
+  final Map<String, String?> _cachedAssignedUsers = {
+    'driver': null,
+    'agent_accepted': null, // The agent/truckowner who accepted the load
+    'agent_creator': null,  // The agent/truckowner who posted the load
+    'shipper': null,        // The pure shipper (if applicable)
+  };
+
   String? _shipmentCreatorRole;
-  String? _shipmentCreatorId;
+  String? _selectedRecipientRole; // This holds the Label string (e.g., "Agent (Accepted)")
 
-  String? _selectedRecipientRole;
-  final List<String> _recipientRoles = [
-    'Driver',
-    'Shipper',
-    'Agent',
-    'Truck Owner',
-  ];
-  List<String> get _filteredRecipientRoles {
-    if (_senderProfile == null) return _recipientRoles;
-
-    final senderRole = _senderProfile!['role'] as String?;
-    final senderCustomId = _senderProfile!['custom_user_id'] as String?;
-    final rolesWithAssignee = _recipientRoles.where((role) {
-      final id = _cachedAssignedUsers[role];
-      return id != null && id.isNotEmpty;
-    }).toList();
-
-    if (rolesWithAssignee.isEmpty) {
-      return _recipientRoles;
-    }
-    String? senderDisplayRole;
-    if (senderRole != null) {
-      final lower = senderRole.toLowerCase();
-      if (lower.contains('driver')) {
-        senderDisplayRole = 'Driver';
-      } else if (lower.contains('shipper')) {
-        senderDisplayRole = 'Shipper';
-      } else if (lower.contains('agent')) {
-        senderDisplayRole = 'Agent';
-      } else if (lower.contains('truckowner')) {
-        senderDisplayRole = 'Truck Owner';
-      }
-    }
-    List<String> baseFiltered = rolesWithAssignee;
-    if (senderDisplayRole != null) {
-      baseFiltered =
-          baseFiltered.where((role) => role != senderDisplayRole).toList();
-    }
-    final creatorRole = _shipmentCreatorRole;
-    final creatorId = _shipmentCreatorId;
-
-    final isCreator =
-        creatorId != null && senderCustomId != null && creatorId == senderCustomId;
-
-    final isCreatorAgent = creatorRole != null && creatorRole.contains('agent');
-    final isCreatorTruckOwner =
-        creatorRole != null && creatorRole.contains('truckowner');
-
-    if (isCreator && (isCreatorAgent || isCreatorTruckOwner)) {
-      return baseFiltered.where((r) => r == 'Driver').toList();
-    }
-    return baseFiltered;
-  }
-
+  // Pre-built subjects
   final List<String> _preBuiltSubjects = [
     'Delivery Delay',
     'Package Damaged',
@@ -104,21 +59,22 @@ class _ComplaintPageState extends State<ComplaintPage> {
   bool _isLoading = false;
   bool _isFetchingSender = true;
   bool _isVerifyingRecipient = false;
-  // Loading state for the shipment fetch
   bool _isFetchingShipment = false;
 
   @override
   void initState() {
     super.initState();
     _fetchSenderProfile();
+
+    // Initialize shipment data based on how the page was opened
     if (widget.complaintData.isNotEmpty) {
       _shipmentDetails = widget.complaintData;
-      _cacheAssignedUsers();
-      _determineShipmentCreator();
+      _processShipmentData(); // Logic extracted for cleaner code
     } else {
       _fetchShipmentDetails();
     }
 
+    // Debounce for manual ID entry
     _recipientIdController.addListener(() {
       if (_debounce?.isActive ?? false) _debounce!.cancel();
       _debounce = Timer(const Duration(milliseconds: 750), () {
@@ -139,7 +95,14 @@ class _ComplaintPageState extends State<ComplaintPage> {
     super.dispose();
   }
 
-  // Check network connectivity before making API calls
+  // --- Logic Section ---
+
+  Future<void> _processShipmentData() async {
+    await _determineShipmentCreator();
+    _cacheAssignedUsers();
+    if (mounted) setState(() {});
+  }
+
   Future<bool> _checkConnectivity() async {
     try {
       final result = await InternetAddress.lookup('google.com')
@@ -150,60 +113,36 @@ class _ComplaintPageState extends State<ComplaintPage> {
     }
   }
 
-  // Fetches shipment data for autofill
   Future<void> _fetchShipmentDetails() async {
     if (widget.preFilledShipmentId == null) return;
 
     setState(() => _isFetchingShipment = true);
     try {
-      print('Fetching shipment details for ID: ${widget.preFilledShipmentId}');
       final data = await Supabase.instance.client
           .from('shipment')
-          .select(
-        'assigned_driver, assigned_agent, shipper_id, assigned_truckowner',
-      )
+          .select('assigned_driver, assigned_agent, shipper_id, assigned_truckowner')
           .eq('shipment_id', widget.preFilledShipmentId!)
           .single()
           .timeout(const Duration(seconds: 15));
 
-      print('Shipment details fetched: $data');
-
       if (mounted) {
-        setState(() {
-          _shipmentDetails = data;
-        });
-        _cacheAssignedUsers();
-        _determineShipmentCreator();
+        _shipmentDetails = data;
+        await _processShipmentData();
       }
     } catch (e) {
-      print('ERROR in _fetchShipmentDetails: $e');
-      if (e is PostgrestException) {
-        print(
-          'Supabase error: ${e.message}, Details: ${e.details}, Code: ${e.code}',
-        );
-      }
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('shipment_fetch_error'.tr()),
-            backgroundColor: Colors.orange,
-            action: SnackBarAction(
-              label: 'retry'.tr(),
-              textColor: Colors.white,
-              onPressed: () => _fetchShipmentDetails(),
-            ),
+            action: SnackBarAction(label: 'retry'.tr(), onPressed: _fetchShipmentDetails),
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isFetchingShipment = false);
-      }
+      if (mounted) setState(() => _isFetchingShipment = false);
     }
   }
 
-  // NEW: Determine who actually created the shipment based on shipper_id
   Future<void> _determineShipmentCreator() async {
     if (_shipmentDetails == null) return;
 
@@ -215,212 +154,204 @@ class _ComplaintPageState extends State<ComplaintPage> {
           .from('user_profiles')
           .select('role, custom_user_id')
           .eq('custom_user_id', shipperId)
-          .maybeSingle()
-          .timeout(const Duration(seconds: 10));
+          .maybeSingle();
 
       if (profile != null && mounted) {
         setState(() {
-          _shipmentCreatorRole =
-              (profile['role'] as String?)?.toLowerCase().trim();
-          _shipmentCreatorId = profile['custom_user_id']?.toString() ?? shipperId;
+          _shipmentCreatorRole = (profile['role'] as String?)?.toLowerCase().trim();
         });
-
-        print(
-          'Shipment created by role: $_shipmentCreatorRole, id: $_shipmentCreatorId',
-        );
       }
     } catch (e) {
-      print('Error determining shipment creator: $e');
+      debugPrint('Error determining creator: $e');
     }
   }
 
-  // Cache assigned user IDs from shipment details
   void _cacheAssignedUsers() {
     if (_shipmentDetails == null) return;
 
-    print('Caching assigned users from shipment details...');
+    // 1. Identify Accepted Agent (either 'assigned_agent' or 'assigned_truckowner')
+    String? assignedAgent = (_shipmentDetails!['assigned_agent']?.toString() ?? '').trim();
+    String? assignedTruckOwner = (_shipmentDetails!['assigned_truckowner']?.toString() ?? '').trim();
 
-    _cachedAssignedUsers = {
-      'Driver': _shipmentDetails!['assigned_driver']?.toString(),
-      'Agent': _shipmentDetails!['assigned_agent']?.toString(),
-      'Truck Owner': _shipmentDetails!['assigned_truckowner']?.toString(),
-      'Shipper': _shipmentDetails!['shipper_id']?.toString(),
-    };
+    final agentAccepted = (assignedAgent.isNotEmpty)
+        ? assignedAgent
+        : (assignedTruckOwner.isNotEmpty ? assignedTruckOwner : null);
 
-    print('Cached assigned users: $_cachedAssignedUsers');
+    // 2. Identify Creator (Agent vs Shipper)
+    final creatorId = _shipmentDetails!['shipper_id']?.toString();
+    String? agentCreator;
+    String? shipper;
+
+    if (creatorId != null && creatorId.isNotEmpty) {
+      if (_shipmentCreatorRole != null &&
+          (_shipmentCreatorRole!.contains('agent') || _shipmentCreatorRole!.contains('truckowner'))) {
+        agentCreator = creatorId;
+      } else {
+        shipper = creatorId;
+      }
+    }
+
+    // 3. Identify Driver
+    String? driver = _shipmentDetails!['assigned_driver']?.toString();
+
+    // 4. Update Cache
+    _cachedAssignedUsers['driver'] = (driver != null && driver.isNotEmpty) ? driver : null;
+    _cachedAssignedUsers['agent_accepted'] = agentAccepted;
+    _cachedAssignedUsers['agent_creator'] = agentCreator;
+    _cachedAssignedUsers['shipper'] = (shipper != null && shipper.isNotEmpty) ? shipper : null;
   }
 
-  // Auto-fills the recipient ID based on the selected role using cached data
-  Future<void> _autofillRecipientId(String role) async {
-    try {
-      print('Auto-filling recipient ID for role: $role');
+  // CORE LOGIC: Determines which options appear in the dropdown
+  List<String> _computeAvailableRoles() {
+    final labels = <String>[];
 
-      final cachedUserId = _cachedAssignedUsers[role];
-      if (cachedUserId != null && cachedUserId.isNotEmpty) {
-        print('Found cached user ID: $cachedUserId for role: $role');
+    final driverId = _cachedAssignedUsers['driver'];
+    final agentAcceptedId = _cachedAssignedUsers['agent_accepted'];
+    final agentCreatorId = _cachedAssignedUsers['agent_creator'];
+    final shipperId = _cachedAssignedUsers['shipper'];
 
-        // Fetch user profile from user_profiles table
+    final senderId = _senderProfile?['custom_user_id'] as String?;
+
+    // Helper: Validates if ID exists and is NOT the current user
+    bool isValidTarget(String? id) {
+      if (id == null || id.isEmpty) return false;
+      if (senderId != null && id == senderId) return false;
+      return true;
+    }
+
+    final creatorRole = _shipmentCreatorRole ?? '';
+    final creatorIsAgent = creatorRole.contains('agent') || creatorRole.contains('truckowner');
+
+    // Case 1: Shipper Created -> Standard flow
+    if (!creatorIsAgent) {
+      if (isValidTarget(driverId)) labels.add('Driver');
+      if (isValidTarget(agentAcceptedId)) labels.add('Agent (Accepted)');
+      if (isValidTarget(shipperId)) labels.add('Shipper');
+      return labels;
+    }
+
+    // Case 2 & 3: Agent Created (Sub-contracting or Direct)
+
+    // Always allow complaining against driver if valid
+    if (isValidTarget(driverId)) labels.add('Driver');
+
+    // Handle Agent vs Agent scenarios
+    if (agentCreatorId != null && agentAcceptedId != null && agentCreatorId != agentAcceptedId) {
+      // Different agents involved (Sub-contracting)
+      if (isValidTarget(agentCreatorId)) labels.add('Agent (Creator)');
+      if (isValidTarget(agentAcceptedId)) labels.add('Agent (Accepted)');
+    } else {
+      // Single agent involved (or creator/acceptor are same)
+      final effectiveAgentId = agentCreatorId ?? agentAcceptedId;
+      if (isValidTarget(effectiveAgentId)) {
+        // Label based on context: if I am the driver, I complain against "Agent (Creator)" usually
+        labels.add('Agent (Creator)');
+      }
+    }
+
+    if (isValidTarget(shipperId)) labels.add('Shipper');
+
+    return labels;
+  }
+
+  Future<void> _autofillRecipientId(String roleLabel) async {
+    String? cachedId;
+
+    // Map dropdown label to cache key
+    switch (roleLabel) {
+      case 'Driver': cachedId = _cachedAssignedUsers['driver']; break;
+      case 'Agent (Accepted)': cachedId = _cachedAssignedUsers['agent_accepted']; break;
+      case 'Agent (Creator)': cachedId = _cachedAssignedUsers['agent_creator']; break;
+      case 'Shipper': cachedId = _cachedAssignedUsers['shipper']; break;
+    }
+
+    // Fallback logic specific to Agent/Shipper confusion
+    if (roleLabel == 'Agent (Creator)' && cachedId == null) {
+      cachedId = _shipmentDetails?['shipper_id']?.toString();
+    }
+
+    if (cachedId != null && cachedId.isNotEmpty) {
+      try {
         final response = await Supabase.instance.client
             .from('user_profiles')
             .select('custom_user_id, name, role')
-            .eq('custom_user_id', cachedUserId)
-            .single()
-            .timeout(const Duration(seconds: 8));
+            .eq('custom_user_id', cachedId)
+            .maybeSingle();
 
-        if (mounted) {
+        if (mounted && response != null) {
           setState(() {
-            _recipientIdController.text = cachedUserId;
+            _recipientIdController.text = cachedId!;
             _recipientProfile = response;
-            print(
-              'Auto-filled recipient: ${response['name']} '
-                  '(${response['custom_user_id']})',
-            );
           });
         }
-      } else {
-        print('No cached user ID found for role: $role');
-        if (mounted) {
-          setState(() {
-            _recipientIdController.clear();
-            _recipientProfile = null;
-          });
-        }
+      } catch (e) {
+        _clearRecipient();
       }
-    } catch (e) {
-      print('Error auto-filling recipient ID for role $role: $e');
-      if (e is PostgrestException) {
-        print('Supabase error: ${e.message}, Details: ${e.details}');
-      }
-      if (mounted) {
-        setState(() {
-          _recipientIdController.clear();
-          _recipientProfile = null;
-        });
-      }
+    } else {
+      _clearRecipient();
+    }
+  }
+
+  void _clearRecipient() {
+    if (mounted) {
+      setState(() {
+        _recipientIdController.clear();
+        _recipientProfile = null;
+      });
     }
   }
 
   Future<void> _fetchSenderProfile() async {
-    // Check connectivity first
-    final hasConnection = await _checkConnectivity();
-    if (!hasConnection) {
-      if (mounted) {
-        setState(() => _isFetchingSender = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('no_internet'.tr()),
-            backgroundColor: Colors.red,
-            action: SnackBarAction(
-              label: 'retry'.tr(),
-              onPressed: () => _fetchSenderProfile(),
-            ),
-          ),
-        );
-      }
-      return;
-    }
+    if (!await _checkConnectivity()) return;
 
     try {
-      print('Fetching sender profile...');
       final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) {
-        print('ERROR: Not authenticated');
-        throw Exception('Not authenticated');
-      }
+      if (user == null) return;
 
-      print('User ID: ${user.id}');
       final profile = await Supabase.instance.client
           .from('user_profiles')
           .select('custom_user_id, name, role')
           .eq('user_id', user.id)
-          .single()
-          .timeout(const Duration(seconds: 10));
-
-      print(
-        'Sender profile fetched: ${profile['name']} (${profile['custom_user_id']})',
-      );
+          .single();
 
       if (mounted) {
         setState(() {
           _senderProfile = profile;
           _isFetchingSender = false;
         });
+        // Refresh options once we know who the sender is (to exclude self)
+        setState(() {});
       }
     } catch (e) {
-      print('ERROR in _fetchSenderProfile: $e');
-      if (e is PostgrestException) {
-        print(
-          'Supabase error: ${e.message}, Details: ${e.details}, Code: ${e.code}',
-        );
-      }
-
-      if (mounted) {
-        setState(() => _isFetchingSender = false);
-        String errorMessage = 'Error fetching your profile';
-        if (e.toString().contains('TimeoutException')) {
-          errorMessage =
-          'Network timeout. Please check your connection and try again.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            action: SnackBarAction(
-              label: 'retry'.tr(),
-              textColor: Colors.white,
-              onPressed: () => _fetchSenderProfile(),
-            ),
-          ),
-        );
-      }
+      if (mounted) setState(() => _isFetchingSender = false);
     }
   }
 
   Future<void> _verifyRecipientId(String id) async {
     if (id.isEmpty || _selectedRecipientRole == null) return;
+
+    // Self check
+    if (_senderProfile != null && id == _senderProfile!['custom_user_id']) {
+      _showError('cannot_file_self'.tr());
+      _clearRecipient();
+      return;
+    }
+
     setState(() => _isVerifyingRecipient = true);
 
     try {
-      // Check if user is trying to select themselves
-      if (_senderProfile != null && id == _senderProfile!['custom_user_id']) {
-        if (mounted) {
-          setState(() {
-            _recipientProfile = null;
-            _isVerifyingRecipient = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('cannot_file_self'.tr()),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
+      // Map display label to DB roles
       List<String> dbRoles = [];
-      switch (_selectedRecipientRole) {
-        case 'Driver':
-          dbRoles = ['driver'];
-          break;
-        case 'Shipper':
-          dbRoles = ['shipper'];
-          break;
-        case 'Agent':
-          dbRoles = ['agent'];
-          break;
-        case 'Truck Owner':
-          dbRoles = ['truckowner'];
-          break;
-      }
+      if (_selectedRecipientRole == 'Driver') dbRoles = ['driver'];
+      else if (_selectedRecipientRole == 'Shipper') dbRoles = ['shipper'];
+      else dbRoles = ['agent', 'truckowner'];
 
       final profile = await Supabase.instance.client
           .from('user_profiles')
-          .select('custom_user_id, name')
+          .select('custom_user_id, name, role')
           .eq('custom_user_id', id)
           .inFilter('role', dbRoles)
-          .maybeSingle()
-          .timeout(const Duration(seconds: 8));
+          .maybeSingle();
 
       if (mounted) {
         setState(() {
@@ -430,20 +361,8 @@ class _ComplaintPageState extends State<ComplaintPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _recipientProfile = null;
-          _isVerifyingRecipient = false;
-        });
-
-        if (e.toString().contains('TimeoutException')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('network_timeout'.tr()),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
+        _clearRecipient();
+        setState(() => _isVerifyingRecipient = false);
       }
     }
   }
@@ -451,45 +370,24 @@ class _ComplaintPageState extends State<ComplaintPage> {
   Future<void> _submitComplaint() async {
     if (!_formKey.currentState!.validate()) return;
     if (_recipientProfile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('verify_recipient'.tr()),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showError('verify_recipient'.tr());
       return;
-    }
-    if (_senderProfile != null && _recipientProfile != null) {
-      if (_senderProfile!['custom_user_id'] ==
-          _recipientProfile!['custom_user_id']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('cannot_file_self'.tr()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
     }
 
     setState(() => _isLoading = true);
 
     try {
       final user = Supabase.instance.client.auth.currentUser!;
-      final finalSubject = _selectedSubject == 'Other'
-          ? _subjectController.text.trim()
-          : _selectedSubject!;
 
+      // Upload Attachment
       String? attachmentUrl;
       if (_pickedFile != null) {
         final fileBytes = await _pickedFile!.readAsBytes();
-        final fileName =
-            '${DateTime.now().millisecondsSinceEpoch}_${_pickedFile!.name}';
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_pickedFile!.name}';
         final filePath = 'user_${user.id}/$fileName';
         await Supabase.instance.client.storage
             .from('complaint-attachments')
-            .uploadBinary(filePath, fileBytes)
-            .timeout(const Duration(seconds: 30));
+            .uploadBinary(filePath, fileBytes);
         attachmentUrl = Supabase.instance.client.storage
             .from('complaint-attachments')
             .getPublicUrl(filePath);
@@ -501,67 +399,41 @@ class _ComplaintPageState extends State<ComplaintPage> {
         'complainer_user_name': _senderProfile!['name'],
         'target_user_id': _recipientProfile!['custom_user_id'],
         'target_user_name': _recipientProfile!['name'],
-        'subject': finalSubject,
+        'subject': _selectedSubject == 'Other' ? _subjectController.text.trim() : _selectedSubject,
         'complaint': _complaintController.text.trim(),
         'status': 'Open',
         'attachment_url': attachmentUrl,
         'shipment_id': widget.preFilledShipmentId,
       };
 
-      await Supabase.instance.client
-          .from('complaints')
-          .insert(complaintData)
-          .timeout(const Duration(seconds: 15));
+      await Supabase.instance.client.from('complaints').insert(complaintData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('complaint_submitted'.tr()),
-            backgroundColor: Colors.green,
-          ),
+          SnackBar(content: Text('complaint_submitted'.tr()), backgroundColor: Colors.green),
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) {
-        String errorMessage = 'Error submitting complaint';
-        if (e.toString().contains('TimeoutException')) {
-          errorMessage =
-          'Network timeout. Please check your connection and try again.';
-        } else if (e.toString().contains('HandshakeException')) {
-          errorMessage =
-          'Connection failed. Please check your internet connection.';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            action: SnackBarAction(
-              label: 'retry'.tr(),
-              textColor: Colors.white,
-              onPressed: () => _submitComplaint(),
-            ),
-          ),
-        );
-      }
+      if (mounted) _showError('Error submitting complaint: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 50,
-    );
-    if (picked != null) {
-      setState(() => _pickedFile = picked);
-    }
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+    if (picked != null) setState(() => _pickedFile = picked);
   }
+
+  // --- UI Section ---
 
   @override
   Widget build(BuildContext context) {
@@ -606,26 +478,11 @@ class _ComplaintPageState extends State<ComplaintPage> {
             Text(title, style: Theme.of(context).textTheme.titleLarge),
             const Divider(height: 20),
             if (profile == null)
-              Text(
-                'could_not_load_profile_info'.tr(),
-                style: const TextStyle(color: Colors.red),
-              )
+              Text('could_not_load_profile_info'.tr(), style: const TextStyle(color: Colors.red))
             else ...[
-              Text(
-                profile['name'] ?? 'N/A',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
+              Text(profile['name'] ?? 'N/A', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(
-                'ID: ${profile['custom_user_id'] ?? 'N/A'}',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Colors.grey.shade600),
-              ),
+              Text('ID: ${profile['custom_user_id'] ?? 'N/A'}', style: TextStyle(color: Colors.grey.shade600)),
             ],
           ],
         ),
@@ -635,29 +492,20 @@ class _ComplaintPageState extends State<ComplaintPage> {
 
   Widget _buildRecipientCard() {
     return Card(
-      color: Theme.of(context).cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'recipient_complain_against'.tr(),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('recipient_complain_against'.tr(), style: Theme.of(context).textTheme.titleLarge),
             const Divider(height: 20),
             DropdownButtonFormField<String>(
-              initialValue: _selectedRecipientRole,
+              initialValue: _selectedRecipientRole, // Use value instead of initialValue for dynamic updates
               decoration: InputDecoration(
                 labelText: 'select_recipient_role'.tr(),
                 border: const OutlineInputBorder(),
               ),
-              items: _filteredRecipientRoles
-                  .map(
-                    (role) =>
-                    DropdownMenuItem(value: role, child: Text(role)),
-              )
-                  .toList(),
+              items: _computeAvailableRoles().map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(),
               onChanged: (value) {
                 if (value == null) return;
                 setState(() {
@@ -667,31 +515,7 @@ class _ComplaintPageState extends State<ComplaintPage> {
                 });
                 _autofillRecipientId(value);
               },
-              validator: (value) {
-                if (value == null) return 'Please select a role';
-                if (_senderProfile != null) {
-                  final senderRole = _senderProfile!['role'] as String?;
-                  if (senderRole != null) {
-                    String? senderDisplayRole;
-                    final lower = senderRole.toLowerCase();
-                    if (lower.contains('driver')) {
-                      senderDisplayRole = 'Driver';
-                    } else if (lower.contains('shipper')) {
-                      senderDisplayRole = 'Shipper';
-                    } else if (lower.contains('agent')) {
-                      senderDisplayRole = 'Agent';
-                    } else if (lower.contains('truckowner')) {
-                      senderDisplayRole = 'Truck Owner';
-                    }
-
-                    if (senderDisplayRole != null && value == senderDisplayRole) {
-                      return 'You cannot file a complaint against yourself';
-                    }
-                  }
-                }
-
-                return null;
-              },
+              validator: (value) => value == null ? 'Please select a role' : null,
             ),
             if (_selectedRecipientRole != null) ...[
               const SizedBox(height: 12),
@@ -701,45 +525,17 @@ class _ComplaintPageState extends State<ComplaintPage> {
                   labelText: 'enter_recipient_id'.tr(),
                   border: const OutlineInputBorder(),
                   suffixIcon: _isVerifyingRecipient
-                      ? const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
+                      ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2))
                       : (_recipientProfile != null
-                      ? const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                  )
-                      : (_recipientIdController.text.isNotEmpty
-                      ? const Icon(Icons.error, color: Colors.red)
-                      : null)),
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : (_recipientIdController.text.isNotEmpty ? const Icon(Icons.error, color: Colors.red) : null)),
                 ),
-                validator: (value) =>
-                value == null || value.isEmpty ? 'Recipient ID is required' : null,
+                validator: (value) => value == null || value.isEmpty ? 'Recipient ID is required' : null,
               ),
               if (_recipientProfile != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    'Name: ${_recipientProfile!['name']}',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              else if (_recipientIdController.text.isNotEmpty &&
-                  !_isVerifyingRecipient)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    'user_not_found_with_role'.tr(),
-                    style: const TextStyle(color: Colors.red),
-                  ),
+                  child: Text('Name: ${_recipientProfile!['name']}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                 ),
             ],
           ],
@@ -750,95 +546,55 @@ class _ComplaintPageState extends State<ComplaintPage> {
 
   Widget _buildComplaintForm() {
     return Card(
-      color: Theme.of(context).cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'complaint_details_section'.tr(),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('complaint_details_section'.tr(), style: Theme.of(context).textTheme.titleLarge),
             const Divider(height: 20),
             DropdownButtonFormField<String>(
               initialValue: _selectedSubject,
-              decoration: InputDecoration(
-                labelText: 'subject_label'.tr(),
-                border: const OutlineInputBorder(),
-              ),
-              items: _preBuiltSubjects
-                  .map(
-                    (subject) =>
-                    DropdownMenuItem(value: subject, child: Text(subject)),
-              )
-                  .toList(),
+              decoration: InputDecoration(labelText: 'subject_label'.tr(), border: const OutlineInputBorder()),
+              items: _preBuiltSubjects.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
               onChanged: (value) => setState(() {
                 _selectedSubject = value;
                 _showCustomSubject = value == 'Other';
               }),
-              validator: (value) =>
-              value == null ? 'Please select a subject' : null,
+              validator: (v) => v == null ? 'Please select a subject' : null,
             ),
             if (_showCustomSubject) ...[
               const SizedBox(height: 12),
               TextFormField(
                 controller: _subjectController,
-                decoration: InputDecoration(
-                  labelText: 'custom_subject'.tr(),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Custom subject is required'
-                    : null,
+                decoration: InputDecoration(labelText: 'custom_subject'.tr(), border: const OutlineInputBorder()),
+                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
               ),
             ],
             const SizedBox(height: 12),
             TextFormField(
               controller: _complaintController,
-              decoration: InputDecoration(
-                labelText: 'complaint_label'.tr(),
-                border: const OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
+              decoration: InputDecoration(labelText: 'complaint_label'.tr(), border: const OutlineInputBorder(), alignLabelWithHint: true),
               maxLines: 5,
               maxLength: 1000,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Complaint details cannot be empty';
-                }
-                if (value.trim().length < 20) {
-                  return 'Please provide more detail (min 20 characters)';
-                }
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Required';
+                if (v.trim().length < 20) return 'Too short (min 20 chars)';
                 return null;
               },
             ),
             const SizedBox(height: 12),
-            Text(
-              'attach_photo_optional'.tr(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
             Row(
               children: [
                 OutlinedButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.attach_file),
-                  label: Text(
-                    _pickedFile == null ? 'Choose File' : 'Change File',
-                  ),
+                  label: Text(_pickedFile == null ? 'Choose File' : 'Change File'),
                 ),
-                const SizedBox(width: 16),
-                if (_pickedFile != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      File(_pickedFile!.path),
-                      height: 60,
-                      width: 60,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                if (_pickedFile != null) ...[
+                  const SizedBox(width: 16),
+                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_pickedFile!.path), height: 40, width: 40, fit: BoxFit.cover)),
+                ]
               ],
             ),
           ],
@@ -850,23 +606,12 @@ class _ComplaintPageState extends State<ComplaintPage> {
   Widget _buildSubmitButton() {
     return ElevatedButton.icon(
       onPressed: _isLoading ? null : _submitComplaint,
-      icon: _isLoading
-          ? Container(
-        width: 24,
-        height: 24,
-        padding: const EdgeInsets.all(2.0),
-        child: const CircularProgressIndicator(
-          color: Colors.white,
-          strokeWidth: 3,
-        ),
-      )
-          : const Icon(Icons.send),
+      icon: _isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) : const Icon(Icons.send),
       label: Text('submit_complaint'.tr()),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
   }
