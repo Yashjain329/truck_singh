@@ -364,6 +364,16 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
               ),
             ),
             FeatureCard(
+              title: 'myTrips'.tr(),
+              subtitle: 'historyDetails'.tr(),
+              icon: Icons.route_outlined,
+              color: Colors.blueGrey,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyTripsHistory()),
+              ),
+            ),
+            FeatureCard(
               title: 'sharedtrips'.tr(),
               subtitle: 'sharedtracking'.tr(),
               icon: Icons.share_location,
@@ -436,16 +446,6 @@ class _TruckOwnerDashboardState extends State<TruckOwnerDashboard> {
                 MaterialPageRoute(
                   builder: (context) => const DriverDocumentsPage(),
                 ),
-              ),
-            ),
-            FeatureCard(
-              title: 'myTrips'.tr(),
-              subtitle: 'historyDetails'.tr(),
-              icon: Icons.route_outlined,
-              color: Colors.blueGrey,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MyTripsHistory()),
               ),
             ),
             FeatureCard(

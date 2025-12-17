@@ -56,36 +56,36 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
 
     _complaintChannel!
         .onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'complaints',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'id',
-        value: complaintId,
-      ),
-      callback: (payload) {
-        if (!mounted) return;
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'complaints',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: complaintId,
+          ),
+          callback: (payload) {
+            if (!mounted) return;
 
-        if (payload.eventType == 'UPDATE') {
-          setState(() => _currentComplaint = payload.newRecord);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('complaint_updated'.tr()),
-              backgroundColor: Colors.blue,
-            ),
-          );
-        } else if (payload.eventType == 'DELETE') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('complaint_deleted'.tr()),
-              backgroundColor: Colors.orange,
-            ),
-          );
-          Navigator.pop(context);
-        }
-      },
-    )
+            if (payload.eventType == 'UPDATE') {
+              setState(() => _currentComplaint = payload.newRecord);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('complaint_updated'.tr()),
+                  backgroundColor: Colors.blue,
+                ),
+              );
+            } else if (payload.eventType == 'DELETE') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('complaint_deleted'.tr()),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              Navigator.pop(context);
+            }
+          },
+        )
         .subscribe();
   }
 
@@ -195,25 +195,23 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
       await Supabase.instance.client
           .from('complaints')
           .update({
-        'status': 'Open',
-        'agent_justification': null,
-        'history': {'events': events},
-      })
+            'status': 'Open',
+            'agent_justification': null,
+            'history': {'events': events},
+          })
           .eq('id', _currentComplaint['id']);
     });
   }
 
   Future<void> _showSendNotificationDialog() async {
     final formKey = GlobalKey<FormState>();
-    final titleController = TextEditingController(
-      text: 'message_from_admin'.tr(),
-    );
+    final titleController = TextEditingController();
     final messageController = TextEditingController();
 
     // These correspond to the parties involved in the complaint
     final recipientOptions = {
-      'Complainer': _currentComplaint['user_id'],
-      'Target': _currentComplaint['target_user_id'],
+      'complainer'.tr(): _currentComplaint['user_id'],
+      'target'.tr(): _currentComplaint['target_user_id'],
     };
 
     // Default to notifying the complainer
@@ -237,7 +235,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
                       DropdownButtonFormField<String>(
                         initialValue: selectedRecipientId,
                         decoration: InputDecoration(
-                          labelText: 'recipient'.tr(),
+                          labelText: 'select_recipient_role'.tr(),
                           border: const OutlineInputBorder(),
                         ),
                         items: recipientOptions.entries.map((entry) {
@@ -265,7 +263,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
                           border: const OutlineInputBorder(),
                         ),
                         validator: (value) => value == null || value.isEmpty
-                            ? 'title_required'.tr()
+                            ? 'required_field'.tr()
                             : null,
                       ),
                       const SizedBox(height: 16),
@@ -274,12 +272,12 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
                       TextFormField(
                         controller: messageController,
                         decoration: InputDecoration(
-                          labelText: 'notification_message'.tr(),
+                          labelText: 'type_message'.tr(),
                           border: const OutlineInputBorder(),
                         ),
                         maxLines: 4,
                         validator: (value) => value == null || value.isEmpty
-                            ? 'message_required'.tr()
+                            ? 'required_field'.tr()
                             : null,
                       ),
                     ],
@@ -352,7 +350,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
 
       _openChat(
         "Chat with $name",
-            () => _chat.getComplaintChatRoom(complaintId),
+        () => _chat.getComplaintChatRoom(complaintId),
       );
     }
   }
@@ -425,9 +423,9 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
       await Supabase.instance.client
           .from('complaints')
           .update({
-        'managed_by': managerId,
-        'history': {'events': events},
-      })
+            'managed_by': managerId,
+            'history': {'events': events},
+          })
           .eq('id', _currentComplaint['id']);
 
       if (mounted) {
@@ -450,29 +448,29 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-          onRefresh: _refreshComplaint,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildStatusHeader(),
-                const SizedBox(height: 8),
-                _buildBasicInfo(),
-                const SizedBox(height: 8),
-                _buildTimeline(),
-                const SizedBox(height: 8),
-                _buildComplaintDetails(),
-                if (_currentComplaint['attachment_url'] != null) ...[
-                  const SizedBox(height: 8),
-                  _buildAttachment(),
-                ],
-                const SizedBox(height: 8),
-                _buildActions(),
-              ],
-            ),
-          ),
-        ),
+                onRefresh: _refreshComplaint,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _buildStatusHeader(),
+                      const SizedBox(height: 8),
+                      _buildBasicInfo(),
+                      const SizedBox(height: 8),
+                      _buildTimeline(),
+                      const SizedBox(height: 8),
+                      _buildComplaintDetails(),
+                      if (_currentComplaint['attachment_url'] != null) ...[
+                        const SizedBox(height: 8),
+                        _buildAttachment(),
+                      ],
+                      const SizedBox(height: 8),
+                      _buildActions(),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -480,7 +478,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
   Widget _buildActions() {
     final isComplaintOwner =
         _currentComplaint['user_id'] ==
-            Supabase.instance.client.auth.currentUser?.id;
+        Supabase.instance.client.auth.currentUser?.id;
     final status = _currentComplaint['status'];
     final canAppeal =
         isComplaintOwner && (status == 'Rejected' || status == 'Resolved');
@@ -625,7 +623,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Status: $status',
+                    '${"status".tr()}: ${status.toString().toLowerCase().tr()}',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -666,9 +664,9 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
               ),
             _buildInfoRow(
               'created'.tr(),
-              DateFormat(
-                "MMM dd, yyyy - hh:mm a",
-              ).format(DateTime.parse(_currentComplaint['created_at'])),
+              DateFormat("MMM dd, yyyy - hh:mm a").format(
+                DateTime.parse(_currentComplaint['created_at']).toLocal(),
+              ),
             ),
           ],
         ),
@@ -702,7 +700,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
     }
 
     events.sort(
-          (a, b) => DateTime.parse(
+      (a, b) => DateTime.parse(
         b['timestamp'],
       ).compareTo(DateTime.parse(a['timestamp'])),
     );
@@ -832,10 +830,10 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
   }
 
   Future<bool?> _showConfirmationDialog(
-      String title,
-      String content, {
-        bool isDestructive = false,
-      }) {
+    String title,
+    String content, {
+    bool isDestructive = false,
+  }) {
     return showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(

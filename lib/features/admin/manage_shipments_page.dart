@@ -4,7 +4,6 @@ import 'package:logistics_toolkit/config/theme.dart';
 import 'package:logistics_toolkit/features/trips/shipment_details.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-
 class ManageShipmentsPage extends StatefulWidget {
   const ManageShipmentsPage({super.key});
 
@@ -28,7 +27,7 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
     'Loading',
     'Picked Up',
     'In Transit',
-    'Arrived_drop',
+    'Arrived Drop',
     'Unloading',
     'Delivered',
     'Completed',
@@ -48,10 +47,13 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
       _refresh();
     }
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    setState(() {}); // rebuild to update all .tr() translations when locale changes
+    setState(
+      () {},
+    ); // rebuild to update all .tr() translations when locale changes
   }
 
   // ---------------- Dialog box to edit the shipment pickup and drop location and delivery date.--------------------
@@ -92,12 +94,12 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
                   onTap: () async {
                     DateTime pickupDate =
                         DateTime.tryParse(shipment['pickup_date'] ?? '') ??
-                            DateTime.now();
+                        DateTime.now();
 
                     DateTime? pickedDate = await showDatePicker(
                       context: context,
                       initialDate:
-                      DateTime.tryParse(dropdateController.text) ??
+                          DateTime.tryParse(dropdateController.text) ??
                           pickupDate,
                       firstDate: pickupDate,
                       lastDate: DateTime(2100),
@@ -161,20 +163,20 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
 
   //-------------- to update the shipment details entered in the dialog box-----------------------------
   Future<void> _updateShipment(
-      String shipmentId,
-      String pickup,
-      String drop,
-      String deliveryDate,
-      ) async {
+    String shipmentId,
+    String pickup,
+    String drop,
+    String deliveryDate,
+  ) async {
     try {
       // Perform the update
       final updatedRows = await Supabase.instance.client
           .from('shipment')
           .update({
-        'pickup': pickup,
-        'drop': drop,
-        'delivery_date': deliveryDate,
-      })
+            'pickup': pickup,
+            'drop': drop,
+            'delivery_date': deliveryDate,
+          })
           .eq('shipment_id', shipmentId)
           .select(); // optional, to get updated rows
 
@@ -201,7 +203,6 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
     return response == null ? [] : List<Map<String, dynamic>>.from(response);
   }
 
-
   Future<void> _refresh() async {
     setState(() {
       _shipmentsFuture = _fetchShipments();
@@ -212,12 +213,12 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
     // Remove common redundant words
     String cleaned = address
         .replaceAll(
-      RegExp(
-        r'\b(At Post|Post|Tal|Taluka|Dist|District|Po)\b',
-        caseSensitive: false,
-      ),
-      '',
-    )
+          RegExp(
+            r'\b(At Post|Post|Tal|Taluka|Dist|District|Po)\b',
+            caseSensitive: false,
+          ),
+          '',
+        )
         .replaceAll(RegExp(r'\s+'), ' ') // normalize spaces
         .trim();
 
@@ -285,13 +286,13 @@ class _ManageShipmentsPageState extends State<ManageShipmentsPage>
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-            icon: const Icon(Icons.clear),
-            onPressed: () {
-              _searchController.clear();
-              setState(() => _searchQuery = '');
-              _refresh();
-            },
-          )
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                    _refresh();
+                  },
+                )
               : null,
         ),
         onChanged: (value) => setState(() => _searchQuery = value),

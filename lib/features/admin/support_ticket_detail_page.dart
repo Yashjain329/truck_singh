@@ -207,8 +207,8 @@ class _EnhancedSupportTicketDetailPageState
             children: [
               Text(widget.ticket['subject'] ?? '',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              Text("Category: ${widget.ticket['category']}"),
-              Text("Priority: ${widget.ticket['priority']}",
+              Text("${"Category".tr()}: ${widget.ticket['category'].toString().tr()}"),
+              Text("${"Priority".tr()}: ${widget.ticket['priority'].toString().tr()}",
                   style: TextStyle(color: _priorityColor(widget.ticket['priority']))),
             ],
           ),
@@ -224,14 +224,14 @@ class _EnhancedSupportTicketDetailPageState
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration:
       BoxDecoration(border: Border.all(color: color), borderRadius: BorderRadius.circular(16)),
-      child: Text(_currentStatus, style: TextStyle(color: color)),
+      child: Text(_currentStatus.toString().tr(), style: TextStyle(color: color)),
     );
   }
 
   Widget _statusRow() {
     return Row(
       children: [
-        Text("status:".tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text("${"status".tr()}:", style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(width: 16),
         Expanded(
           child: _isUpdating
@@ -242,7 +242,7 @@ class _EnhancedSupportTicketDetailPageState
             value: _currentStatus,
             isExpanded: true,
             items: ['Pending', 'In Progress', 'Resolved']
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .map((e) => DropdownMenuItem(value: e, child: Text(e.tr())))
                 .toList(),
             onChanged: (val) => val == null ? null : _updateStatus(val),
           ),

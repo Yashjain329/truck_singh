@@ -10,7 +10,7 @@
   "Arrived Pickup": "उठाने के लिए पहुंचा",
   "Arrived at Drop": "ड्रॉप पर पहुँचा",
   "Arrived at Pickup": "पिकअप पर पहुँचा",
-  "Arrived_Drop": "",
+  "Arrived_Drop": "ड्रॉप पर पहुंचा",
   "Billing address not found.": "बिलिंग पता नहीं मिला।",
   "Brief summary of your issue": "अपनी समस्या का संक्षिप्त सारांश",
   "CNG": "सीएनजी",
@@ -1174,6 +1174,7 @@
   "rate_person": "{0} को रेट करें:",
   "rate_shipment": "शिपमेंट को रेट करें",
   "rating": "रेटिंग",
+  "ratingPeriodExpiredOrLimitReached": "रेटिंग की अवधि समाप्त हो चुकी है या अधिकतम रेटिंग सीमा पूरी हो गई है",
   "ratingPeriodExpired": "रेटिंग अवधि समाप्त",
   "ratingSavedSuccessfully": "रेटिंग सफलतापूर्वक सहेजी गई",
   "rating_expired": "रेटिंग की समयसीमा समाप्त हो गई है। आप केवल डिलीवरी के 3 दिनों के भीतर रेट कर सकते हैं।",
@@ -1645,45 +1646,29 @@
   "address Book": "पता पुस्तिका",
   "billing Address": "बिलिंग पता",
   "company Addresses": "कंपनी पते",
-
   "no Billing Address Set": "कोई बिलिंग पता सेट नहीं है",
-
   "add Address": "पता जोड़ें",
   "no Company Addresses Added": "कोई कंपनी पता नहीं जोड़ा गया",
-
-
   "company Address": "कंपनी पता",
   "Please enter flat number": "कृपया फ्लैट नंबर दर्ज करें",
   "Please enter street name": "कृपया गली का नाम दर्ज करें",
   "Please enter city name": "कृपया शहर का नाम दर्ज करें",
   "Please enter district": "कृपया ज़िला दर्ज करें",
   "Please enter zip code": "कृपया पिन कोड दर्ज करें",
-
   "disable_account_title": "खाता निष्क्रिय करें",
   "disable_account_message": "क्या आप वाकई अपना खाता निष्क्रिय करना चाहते हैं?\n\n⚠️ जब तक आपका खाता पुनः सक्रिय नहीं किया जाता, आप लॉगिन नहीं कर पाएंगे।\n\nनोट: यदि आपके पास सक्रिय शिपमेंट हैं, तो आप अपना खाता निष्क्रिय नहीं कर सकते।",
-
   "disable_account_button": "खाता निष्क्रिय करें",
-
-
   "block_account_title": "खाता ब्लॉक करें",
   "block_account_message": "क्या आप वाकई अपना खाता ब्लॉक करना चाहते हैं?\n\n⚠ आप दोबारा लॉगिन नहीं कर पाएंगे।",
   "block_account_button": "खाता ब्लॉक करें",
-
-
-
   "light_mode": "लाइट मोड",
   "dark_mode": "डार्क मोड",
-
-
-
   "hide_read": "पढ़ी हुई छिपाएं",
   "show_all": "सभी दिखाएं",
   "mark_all_as_read": "सभी को पढ़ा चिह्नित करें",
-
   "no_notifications_found": "कोई सूचनाएं नहीं मिलीं",
   "all_caught_up": "आपकी सभी सूचनाएं देखी जा चुकी हैं!",
   "show_read_notifications": "पढ़ी हुई सूचनाएं दिखाएं",
-
   "just_now": "अभी",
   "minutes_ago": "{0} मिनट पहले",
   "hours_ago": "{0} घंटे पहले",
@@ -1694,22 +1679,83 @@
   "shared_by": "द्वारा साझा किया गया",
   "no_shared_shipments": "अभी तक किसी ने आपके साथ कोई शिपमेंट साझा नहीं किया है।",
   "someone": "कोई",
-
   "enter_field": "{field} दर्ज करें",
   "select_unit": "इकाई चुनें",
-
   "step_truck_type": "अपना पसंदीदा ट्रक प्रकार चुनें",
   "step_shipment_details": "शिपमेंट विवरण दर्ज करें",
   "step_pickup_delivery": "पिकअप और डिलीवरी स्थान सेट करें",
   "step_schedule": "शिपमेंट शेड्यूल करें",
-
   "Returned": "वापस किया गया",
-
   "To Pay": "देय",
   "Paid": "भुगतान किया गया",
   "Partial": "आंशिक भुगतान",
-
   "month1": "महीना",
-  "location2": "स्थान"
+  "location2": "स्थान",
 
+  "shipper_billing_address_not_setup": "प्रेषक का बिलिंग पता सेट नहीं है",
+  "manage_complaint": "शिकायत प्रबंधित करें",
+  "managed_complaints": "प्रबंधित शिकायतें",
+  "managed_by": "द्वारा प्रबंधित",
+  "send_notification": "अधिसूचना भेजें",
+  "notification_title": "अधिसूचना शीर्षक",
+  "Emergency": "आपातकाल",
+  "Choose Emergency Type": "आपातकाल का प्रकार चुनें",
+  "Technical Help": "तकनीकी सहायता",
+  "Medical Help": "चिकित्सा सहायता",
+  "Fire": "आग लगने की स्थिति",
+  "Fleet Help": "फ्लीट सहायता",
+  "Indian Highway Helplines": "भारतीय राजमार्ग हेल्पलाइन",
+  "Tap to call directly": "सीधे कॉल करने के लिए टैप करें",
+  "National Highway Helpline": "राष्ट्रीय राजमार्ग हेल्पलाइन",
+  "For accidents/breakdowns on NH": "राष्ट्रीय राजमार्ग पर दुर्घटना / खराबी के लिए",
+  "National Emergency": "राष्ट्रीय आपातकालीन सेवा",
+  "Police, Fire, Ambulance": "पुलिस, फायर, एम्बुलेंस",
+  "Police": "पुलिस",
+  "Ambulance": "एम्बुलेंस",
+  "Fire Brigade": "अग्निशमन सेवा",
+  "Message for Agent": "एजेंट के लिए संदेश",
+  "Call The Agent": "एजेंट को कॉल करें",
+  "My Created Admins:": "मेरे द्वारा बनाए गए एडमिन:",
+  "My Admins": "मेरे एडमिन",
+
+  "Company": "कंपनी",
+  "Basic": "मूल विवरण",
+  "Sender": "प्रेषक",
+  "Recipient": "प्राप्तकर्ता",
+  "Vehicle": "वाहन",
+  "Route": "मार्ग",
+  "Goods": "सामान",
+  "Charges": "शुल्क",
+  "Bank": "बैंक",
+  "Terms": "नियम",
+  "Signatures": "हस्ताक्षर",
+  "Review": "समीक्षा",
+
+  "technical_issue": "तकनीकी समस्या",
+  "data_not_loading": "डेटा लोड नहीं हो रह",
+  "app_crash": "ऐप क्रैश",
+  "login_problem": "लॉगिन समस्या",
+  "payment_issue": "भुगतान समस्या",
+  "feature_request": "फीचर अनुरोध",
+  "other": "अन्य",
+
+  "AI_Assistant": "एआई असिस्टेंट",
+  "I_am_a_Driver": "मैं एक ड्राइवर हूं",
+  "I_have_Trucks": "मेरे पास ट्रक हैं",
+  "Post_Loads": "पोस्ट लोड",
+  "Track_Shipments": "शिपमेंट ट्रैक करें",
+  "Find_Drivers":"ड्राइवर खोजें",
+  "Truck_Status": "ट्रक की स्थिति",
+  "Chatbot_Language": "चैटबॉट भाषा",
+  "How_can_I_help_you_today?": "आज मैं आपकी मदद करने में कैसे सक्षम हूं?",
+  "I_am_here_to_assist_with_your_logistics_needs": "मैं आपकी लॉजिस्टिक्स संबंधी जरूरतों में सहायता करने के लिए यहाँ हूँ।",
+  "Try_asking:": "पूछने का प्रयास करें",
+  "Or_type_your_question_below":"या अपना प्रश्न नीचे लिखें",
+  "Type_your_message...": "अपना संदेश टाइप करें...",
+  "Choose_how_the_chatbot_should_respond_to_you:": "चुनें कि चैटबॉट आपको कैसे जवाब देगा:",
+  "English": "अंग्रेज़ी",
+  "Pure_English_responses": "शुद्ध अंग्रेजी प्रतिक्रियाएँ",
+  "Pure_Hindi_in_Devanagari_script": "देवनागरी लिपि में शुद्ध हिन्दी",
+  "Hindi_in_English_letters_(Recommended)": "हिंदी को अंग्रेजी अक्षरों में लिखना (अनुशंसित)",
+  "Language":"भाषा: {}"
 }

@@ -188,9 +188,9 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
 
   /// Sends in-app and push notifications to both the sender (confirmation) and the receiver.
   Future<void> _sendShareNotifications(
-      String recipientInput,
-      String shipmentId,
-      ) async {
+    String recipientInput,
+    String shipmentId,
+  ) async {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser == null) return;
 
@@ -199,7 +199,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
       recipientUserId: currentUser.id,
       title: 'Tracking Shared',
       message:
-      'You successfully shared tracking for shipment $shipmentId with $recipientInput.',
+          'You successfully shared tracking for shipment $shipmentId with $recipientInput.',
       data: {'type': 'tracking_share_sent', 'shipment_id': shipmentId},
     );
 
@@ -210,8 +210,8 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
           .from('user_profiles')
           .select('user_id, name')
           .or(
-        'custom_user_id.eq.$recipientInput,mobile_number.eq.$recipientInput,name.eq.$recipientInput',
-      )
+            'custom_user_id.eq.$recipientInput,mobile_number.eq.$recipientInput,name.eq.$recipientInput',
+          )
           .limit(1)
           .maybeSingle();
 
@@ -230,7 +230,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
           recipientUserId: recipientUuid,
           title: 'Shipment Tracking Shared',
           message:
-          '$senderName shared tracking for shipment $shipmentId with you.',
+              '$senderName shared tracking for shipment $shipmentId with you.',
           data: {'type': 'tracking_share_received', 'shipment_id': shipmentId},
         );
       } else {
@@ -291,107 +291,107 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                 ElevatedButton.icon(
                   icon: isSharing
                       ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.share),
                   label: const Text('Share'),
                   onPressed: isSharing
                       ? null
                       : () async {
-                    if (!formKey.currentState!.validate()) return;
+                          if (!formKey.currentState!.validate()) return;
 
-                    final recipient = recipientController.text.trim();
+                          final recipient = recipientController.text.trim();
 
-                    // Constraint: Prevent sharing with Drivers (IDs starting with DRV)
-                    if (recipient.toUpperCase().startsWith('DRV')) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Warning: You cannot share tracking with a driver.',
-                          ),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                      return;
-                    }
+                          // Constraint: Prevent sharing with Drivers (IDs starting with DRV)
+                          if (recipient.toUpperCase().startsWith('DRV')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Warning: You cannot share tracking with a driver.',
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
 
-                    // Constraint: Prevent sharing with self
-                    if (recipient == currentUserCustomId) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'You cannot share tracking with yourself',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
+                          // Constraint: Prevent sharing with self
+                          if (recipient == currentUserCustomId) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'You cannot share tracking with yourself',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
-                    setStateDialog(() => isSharing = true);
+                          setStateDialog(() => isSharing = true);
 
-                    try {
-                      final String? sharerId =
-                      await SupabaseService.getCustomUserId(
-                        Supabase.instance.client.auth.currentUser!.id,
-                      );
+                          try {
+                            final String? sharerId =
+                                await SupabaseService.getCustomUserId(
+                                  Supabase.instance.client.auth.currentUser!.id,
+                                );
 
-                      if (sharerId == null) {
-                        throw Exception(
-                          "Could not get the current user's ID.",
-                        );
-                      }
+                            if (sharerId == null) {
+                              throw Exception(
+                                "Could not get the current user's ID.",
+                              );
+                            }
 
-                      // Invoke RPC to share shipment
-                      final response = await Supabase.instance.client.rpc(
-                        'share_shipment_track',
-                        params: {
-                          'p_shipment_id': widget.shipment['shipment_id'],
-                          'p_sharer_user_id': sharerId,
-                          'p_recipient_identifier': recipient,
+                            // Invoke RPC to share shipment
+                            final response = await Supabase.instance.client.rpc(
+                              'share_shipment_track',
+                              params: {
+                                'p_shipment_id': widget.shipment['shipment_id'],
+                                'p_sharer_user_id': sharerId,
+                                'p_recipient_identifier': recipient,
+                              },
+                            );
+
+                            final status = response['status'];
+                            final message = response['message'];
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(message),
+                                  backgroundColor: status == 'success'
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              );
+                              if (status == 'success') {
+                                Navigator.of(context).pop();
+                                // Send notifications after successful share
+                                await _sendShareNotifications(
+                                  recipient,
+                                  widget.shipment['shipment_id'],
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'An error occurred: ${e.toString()}',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } finally {
+                            setStateDialog(() => isSharing = false);
+                          }
                         },
-                      );
-
-                      final status = response['status'];
-                      final message = response['message'];
-
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(message),
-                            backgroundColor: status == 'success'
-                                ? Colors.green
-                                : Colors.red,
-                          ),
-                        );
-                        if (status == 'success') {
-                          Navigator.of(context).pop();
-                          // Send notifications after successful share
-                          await _sendShareNotifications(
-                            recipient,
-                            widget.shipment['shipment_id'],
-                          );
-                        }
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'An error occurred: ${e.toString()}',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    } finally {
-                      setStateDialog(() => isSharing = false);
-                    }
-                  },
                 ),
               ],
             );
@@ -627,7 +627,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                         (widget.shipment['shipper_id'] == currentUserCustomId)
                             ? 'You'
                             : (widget.shipment['shipper_name'] ??
-                            widget.shipment['shipper_id']),
+                                  widget.shipment['shipper_id']),
                       ),
 
                     if (widget.shipment['assigned_company'] != null)
@@ -638,14 +638,20 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                       ),
                     // Display Agent OR Truck Owner as the assigned manager
                     if (widget.shipment['assigned_agent'] != null &&
-                        widget.shipment['assigned_agent'].toString().trim().isNotEmpty)
+                        widget.shipment['assigned_agent']
+                            .toString()
+                            .trim()
+                            .isNotEmpty)
                       _buildInfoRow(
                         Icons.person,
                         'assignedAgent'.tr(),
                         widget.shipment['assigned_agent'],
                       )
                     else if (widget.shipment['assigned_truckowner'] != null &&
-                        widget.shipment['assigned_truckowner'].toString().trim().isNotEmpty)
+                        widget.shipment['assigned_truckowner']
+                            .toString()
+                            .trim()
+                            .isNotEmpty)
                       _buildInfoRow(
                         Icons.person,
                         'assignedAgent'.tr(),
@@ -689,7 +695,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                     const SizedBox(height: 12),
 
                     // Complaint Button
-                    if (canFileComplaint)
+                    if (canFileComplaint) ...[
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
@@ -701,7 +707,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                               MaterialPageRoute(
                                 builder: (_) => ComplaintPage(
                                   preFilledShipmentId:
-                                  widget.shipment['shipment_id'],
+                                      widget.shipment['shipment_id'],
                                   editMode: false,
                                   complaintData: const {},
                                 ),
@@ -719,36 +725,36 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                           ),
                         ),
                       ),
-                    const SizedBox(height: 12),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.star),
-                        label: Text(
-                          'rateThisShipment'.tr(),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.star),
+                          label: Text(
+                            'rateThisShipment'.tr(),
+                            style: const TextStyle(fontSize: 14),
                           ),
-                        ),
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => Rating(
-                                shipmentId: widget.shipment['shipment_id'],
-                              ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          );
-                        },
+                          ),
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => Rating(
+                                  shipmentId: widget.shipment['shipment_id'],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

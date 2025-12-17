@@ -63,7 +63,7 @@ class MyApp extends StatelessWidget {
         ],
 
             child:  MaterialApp(
-              title: 'Logistics Toolkit',
+              title: 'Truck Singh',
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
               themeMode: notifier.themeMode, // <-- Switches theme

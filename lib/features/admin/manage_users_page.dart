@@ -68,7 +68,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('$action ${'user_account'.tr()}'),
+              title: Text('$action ${user['name']}'),
               content: Text(
                 'confirm_user_action'.tr(
                   namedArgs: {
@@ -399,7 +399,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
         spacing: 8,
         children: _roles.map((role) {
           return FilterChip(
-            label: Text(role),
+            label: Text(role.tr()),
             selected: _roleFilter == role,
             onSelected: (_) {
               setState(() => _roleFilter = role);
