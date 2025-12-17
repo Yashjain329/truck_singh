@@ -22,23 +22,22 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
   final refreshController = ptr.RefreshController();
 
   late final statusFlow = [
-    _status('accepted', Icons.check_circle, Colors.blue),
-    _status('en_route_pickup', Icons.directions_car, Colors.purple),
-    _status('arrived_pickup', Icons.location_on, Colors.cyan),
-    _status('loading', Icons.upload, Colors.amber),
+    _status('Accepted', Icons.check_circle, Colors.blue),
+    _status('En Route to Pickup', Icons.directions_car, Colors.purple),
+    _status('Arrived at Pickup', Icons.location_on, Colors.cyan),
+    _status('Loading', Icons.upload, Colors.amber),
     _status('Picked Up', Icons.done, Colors.green),
-    _status('in_transit', Icons.local_shipping, Colors.indigo),
-    _status('arrived_drop', Icons.place, Colors.teal),
-    _status('unloading', Icons.download, Colors.deepOrange),
-    _status('delivered', Icons.done_all, Colors.green),
-    _status('completed', Icons.verified, Colors.green),
+    _status('In Transit', Icons.local_shipping, Colors.indigo),
+    _status('Arrived at Drop', Icons.place, Colors.teal),
+    _status('Unloading', Icons.download, Colors.deepOrange),
+    _status('Delivered', Icons.done_all, Colors.green),
+    _status('Completed', Icons.verified, Colors.green),
   ];
 
   Map<String, dynamic> _status(String key, IconData icon, Color color) => {
-    'status': key.tr(),
+    'status': key,
     'icon': icon,
     'color': color,
-    'description': "${key}_desc".tr(),
   };
 
   @override
@@ -74,9 +73,9 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
       await supabase
           .from('shipment')
           .update({
-        'booking_status': status,
-        'updated_at': DateTime.now().toIso8601String(),
-      })
+            'booking_status': status,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('shipment_id', currentShipment!['shipment_id']);
 
       if (status.toLowerCase() == 'completed') {
@@ -112,8 +111,10 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
   int get currentStatusIndex => currentShipment == null
       ? -1
       : statusFlow.indexWhere(
-        (s) => s['status'] == currentShipment!['booking_status'],
-  );
+          (s) =>
+              s['status'].toString().toLowerCase() ==
+              currentShipment!['booking_status'].toString().toLowerCase(),
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +134,7 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (currentShipment == null) {
+    if (currentShipment == null || currentStatusIndex == -1) {
       return _emptyState();
     }
 
@@ -142,7 +143,6 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
       children: [
         _progressBar(),
         _statusCard(),
-        const SizedBox(height: 15),
         _shipmentDetails(),
         _nextStatusButton(),
       ],
@@ -216,10 +216,6 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            status['description'],
-            style: const TextStyle(color: Colors.white70),
-          ),
         ],
       ),
     );
@@ -235,14 +231,26 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           children: [
-            if (urgent)
-              Align(
-                alignment: Alignment.topRight,
-                child: Chip(
-                  label: Text("urgent".tr()),
-                  backgroundColor: Colors.red,
-                ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'shipment_details'.tr(),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  if (urgent)
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Chip(
+                        label: Text("urgent".tr()),
+                        backgroundColor: Colors.red,
+                      ),
+                    ),
+                ],
               ),
+            ),
             ..._infoItems(d, date),
           ],
         ),
@@ -303,7 +311,10 @@ class _DriverStatusChangerState extends State<DriverStatusChanger> {
       padding: const EdgeInsets.all(20),
       child: ElevatedButton.icon(
         icon: Icon(next['icon']),
-        label: Text("Mark as ${next['status']}"),
+        label: Text(
+          "Mark as ${next['status']}",
+          style: TextStyle(fontSize: 16),
+        ),
         style: ElevatedButton.styleFrom(backgroundColor: next['color']),
         onPressed: isLoading ? null : () => updateStatus(next['status']),
       ),

@@ -23,6 +23,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
   late PageController _pageController;
   int _currentStep = 0;
   bool _isLoading = false;
+  bool _isSigning = false; // 👈 ADD THIS
 
   // Template
   late BiltyTemplate _template;
@@ -1713,6 +1714,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                         color: Theme.of(context).cardColor,
                       ),
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: _selectedPaymentStatus,
                         decoration: InputDecoration(
                           labelText: ' payment_status'.tr(),
@@ -1725,7 +1727,10 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                         items: ['To Pay', 'Paid', 'Partial'].map((status) {
                           return DropdownMenuItem(
                             value: status,
-                            child: Text(status),
+                            child: Text(
+                              status.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -1790,6 +1795,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: _selectedPaymentStatus,
                         decoration: InputDecoration(
                           labelText: 'payment_status'.tr(),
@@ -1799,10 +1805,13 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                             vertical: 12,
                           ),
                         ),
-                        items: ['To Pay'.tr(), 'Paid', 'Partial'].map((status) {
+                        items: ['To Pay', 'Paid', 'Partial'].map((status) {
                           return DropdownMenuItem(
                             value: status,
-                            child: Text(status),
+                            child: Text(
+                              status.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -2076,6 +2085,7 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
   }
 
   Widget _buildSignaturesStep() {
+    _isSigning = true;
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -2091,33 +2101,35 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                     border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.maxWidth > 0
-                          ? constraints.maxWidth
-                          : double.infinity;
-                      return ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: 198,
-                          minWidth: width,
-                        ),
-                        child: RepaintBoundary(
-                          child: Signature(
-                            controller: _senderSignatureController,
-                            backgroundColor: Colors.white,
-                          ),
-                        ),
-                      );
+                  child: Listener(
+                    onPointerDown: (_) {
+                      setState(() {
+                        _isSigning = true;
+                      });
                     },
+                    onPointerUp: (_) {
+                      setState(() {
+                        _isSigning = false;
+                      });
+                    },
+                    onPointerCancel: (_) {
+                      setState(() {
+                        _isSigning = false;
+                      });
+                    },
+                    child: Signature(
+                      controller: _senderSignatureController,
+                      backgroundColor: Colors.white,
+                    ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _senderSignatureController.clear(),
-                        icon: Icon(Icons.clear, size: 18),
+                        icon: const Icon(Icons.clear, size: 18),
                         label: Text('clear'.tr()),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red.shade100,
@@ -2128,11 +2140,11 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _senderSignatureController.undo(),
-                        icon: Icon(Icons.undo, size: 18),
+                        icon: const Icon(Icons.undo, size: 18),
                         label: Text('undo'.tr()),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange.shade100,
@@ -2148,7 +2160,6 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
               ],
             ),
           ),
-          SizedBox(height: 16),
         ],
       ),
     );
@@ -2769,6 +2780,9 @@ class _BiltyFormPageState extends State<BiltyFormPage> {
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
+                  physics: _isSigning
+                      ? const NeverScrollableScrollPhysics()
+                      : const PageScrollPhysics(),
                   onPageChanged: (index) {
                     setState(() {
                       _currentStep = index;

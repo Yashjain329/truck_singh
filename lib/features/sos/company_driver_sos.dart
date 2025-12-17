@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CompanyDriverEmergencyScreen extends StatefulWidget {
   final String agentId;
@@ -15,12 +16,14 @@ class CompanyDriverEmergencyScreen extends StatefulWidget {
 class _CompanyDriverEmergencyScreenState
     extends State<CompanyDriverEmergencyScreen> {
   final TextEditingController messageController = TextEditingController();
+
   final List<String> helpOptions = [
     'Technical Help',
     'Medical Help',
     'Fire',
     'Fleet Help',
   ];
+
   final Set<String> selectedOptions = {};
   bool _isSending = false;
 
@@ -29,12 +32,12 @@ class _CompanyDriverEmergencyScreenState
     {
       'label': 'National Highway Helpline',
       'number': '1033',
-      'desc': 'For accidents/breakdowns on NH'
+      'desc': 'For accidents/breakdowns on NH',
     },
     {
       'label': 'National Emergency',
       'number': '112',
-      'desc': 'Police, Fire, Ambulance'
+      'desc': 'Police, Fire, Ambulance',
     },
     {'label': 'Police', 'number': '100', 'desc': 'Local Police Support'},
     {'label': 'Ambulance', 'number': '108', 'desc': 'Medical Emergency'},
@@ -51,24 +54,23 @@ class _CompanyDriverEmergencyScreenState
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phoneNumber,
-    );
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
     try {
       if (await canLaunchUrl(launchUri)) {
         await launchUrl(launchUri);
       } else {
-        _showErrorSnackBar('Could not launch dialer for $phoneNumber');
+        _showErrorSnackBar('Could not launch dialer for $phoneNumber'.tr());
       }
     } catch (e) {
-      _showErrorSnackBar('Error launching dialer: $e');
+      _showErrorSnackBar('Error launching dialer: $e'.tr());
     }
   }
 
   Future<void> sendSOSNotification() async {
     if (selectedOptions.isEmpty) {
-      _showErrorSnackBar('Please select at least one type of help needed.');
+      _showErrorSnackBar(
+        'Please select at least one type of help needed.'.tr(),
+      );
       return;
     }
 
@@ -76,52 +78,42 @@ class _CompanyDriverEmergencyScreenState
         Supabase.instance.client.auth.currentSession?.accessToken;
     if (accessToken == null) {
       _showErrorSnackBar(
-          'Authentication error. Please log out and log in again.');
+        'Authentication error. Please log out and log in again.'.tr(),
+      );
       return;
     }
 
     setState(() => _isSending = true);
 
     try {
-      //final ownerId = widget.ownerId;
       final agentId = widget.agentId;
       final sosData = {
         'helpOptions': selectedOptions.toList(),
         'message': messageController.text,
       };
-      final url =
-          'https://rfbodmmhqkvqbufsbfnx.supabase.co/functions/v1/send-sos-notification';
+
       final response = await http.post(
-        Uri.parse(url),
+        Uri.parse(
+          'https://rfbodmmhqkvqbufsbfnx.supabase.co/functions/v1/send-sos-notification',
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',
         },
-        // body: jsonEncode({'ownerId': ownerId, 'sosData': sosData}),
         body: jsonEncode({'agentId': agentId, 'sosData': sosData}),
       );
 
       if (response.statusCode == 200) {
-        final responseBody = jsonDecode(response.body);
-        // OneSignal can return a 200 but still have an error in the body
-        if (responseBody['errors'] != null &&
-            responseBody['errors']['invalid_player_ids'] != null) {
-          _showErrorSnackBar(
-              'Could not send SOS. The owner may need to update their notification settings.');
-        } else {
-          _showSuccessSnackBar('SOS sent successfully!');
-          if (mounted) Navigator.of(context).pop();
-        }
+        _showSuccessSnackBar('SOS sent successfully!'.tr());
+        if (mounted) Navigator.of(context).pop();
       } else {
         final errorBody = jsonDecode(response.body);
-        _showErrorSnackBar('Failed to send SOS: ${errorBody['error']}');
+        _showErrorSnackBar('Failed to send SOS: ${errorBody['error']}'.tr());
       }
     } catch (e) {
-      _showErrorSnackBar('An unexpected error occurred: $e');
+      _showErrorSnackBar('An unexpected error occurred: $e'.tr());
     } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
+      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -145,7 +137,7 @@ class _CompanyDriverEmergencyScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Emergency'),
+        title: Text('Emergency'.tr()),
         centerTitle: true,
         backgroundColor: Colors.teal,
       ),
@@ -155,9 +147,9 @@ class _CompanyDriverEmergencyScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Choose Emergency Type',
-                style: TextStyle(
+              Text(
+                'Choose Emergency Type'.tr(),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.teal,
@@ -170,8 +162,8 @@ class _CompanyDriverEmergencyScreenState
                 TextField(
                   controller: messageController,
                   decoration: InputDecoration(
-                    labelText: 'Message for Agent',
-                    hintText: 'Describe the issue...',
+                    labelText: 'Message for Agent'.tr(),
+                    hintText: 'Describe the issue...'.tr(),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -184,23 +176,21 @@ class _CompanyDriverEmergencyScreenState
                 ),
               if (showMessageBox) const SizedBox(height: 20),
               if (showMessageBox) _buildSubmitButton(),
-
-              // --- NEW: Highway Helplines Section ---
               const SizedBox(height: 30),
               const Divider(thickness: 1),
               const SizedBox(height: 10),
-              const Text(
-                'Indian Highway Helplines',
-                style: TextStyle(
+              Text(
+                'Indian Highway Helplines'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Tap to call directly',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+              Text(
+                'Tap to call directly'.tr(),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 10),
               _buildHelplineList(),
@@ -261,14 +251,6 @@ class _CompanyDriverEmergencyScreenState
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            if (isSelected)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                offset: const Offset(0, 4),
-                blurRadius: 6,
-              )
-          ],
           border: isSelected
               ? Border.all(color: Colors.black87, width: 3)
               : Border.all(color: Colors.transparent),
@@ -276,22 +258,15 @@ class _CompanyDriverEmergencyScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 40,
-              color: Colors.white,
-            ),
+            Icon(icon, size: 40, color: Colors.white),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6.0),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
+            Text(
+              label.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -309,31 +284,18 @@ class _CompanyDriverEmergencyScreenState
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: _isSending ? Colors.grey : Colors.teal,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.teal.withValues(alpha: 0.3),
-              offset: const Offset(0, 3),
-              blurRadius: 6,
-            )
-          ],
         ),
         child: Center(
           child: _isSending
-              ? const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-                color: Colors.white, strokeWidth: 3),
-          )
-              : const Text(
-            'Call The Agent',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-          ),
+              ? const CircularProgressIndicator(color: Colors.white)
+              : Text(
+                  'Call The Agent'.tr(),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
         ),
       ),
     );
@@ -349,32 +311,13 @@ class _CompanyDriverEmergencyScreenState
         return Card(
           elevation: 2,
           margin: const EdgeInsets.only(bottom: 10),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.red.shade50,
-              child: const Icon(Icons.phone_in_talk, color: Colors.red),
-            ),
-            title: Text(
-              item['label']!,
+            leading: const Icon(Icons.phone_in_talk, color: Colors.red),
+            title: Text(item['label']!.tr()),
+            subtitle: Text(item['desc']!.tr()),
+            trailing: Text(
+              item['number']!,
               style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(item['desc']!),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                item['number']!,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.blue,
-                ),
-              ),
             ),
             onTap: () => _makePhoneCall(item['number']!),
           ),

@@ -262,7 +262,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('$action ${'user_account'.tr()}'),
+        title: Text('$action ${user['name']}'),
         content: Text('confirm_user_action'.tr(namedArgs: {'action': action, 'name': user['name']})),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('cancel'.tr())),
@@ -295,7 +295,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage>
           child: Row(children: [
             Icon(Icons.info, color: Colors.blue[700]),
             const SizedBox(width: 8),
-            Expanded(child: Text('My Created Admins: ${allUsers.length}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[700]))),
+            Expanded(child: Text('${'My Created Admins:'.tr()} ${allUsers.length}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[700]))),
             IconButton(icon: const Icon(Icons.refresh), onPressed: _loadAllUsers),
           ]),
         ),
@@ -437,7 +437,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           tabs: [
-            Tab(icon: const Icon(Icons.admin_panel_settings), text: 'My Admins'),
+            Tab(icon: const Icon(Icons.admin_panel_settings), text: 'My Admins'.tr()),
             Tab(icon: const Icon(Icons.person_add), text: 'create_admin'.tr()),
           ],
         ),

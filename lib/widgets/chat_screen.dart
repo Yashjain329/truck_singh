@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -40,12 +41,12 @@ class _ChatScreenState extends State<ChatScreen>
   //late Animation<double> _typingAnimation;
 
   final List<Map<String, String>> _defaultPrompts = [
-    {'text': 'I am a Driver', 'prompt': 'I am a driver'},
-    {'text': 'I have Trucks', 'prompt': 'I have trucks'},
-    {'text': 'Post Loads', 'prompt': 'I want to post loads'},
-    {'text': 'Track Shipments', 'prompt': 'Show my active shipments'},
-    {'text': 'Find Drivers', 'prompt': 'Show available drivers'},
-    {'text': 'Truck Status', 'prompt': 'Check my trucks status'},
+    {'text': 'I_am_a_Driver'.tr(), 'prompt': 'I am a driver'.tr()},
+    {'text': 'I_have_Trucks'.tr(), 'prompt': 'I have trucks'.tr()},
+    {'text': 'Post_Loads'.tr(), 'prompt': 'I want to post loads'.tr()},
+    {'text': 'Track_Shipments'.tr(), 'prompt': 'Show my active shipments'.tr()},
+    {'text': 'Find_Drivers'.tr(), 'prompt': 'Show available drivers'.tr()},
+    {'text': 'Truck_Status'.tr(), 'prompt': 'Check my trucks status'.tr()},
   ];
 
   @override
@@ -257,7 +258,7 @@ class _ChatScreenState extends State<ChatScreen>
             Icon(Icons.chat_bubble_outline, color: AppColors.teal),
             const SizedBox(width: 12),
             Text(
-              'Chatbot Language',
+              'Chatbot_Language'.tr(),
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -269,14 +270,14 @@ class _ChatScreenState extends State<ChatScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Choose how the chatbot should respond to you:',
+              'Choose_how_the_chatbot_should_respond_to_you:'.tr(),
               style: GoogleFonts.poppins(fontSize: 13),
             ),
             const SizedBox(height: 16),
             _buildLanguageOption(
               context,
-              title: 'English',
-              subtitle: 'Pure English responses',
+              title: 'English'.tr(),
+              subtitle: 'Pure_English_responses'.tr(),
               icon: Icons.language,
               value: 'english',
               currentValue: provider.preferredLanguage,
@@ -290,7 +291,7 @@ class _ChatScreenState extends State<ChatScreen>
             _buildLanguageOption(
               context,
               title: 'हिंदी (Hindi)',
-              subtitle: 'Pure Hindi in Devanagari script',
+              subtitle: 'Pure_Hindi_in_Devanagari_script'.tr(),
               icon: Icons.translate,
               value: 'hindi',
               currentValue: provider.preferredLanguage,
@@ -304,7 +305,7 @@ class _ChatScreenState extends State<ChatScreen>
             _buildLanguageOption(
               context,
               title: 'Hinglish',
-              subtitle: 'Hindi in English letters (Recommended)',
+              subtitle: 'Hindi_in_English_letters_(Recommended)'.tr(),
               icon: Icons.mic,
               value: 'hinglish',
               currentValue: provider.preferredLanguage,
@@ -381,14 +382,14 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Widget _buildLanguageOption(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required String value,
-    required String currentValue,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context, {
+        required String title,
+        required String subtitle,
+        required IconData icon,
+        required String value,
+        required String currentValue,
+        required VoidCallback onTap,
+      }) {
     final isSelected = value == currentValue;
 
     return InkWell(
@@ -434,7 +435,7 @@ class _ChatScreenState extends State<ChatScreen>
                       fontWeight: isSelected
                           ? FontWeight.w600
                           : FontWeight.w500,
-                      color: isSelected ? AppColors.teal : Colors.black87,
+                      color: isSelected ? AppColors.teal : Colors.grey,
                     ),
                   ),
                   Text(
@@ -656,7 +657,7 @@ class _ChatScreenState extends State<ChatScreen>
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.teal.withValues(alpha:
-                            provider.isTyping ? 0.8 : 0.4,
+                          provider.isTyping ? 0.8 : 0.4,
                           ),
                           blurRadius: provider.isTyping ? 12 : 8,
                           spreadRadius: provider.isTyping ? 2 : 1,
@@ -683,7 +684,7 @@ class _ChatScreenState extends State<ChatScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      provider.isTyping ? 'AI Typing...' : 'AI Assistant',
+                      provider.isTyping ? 'AI Typing...' : 'AI_Assistant'.tr(),
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w600,
                         fontSize: 18,
@@ -691,7 +692,10 @@ class _ChatScreenState extends State<ChatScreen>
                       ),
                     ),
                     Text(
-                      'Language: ${_getLanguageDisplayName(provider.preferredLanguage)}',
+                      // 'Language: ${_getLanguageDisplayName(provider.preferredLanguage)}',
+                      'Language'.tr(args: [
+                        _getLanguageDisplayName(provider.preferredLanguage)
+                      ]),
                       style: GoogleFonts.poppins(
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.8),
@@ -704,7 +708,7 @@ class _ChatScreenState extends State<ChatScreen>
                 icon: provider.ttsEnabled ? Icons.volume_up : Icons.volume_off,
                 isActive: provider.ttsEnabled,
                 onTap: provider.toggleTts,
-                tooltip: 'Text-to-Speech',
+                tooltip: 'Text-to-Speech'.tr(),
               ),
               const SizedBox(width: 8),
               _buildIconButton(
@@ -724,128 +728,128 @@ class _ChatScreenState extends State<ChatScreen>
           decoration: BoxDecoration(
             gradient: isDark
                 ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.darkBackground.withValues(alpha: 0.8),
-                      AppColors.darkBackground,
-                    ],
-                  )
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.darkBackground.withValues(alpha: 0.8),
+                AppColors.darkBackground,
+              ],
+            )
                 : LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.background.withValues(alpha: 0.9),
-                      AppColors.background,
-                    ],
-                  ),
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.background.withValues(alpha: 0.9),
+                AppColors.background,
+              ],
+            ),
           ),
           child: Column(
             children: [
               Expanded(
                 child: provider.messages.isEmpty && !provider.isTyping
                     ? SingleChildScrollView(
-                        padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 30),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 30),
-                              child: Column(
-                                children: [
-                                  AnimatedBuilder(
-                                    animation: _typingController,
-                                    builder: (context, child) {
-                                      return Icon(
-                                        Icons.chat_bubble_outline,
-                                        size: 64,
-                                        color: AppColors.teal.withValues(alpha:
-                                          0.3 + (_typingController.value * 0.4),
-                                        ),
-                                      );
-                                    },
+                            AnimatedBuilder(
+                              animation: _typingController,
+                              builder: (context, child) {
+                                return Icon(
+                                  Icons.chat_bubble_outline,
+                                  size: 64,
+                                  color: AppColors.teal.withValues(alpha:
+                                  0.3 + (_typingController.value * 0.4),
                                   ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'How can I help you today?',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark
-                                          ? AppColors.darkText
-                                          : AppColors.textColor,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'I\'m here to assist with your logistics needs',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: isDark
-                                          ? AppColors.darkText.withValues(alpha: 0.6)
-                                          : AppColors.textColor.withValues(alpha:
-                                              0.5,
-                                            ),
-                                    ),
-                                  ),
-                                ],
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'How_can_I_help_you_today?'.tr(),
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.darkText
+                                    : AppColors.textColor,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'I_am_here_to_assist_with_your_logistics_needs'.tr(),
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: isDark
+                                    ? AppColors.darkText.withValues(alpha: 0.6)
+                                    : AppColors.textColor.withValues(alpha:
+                                0.5,
+                                ),
                               ),
                             ),
-                            if (!_hasUserTyped) ...[
-                              const SizedBox(height: 20),
-                              Text(
-                                'Try asking:',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDark
-                                      ? AppColors.darkText
-                                      : AppColors.textColor.withValues(alpha: 0.8),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildPromptChips(isDark),
-                              const SizedBox(height: 30),
-                              Text(
-                                'Or type your question below',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: isDark
-                                      ? AppColors.darkText.withValues(alpha: 0.5)
-                                      : AppColors.textColor.withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ] else ...[
-                              const SizedBox(height: 100),
-                              Text(
-                                'Press send to get assistance',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: isDark
-                                      ? AppColors.darkText.withValues(alpha: 0.5)
-                                      : AppColors.textColor.withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
-                      )
-                    : ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.all(16),
-                        itemCount:
-                            provider.messages.length +
-                            (provider.isTyping ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index < provider.messages.length) {
-                            final msg = provider.messages[index];
-                            return _buildMessageBubble(msg, isDark);
-                          } else {
-                            return _buildTypingIndicator();
-                          }
-                        },
                       ),
+                      if (!_hasUserTyped) ...[
+                        const SizedBox(height: 20),
+                        Text(
+                          'Try_asking:'.tr(),
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? AppColors.darkText
+                                : AppColors.textColor.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPromptChips(isDark),
+                        const SizedBox(height: 30),
+                        Text(
+                          'Or_type_your_question_below'.tr(),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: isDark
+                                ? AppColors.darkText.withValues(alpha: 0.5)
+                                : AppColors.textColor.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 100),
+                        Text(
+                          'Press send to get assistance',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: isDark
+                                ? AppColors.darkText.withValues(alpha: 0.5)
+                                : AppColors.textColor.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+                    : ListView.builder(
+                  controller: _scroll,
+                  padding: const EdgeInsets.all(16),
+                  itemCount:
+                  provider.messages.length +
+                      (provider.isTyping ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index < provider.messages.length) {
+                      final msg = provider.messages[index];
+                      return _buildMessageBubble(msg, isDark);
+                    } else {
+                      return _buildTypingIndicator();
+                    }
+                  },
+                ),
               ),
               Container(
                 margin: const EdgeInsets.all(16),
@@ -892,7 +896,7 @@ class _ChatScreenState extends State<ChatScreen>
                           ),
                           onPressed: _toggleListen,
                           tooltip:
-                              'Tap to speak, Long press to change voice language',
+                          'Tap to speak, Long press to change voice language',
                         ),
                       ),
                     ),
@@ -910,7 +914,7 @@ class _ChatScreenState extends State<ChatScreen>
                               : AppColors.textColor,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Type your message...',
+                          hintText: 'Type_your_message...'.tr(),
                           hintStyle: GoogleFonts.poppins(
                             color: isDark
                                 ? AppColors.darkText.withValues(alpha: 0.5)
@@ -1009,21 +1013,21 @@ class _ChatScreenState extends State<ChatScreen>
               decoration: BoxDecoration(
                 gradient: msg.isUser
                     ? LinearGradient(
-                        colors: [
-                          AppColors.orange,
-                          AppColors.orange.withValues(alpha: 0.8),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
+                  colors: [
+                    AppColors.orange,
+                    AppColors.orange.withValues(alpha: 0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
                     : LinearGradient(
-                        colors: [
-                          isDark
-                              ? AppColors.darkSurface.withValues(alpha: 0.8)
-                              : Colors.white,
-                          isDark ? AppColors.darkSurface : Colors.white70,
-                        ],
-                      ),
+                  colors: [
+                    isDark
+                        ? AppColors.darkSurface.withValues(alpha: 0.8)
+                        : Colors.white,
+                    isDark ? AppColors.darkSurface : Colors.white70,
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
