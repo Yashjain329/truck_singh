@@ -5,23 +5,6 @@ import 'package:logistics_toolkit/features/auth/services/supabase_service.dart';
 import 'package:logistics_toolkit/features/auth/utils/user_role.dart';
 import 'package:logistics_toolkit/providers/chat_provider.dart';
 
-
-import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
-import 'package:logistics_toolkit/features/auth/services/supabase_service.dart';
-import 'package:logistics_toolkit/features/auth/utils/user_role.dart';
-import 'package:logistics_toolkit/providers/chat_provider.dart';
-
-//fake
-
-import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
-import 'package:logistics_toolkit/features/auth/services/supabase_service.dart';
-import 'package:logistics_toolkit/features/auth/utils/user_role.dart';
-import 'package:logistics_toolkit/providers/chat_provider.dart';
-
 class GeminiService {
   final String baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
   final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';

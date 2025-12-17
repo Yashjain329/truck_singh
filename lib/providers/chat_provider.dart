@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:logistics_toolkit/features/mytruck/mytrucks.dart';
 import 'package:logistics_toolkit/services/gemini_service.dart';
 import 'package:logistics_toolkit/services/intent_parser.dart';
 import 'package:logistics_toolkit/services/shipment_service.dart';
@@ -675,13 +674,9 @@ class ChatProvider extends ChangeNotifier {
   }
 }
 
-extension on Future<Map<String, dynamic>> {
-  operator [](String other) {}
-}
-
 List<String> filterIdsByMap(List<Map<String, dynamic>> shipments, String key) {
   return shipments
-      .map((map) => map[key].toString() ?? "")
+      .map((map) => map[key].toString())
       .where((id) => id.isNotEmpty)
       .toList();
 }

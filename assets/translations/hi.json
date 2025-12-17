@@ -1693,13 +1693,23 @@
   "shared_with_me": "मेरे साथ साझा किए गए",
   "shared_by": "द्वारा साझा किया गया",
   "no_shared_shipments": "अभी तक किसी ने आपके साथ कोई शिपमेंट साझा नहीं किया है।",
-  "someone": "कोई"
+  "someone": "कोई",
 
+  "enter_field": "{field} दर्ज करें",
+  "select_unit": "इकाई चुनें",
 
+  "step_truck_type": "अपना पसंदीदा ट्रक प्रकार चुनें",
+  "step_shipment_details": "शिपमेंट विवरण दर्ज करें",
+  "step_pickup_delivery": "पिकअप और डिलीवरी स्थान सेट करें",
+  "step_schedule": "शिपमेंट शेड्यूल करें",
 
+  "Returned": "वापस किया गया",
 
+  "To Pay": "देय",
+  "Paid": "भुगतान किया गया",
+  "Partial": "आंशिक भुगतान",
 
-
-
+  "month1": "महीना",
+  "location2": "स्थान"
 
 }

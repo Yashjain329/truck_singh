@@ -42,7 +42,7 @@ Future<String> generateInvoicePDF({
 
   /// Reusable safe address fallback
   String safeAddress(String value, dynamic alt) =>
-      value.isNotEmpty ? value : (alt != null ? alt : '');
+      value.isNotEmpty ? value : (alt ?? '');
 
   String finalCompanyAddress = safeAddress(
     companyAddress,

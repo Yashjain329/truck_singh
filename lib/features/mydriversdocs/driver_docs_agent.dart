@@ -466,11 +466,11 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
                   },
                 ),
                 TextButton(
-                  child: Text('delete'.tr()),
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
                   onPressed: () {
                     Navigator.of(context).pop(true);
                   },
+                  child: Text('delete'.tr()),
                 ),
               ],
             );
@@ -616,7 +616,7 @@ class _DriverDocumentsPageState extends State<DriverDocumentsPage>
             ..._documentTypes.keys.map((docType) {
               final docInfo = docStatus[docType] ?? {'uploaded': false};
               return _buildDocumentRow(driverId, docType, docInfo, isUploading);
-            }).toList(),
+            }),
           ],
         ),
       ),
