@@ -1350,6 +1350,7 @@
   "shareInvoice": "इनवॉइस साझा करें",
   "share_invoice": "चालान साझा करें",
   "share_pdf": "पीडीएफ साझा करें",
+  "share_tracking": "ट्रैकिंग साझा करें",
   "sharedtracking": "साझा ट्रैकिंग",
   "sharedtrips": "साझा यात्रा",
   "sharing_invoice_pdf": "चालान पीडीएफ साझा कर रहे हैं",
@@ -1757,5 +1758,6 @@
   "Pure_English_responses": "शुद्ध अंग्रेजी प्रतिक्रियाएँ",
   "Pure_Hindi_in_Devanagari_script": "देवनागरी लिपि में शुद्ध हिन्दी",
   "Hindi_in_English_letters_(Recommended)": "हिंदी को अंग्रेजी अक्षरों में लिखना (अनुशंसित)",
-  "Language":"भाषा: {}"
+  "Language":"भाषा: {}",
+  "enter_sharing_detail": "उस व्यक्ति का यूज़र आईडी, नाम या मोबाइल नंबर दर्ज करें जिसके साथ आप यह शिपमेंट साझा करना चाहते हैं।"
 }

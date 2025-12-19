@@ -155,7 +155,7 @@ class _ShipmentCardState extends State<ShipmentCard> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      status ?? 'Unknown Status',
+                      status?.tr() ?? 'Unknown Status',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: statusColor,

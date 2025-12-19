@@ -1349,6 +1349,7 @@
   "settings1": "",
   "shareInvoice": "Share Invoice",
   "share_invoice": "Share Invoice",
+  "share_tracking": "Share Tracking",
   "share_pdf": "Share PDF",
   "sharedtracking": "Shared Tracking",
   "sharedtrips": "Shared Trips",
@@ -1768,6 +1769,6 @@
   "Pure_English_responses": "Pure English responses",
   "Pure_Hindi_in_Devanagari_script": "Pure Hindi in Devanagari script",
   "Hindi_in_English_letters_(Recommended)": "Hindi in English letters (Recommended)",
-  "Language": "Language: {}"
-
+  "Language": "Language: {}",
+  "enter_sharing_detail": "Enter the User ID, Name, or Mobile Number of the person you want to share this shipment with.\n"
 }
