@@ -109,12 +109,13 @@ class ChatService {
 
     // Send notification
     try {
-      await _client.functions.invoke('send-chat-notification', body: {
-        'room_id': roomId,
-        'sender_id': senderId,
-        'sender_name': senderName ?? 'Unknown User',
-        'message_content': content,
+      await _client.rpc('notify_chat_room_participants', params: {
+        'p_room_id': roomId,
+        'p_sender_id': senderId,
+        'p_sender_name': senderName ?? 'Unknown User',
+        'p_message_content': content,
       });
+      print("hi");
     } catch (e) {
       if (kDebugMode) print('Failed to send chat notification: $e');
     }
@@ -169,7 +170,7 @@ class ChatService {
         'attachment_url': publicUrl,
       });
       try {
-        await _client.functions.invoke('send-chat-notification', body: {
+        await _client.rpc('notify_chat_room_participants', params: {
           'room_id': roomId,
           'sender_id': senderId,
           'sender_name': senderName ?? 'Unknown User',

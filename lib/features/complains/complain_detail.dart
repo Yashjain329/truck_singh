@@ -325,7 +325,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text("start_chat".tr()),
-        content: Text("confirm_start_chat $name?".tr()),
+        content: Text("${"confirm_start_chat".tr()} $name"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -532,7 +532,7 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
                   _currentComplaint['complainer_user_name'],
                 ),
                 icon: const Icon(Icons.chat),
-                label: Text('chat'.tr()),
+                label: Text('start_chat'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,

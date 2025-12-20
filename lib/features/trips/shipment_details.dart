@@ -255,22 +255,20 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Share Shipment Tracking'),
+              title: Text('share_tracking'.tr()),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      const Text(
-                        'Enter the User ID, Name, or Mobile Number of the person you want to share this shipment with.',
-                      ),
+                      Text("enter_sharing_detail".tr()),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: recipientController,
-                        decoration: const InputDecoration(
-                          labelText: 'User ID / Name / Mobile',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: 'search_user'.tr(),
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -286,7 +284,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                  child: Text('cancel'.tr()),
                 ),
                 ElevatedButton.icon(
                   icon: isSharing
@@ -299,7 +297,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                           ),
                         )
                       : const Icon(Icons.share),
-                  label: const Text('Share'),
+                  label: Text('share'.tr()),
                   onPressed: isSharing
                       ? null
                       : () async {
@@ -623,7 +621,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                         widget.shipment['shipper_id'] != null)
                       _buildInfoRow(
                         Icons.person_add,
-                        'Created By',
+                        'created'.tr(),
                         (widget.shipment['shipper_id'] == currentUserCustomId)
                             ? 'You'
                             : (widget.shipment['shipper_name'] ??
@@ -681,7 +679,7 @@ class _ShipmentDetailsPageState extends State<ShipmentDetailsPage>
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.share),
-                          label: const Text('Share Tracking'),
+                          label: Text('share_tracking'.tr()),
                           onPressed: _showShareTrackingDialog,
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
